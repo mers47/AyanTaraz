@@ -3,6 +3,7 @@ import {
   Inject,
   UnauthorizedException,
   ConflictException,
+  Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -26,6 +27,8 @@ export interface SessionToken {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     @Inject('REDIS_CLIENT') private readonly redis: Redis,
     private readonly jwtService: JwtService,
@@ -49,11 +52,30 @@ export class AuthService {
       });
     }
 
-    // Generate and send OTP (in production, integrate with SMS provider)
+    // Generate and send OTP
     const { code } = await this.otpService.generateOTP(phone, type);
 
-    // TODO: Integrate with SMS provider
-    console.log(`[OTP] Sent to ${phone}: ${code} (type: ${type})`);
+    // Send OTP via configured provider
+    const smsProvider = this.configService.get<string>('SMS_PROVIDER', 'console');
+    
+    if (smsProvider === 'twilio') {
+      // TODO: Implement Twilio integration
+      // Example:
+      // const twilioClient = require('twilio')(
+      //   this.configService.get<string>('TWILIO_ACCOUNT_SID'),
+      //   this.configService.get<string>('TWILIO_AUTH_TOKEN')
+      // );
+      // await twilioClient.messages.create({
+      //   body: `Your OTP code is: ${code}`,
+      //   from: this.configService.get<string>('TWILIO_PHONE_NUMBER'),
+      //   to: phone,
+      // });
+      this.logger.warn('Twilio SMS provider not yet implemented. Falling back to console log.');
+      this.logger.log(`[OTP] Sent to ${phone}: ${code} (type: ${type}) [PROVIDER: console]`);
+    } else {
+      // Default: Log to console (for development)
+      this.logger.log(`[OTP] Sent to ${phone}: ${code} (type: ${type}) [PROVIDER: console]`);
+    }
 
     return { message: 'OTP sent successfully' };
   }
