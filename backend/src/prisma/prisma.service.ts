@@ -24,20 +24,26 @@ export class PrismaService
   }
 
   async cleanDatabase() {
-    if (process.env.NODE_ENV === 'test') {
-      const models = Reflect.ownKeys(this).filter(
-        (key) => typeof key === 'string' && !key.startsWith('_') && !key.startsWith('$'),
-      );
-      return Promise.all(
-        models.map((modelKey) => {
-          const model = this[modelKey as keyof this];
-          if (model && typeof model === 'object' && 'deleteMany' in model) {
-            return (model as { deleteMany: () => Promise<unknown> }).deleteMany();
-          }
-          return Promise.resolve();
-        }),
+    // SAFETY CHECK: Only allow database cleanup in test mode with explicit flag
+    const isTestMode = process.env.NODE_ENV === 'test' && process.env.TEST_MODE === 'true';
+    
+    if (!isTestMode) {
+      throw new Error(
+        'Database cleanup is disabled. To enable, set NODE_ENV=test and TEST_MODE=true.',
       );
     }
-    return Promise.resolve();
+
+    const models = Reflect.ownKeys(this).filter(
+      (key) => typeof key === 'string' && !key.startsWith('_') && !key.startsWith('$'),
+    );
+    return Promise.all(
+      models.map((modelKey) => {
+        const model = this[modelKey as keyof this];
+        if (model && typeof model === 'object' && 'deleteMany' in model) {
+          return (model as { deleteMany: () => Promise<unknown> }).deleteMany();
+        }
+        return Promise.resolve();
+      }),
+    );
   }
 }
