@@ -10,6 +10,7 @@ const api: AxiosInstance = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Required for cross-origin cookie handling
 });
 
 // Request interceptor
@@ -32,15 +33,43 @@ api.interceptors.request.use(
 // Response interceptor
 api.interceptors.response.use(
   (response) => response,
-  (error: AxiosError) => {
-    // Handle 401 Unauthorized
-    if (error.response?.status === 401) {
+  async (error: AxiosError) => {
+    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+
+    // Handle 401 Unauthorized (token expired or invalid)
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('accessToken');
-        window.location.href = '/login';
+        try {
+          // Attempt to refresh the token
+          const refreshToken = localStorage.getItem('refreshToken');
+          if (refreshToken) {
+            const response = await axios.post(
+              `${API_BASE_URL}/api/auth/refresh`,
+              { refreshToken },
+              { withCredentials: true }
+            );
+
+            const { accessToken } = response.data;
+            localStorage.setItem('accessToken', accessToken);
+
+            // Retry the original request with the new token
+            if (originalRequest.headers) {
+              originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+            }
+            return api(originalRequest);
+          }
+        } catch (refreshError) {
+          // Refresh failed, redirect to login
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
+          window.location.href = '/login';
+          return Promise.reject(refreshError);
+        }
       }
     }
-    
+
     // Handle other errors
     return Promise.reject(error);
   }
@@ -50,19 +79,19 @@ api.interceptors.response.use(
 export const authApi = {
   sendOTP: (phone: string, type?: 'PHONE_VERIFICATION' | 'BOOKING_VERIFICATION') =>
     api.post('/auth/send-otp', { phone, type }),
-  
+
   verifyOTP: (phone: string, code: string, type?: 'PHONE_VERIFICATION' | 'BOOKING_VERIFICATION') =>
     api.post('/auth/verify-otp', { phone, code, type }),
-  
+
   login: (phone: string, code: string) =>
     api.post('/auth/login', { phone, code }),
-  
+
   logout: (allSessions?: boolean) =>
     api.post('/auth/logout', { allSessions }),
-  
+
   refresh: (refreshToken: string) =>
     api.post('/auth/refresh', { refreshToken }),
-  
+
   getMe: () => api.get('/auth/me'),
 };
 
@@ -81,19 +110,19 @@ export const contentApi = {
   // Articles
   getArticles: (page?: number, limit?: number, category?: string, tag?: string, status?: string) =>
     api.get('/content/articles', { params: { page, limit, category, tag, status } }),
-  
+
   getArticleBySlug: (slug: string) =>
     api.get(`/content/articles/${slug}`),
-  
+
   getFeaturedArticles: (limit?: number) =>
     api.get('/content/articles/featured', { params: { limit } }),
-  
+
   getRelatedArticles: (id: string, limit?: number) =>
     api.get(`/content/articles/${id}/related`, { params: { limit } }),
-  
+
   // Categories
   getCategories: () => api.get('/content/categories'),
-  
+
   // Tags
   getTags: () => api.get('/content/tags'),
 };
@@ -102,13 +131,13 @@ export const contentApi = {
 export const taxApi = {
   getTaxRules: (page?: number, limit?: number, topic?: string, status?: string) =>
     api.get('/tax/rules', { params: { page, limit, topic, status } }),
-  
+
   getTaxRuleBySlug: (slug: string) =>
     api.get(`/tax/rules/${slug}`),
-  
+
   getEffectiveRule: (topicSlug: string, asOf?: string) =>
     api.get(`/tax/rules/${topicSlug}/effective`, { params: { asOf } }),
-  
+
   // Topics
   getTaxTopics: () => api.get('/tax/topics'),
 };
@@ -117,7 +146,7 @@ export const taxApi = {
 export const taxAssistantApi = {
   startSession: (questionId?: string, answers?: Record<string, string>) =>
     api.post('/tax-assistant/start', { questionId, answers }),
-  
+
   answerQuestion: (sessionId: string, questionId: string, optionValue: string) =>
     api.post('/tax-assistant/answer', { sessionId, questionId, optionValue }),
 };
@@ -126,13 +155,13 @@ export const taxAssistantApi = {
 export const consultationApi = {
   getServices: (active?: boolean) =>
     api.get('/consultation/services', { params: { active } }),
-  
+
   getServiceBySlug: (slug: string) =>
     api.get(`/consultation/services/${slug}`),
-  
+
   getAvailability: (serviceId: string, date: string) =>
     api.get(`/consultation/services/${serviceId}/availability`, { params: { date } }),
-  
+
   createBooking: (data: {
     serviceId: string;
     slotId: string;
@@ -140,11 +169,11 @@ export const consultationApi = {
     otpCode: string;
     notes?: string;
   }) => api.post('/consultation/bookings', data),
-  
+
   getBooking: (id: string) => api.get(`/consultation/bookings/${id}`),
-  
+
   getMyBookings: () => api.get('/consultation/my-bookings'),
-  
+
   cancelBooking: (id: string) => api.post(`/consultation/bookings/${id}/cancel`),
 };
 
