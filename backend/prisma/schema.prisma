@@ -1,0 +1,618 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// AUTH & USERS
+// ============================================
+
+model User {
+  id            String    @id @default(uuid())
+  phone         String    @unique
+  phoneVerified Boolean   @default(false)
+  firstName     String?
+  lastName      String?
+  avatar        String?
+  role          UserRole  @default(USER)
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  otps          OTP[]
+  sessions      Session[]
+  consultations  ConsultationBooking[]
+  adminActions   AdminAction[]         @relation("AdminUser")
+
+  @@index([phone])
+  @@index([role])
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  ipAddress String?
+  userAgent String?
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+}
+
+model OTP {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  phone     String
+  code      String
+  type      OTPType  @default(PHONE_VERIFICATION)
+  used      Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  ipAddress String?
+  attemptCount Int    @default(0)
+
+  @@unique([phone, type, used])
+  @@index([phone])
+  @@index([expiresAt])
+  @@index([used])
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum OTPType {
+  PHONE_VERIFICATION
+  BOOKING_VERIFICATION
+  PASSWORD_RESET // Future use
+}
+
+// ============================================
+// CONTENT (Articles, Videos, MiniBooks)
+// ============================================
+
+model Category {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  parentId    String?
+  parent      Category?  @relation("CategoryToCategory", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryToCategory")
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  articles    Article[]
+  videos      Video[]
+  miniBooks   MiniBook[]
+
+  @@index([slug])
+  @@index([parentId])
+}
+
+model Tag {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  slug      String   @unique
+  createdAt DateTime @default(now())
+
+  // Relations
+  articles  Article[]
+  videos    Video[]
+
+  @@index([slug])
+}
+
+model Article {
+  id          String   @id @default(uuid())
+  title       String
+  slug        String   @unique
+  excerpt     String?
+  content     String   @db.Text
+  status      ContentStatus @default(DRAFT)
+  featuredImage String?
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // SEO
+  metaTitle       String?
+  metaDescription String?
+  canonicalUrl    String?
+
+  // Relations
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+  authorId   String
+  author     User     @relation(fields: [authorId], references: [id])
+  tags       Tag[]
+
+  // Content relationships
+  relatedArticles ArticleRelation[] @relation("FromArticle")
+  relatedBy       ArticleRelation[] @relation("ToArticle")
+  taxTopics       TaxTopic[]
+
+  @@index([slug])
+  @@index([status])
+  @@index([categoryId])
+  @@index([publishedAt])
+}
+
+model Video {
+  id          String   @id @default(uuid())
+  title       String
+  slug        String   @unique
+  description String?
+  url         String   // Video file URL (from object storage)
+  thumbnail   String?
+  duration    Int?      // Duration in seconds
+  status      ContentStatus @default(DRAFT)
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // SEO
+  metaTitle       String?
+  metaDescription String?
+  canonicalUrl    String?
+
+  // Relations
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+  authorId   String
+  author     User     @relation(fields: [authorId], references: [id])
+  tags       Tag[]
+
+  @@index([slug])
+  @@index([status])
+}
+
+model MiniBook {
+  id          String   @id @default(uuid())
+  title       String
+  slug        String   @unique
+  description String?
+  fileUrl     String   // PDF file URL (from object storage)
+  coverImage  String?
+  pageCount   Int?
+  status      ContentStatus @default(DRAFT)
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // SEO
+  metaTitle       String?
+  metaDescription String?
+  canonicalUrl    String?
+
+  // Relations
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+  authorId   String
+  author     User     @relation(fields: [authorId], references: [id])
+
+  @@index([slug])
+  @@index([status])
+}
+
+model ArticleRelation {
+  id          String @id @default(uuid())
+  fromArticleId String
+  fromArticle Article @relation("FromArticle", fields: [fromArticleId], references: [id], onDelete: Cascade)
+  toArticleId   String
+  toArticle     Article @relation("ToArticle", fields: [toArticleId], references: [id], onDelete: Cascade)
+  sortOrder     Int    @default(0)
+  createdAt     DateTime @default(now())
+
+  @@unique([fromArticleId, toArticleId])
+  @@index([fromArticleId])
+  @@index([toArticleId])
+}
+
+enum ContentStatus {
+  DRAFT
+  REVIEW
+  PUBLISHED
+  ARCHIVED
+}
+
+// ============================================
+// MEDIA (Images, Videos, PDFs)
+// ============================================
+
+model Media {
+  id          String   @id @default(uuid())
+  name        String
+  fileName    String   // Original file name
+  fileUrl     String   // URL in object storage
+  fileSize    Int      // Size in bytes
+  mimeType    String
+  dimensions  String?  // e.g., "1920x1080"
+  altText     String?
+  description String?
+  uploadedById String
+  uploadedBy   User    @relation(fields: [uploadedById], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@index([uploadedById])
+  @@index([mimeType])
+}
+
+// ============================================
+// TAX (Rules, Topics, Sources)
+// ============================================
+
+model TaxTopic {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  rules       TaxRule[]
+  articles    Article[]
+
+  @@index([slug])
+}
+
+model TaxSource {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  url         String?
+  officialName String?  // e.g., "Ministry of Finance"
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  rules       TaxRuleVersion[]
+
+  @@index([name])
+}
+
+model TaxRule {
+  id          String   @id @default(uuid())
+  topicId     String
+  topic       TaxTopic @relation(fields: [topicId], references: [id])
+  name        String
+  slug        String   @unique
+  description String?
+  status      TaxRuleStatus @default(DRAFT)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  versions    TaxRuleVersion[]
+
+  @@index([topicId])
+  @@index([slug])
+  @@index([status])
+}
+
+model TaxRuleVersion {
+  id          String   @id @default(uuid())
+  ruleId      String
+  rule        TaxRule  @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  version     Int
+  content     String   @db.Text
+  sourceId    String
+  source      TaxSource @relation(fields: [sourceId], references: [id])
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  status      TaxRuleVersionStatus @default(DRAFT)
+  reviewNotes String?
+  reviewedById String?
+  reviewedBy   User?    @relation(fields: [reviewedById], references: [id])
+  reviewedAt  DateTime?
+  publishedById String?
+  publishedBy  User?    @relation(fields: [publishedById], references: [id])
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([ruleId, version])
+  @@index([ruleId])
+  @@index([effectiveFrom])
+  @@index([effectiveTo])
+  @@index([status])
+}
+
+enum TaxRuleStatus {
+  DRAFT
+  REVIEW
+  APPROVED
+  PUBLISHED
+  SUPERSEDED
+}
+
+enum TaxRuleVersionStatus {
+  DRAFT
+  REVIEW
+  APPROVED
+  PUBLISHED
+}
+
+// ============================================
+// TAX ASSISTANT (Decision Tree)
+// ============================================
+
+model TaxQuestion {
+  id          String   @id @default(uuid())
+  question    String
+  description String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  options     TaxQuestionOption[]
+  nextQuestions TaxQuestionFlow[] @relation("FromQuestion")
+  prevQuestions TaxQuestionFlow[] @relation("ToQuestion")
+
+  @@index([sortOrder])
+  @@index([isActive])
+}
+
+model TaxQuestionOption {
+  id          String   @id @default(uuid())
+  questionId  String
+  question    TaxQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  label       String
+  value       String
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  // Relations
+  flows       TaxQuestionFlow[]
+
+  @@index([questionId])
+  @@index([sortOrder])
+}
+
+model TaxQuestionFlow {
+  id          String   @id @default(uuid())
+  fromQuestionId String
+  fromQuestion TaxQuestion @relation("FromQuestion", fields: [fromQuestionId], references: [id], onDelete: Cascade)
+  toQuestionId   String
+  toQuestion     TaxQuestion @relation("ToQuestion", fields: [toQuestionId], references: [id], onDelete: Cascade)
+  optionId     String?
+  option       TaxQuestionOption? @relation(fields: [optionId], references: [id], onDelete: SetNull)
+  condition    String?  // JSON logic for dynamic routing (e.g., {"field": "income", "op": ">", "value": 1000000})
+  sortOrder     Int    @default(0)
+  createdAt     DateTime @default(now())
+
+  @@unique([fromQuestionId, optionId])
+  @@index([fromQuestionId])
+  @@index([toQuestionId])
+}
+
+model TaxAssistantResult {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  title       String
+  description String   @db.Text
+  ruleIds     String[] // Array of TaxRuleVersion IDs that apply
+  action      String?  // e.g., "CONSULT", "FILE_FORM_X", "WAIT"
+  severity    TaxResultSeverity @default(INFO)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([name])
+}
+
+enum TaxResultSeverity {
+  INFO
+  WARNING
+  CRITICAL
+  NEEDS_REVIEW
+}
+
+// ============================================
+// CONSULTATION
+// ============================================
+
+model ConsultationService {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  description String   @db.Text
+  duration    Int      // Duration in minutes
+  price       Int?     // Price in smallest currency unit (e.g., IRR)
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  availability ConsultationAvailability[]
+  bookings     ConsultationBooking[]
+
+  @@index([slug])
+  @@index([isActive])
+}
+
+model ConsultationAvailability {
+  id          String   @id @default(uuid())
+  serviceId   String
+  service     ConsultationService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  dayOfWeek   Int      // 0-6 (Sunday-Saturday)
+  startTime   String   // HH:MM format
+  endTime     String   // HH:MM format
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  blockedPeriods ConsultationBlockedPeriod[]
+  slots         ConsultationSlot[]
+
+  @@unique([serviceId, dayOfWeek, startTime])
+  @@index([serviceId])
+  @@index([dayOfWeek])
+}
+
+model ConsultationSlot {
+  id          String   @id @default(uuid())
+  availabilityId String
+  availability ConsultationAvailability @relation(fields: [availabilityId], references: [id], onDelete: Cascade)
+  date        DateTime // Specific date for this slot
+  startTime   DateTime
+  endTime     DateTime
+  maxBookings Int      @default(1)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  bookings    ConsultationBooking[]
+  blockedPeriods ConsultationBlockedPeriod[]
+
+  @@index([availabilityId])
+  @@index([date])
+  @@index([startTime])
+}
+
+model ConsultationBooking {
+  id          String   @id @default(uuid())
+  slotId      String
+  slot        ConsultationSlot @relation(fields: [slotId], references: [id])
+  serviceId   String
+  service     ConsultationService @relation(fields: [serviceId], references: [id])
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  phone       String   // Phone for OTP verification
+  otpCode     String?  // OTP code for booking verification
+  otpVerified Boolean  @default(false)
+  status      BookingStatus @default(PENDING)
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([slotId])
+  @@index([userId])
+  @@index([phone])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ConsultationBlockedPeriod {
+  id          String   @id @default(uuid())
+  slotId      String?
+  slot        ConsultationSlot? @relation(fields: [slotId], references: [id], onDelete: SetNull)
+  availabilityId String?
+  availability ConsultationAvailability? @relation(fields: [availabilityId], references: [id], onDelete: SetNull)
+  startDate   DateTime
+  endDate     DateTime
+  reason      String?
+  createdAt   DateTime @default(now())
+
+  @@index([slotId])
+  @@index([availabilityId])
+  @@index([startDate, endDate])
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+// ============================================
+// SEO
+// ============================================
+
+model SEOConfig {
+  id          String   @id @default(uuid())
+  path        String   @unique // e.g., "/", "/articles", "/articles/[slug]"
+  title       String?
+  description String?
+  canonical   String?
+  ogTitle     String?
+  ogDescription String?
+  ogImage     String?
+  ogUrl       String?
+  twitterCard String?
+  twitterTitle String?
+  twitterDescription String?
+  twitterImage String?
+  schemaMarkup String? @db.Text // JSON-LD structured data
+  indexable  Boolean  @default(true)
+  followLinks Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([path])
+}
+
+model Redirect {
+  id          String   @id @default(uuid())
+  fromPath    String   @unique
+  toPath      String
+  statusCode  Int      @default(301) // 301 or 302
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  @@index([fromPath])
+}
+
+// ============================================
+// ADMIN
+// ============================================
+
+model AdminAction {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation("AdminUser", fields: [userId], references: [id])
+  action      String   // e.g., "CREATE_ARTICLE", "PUBLISH_TAX_RULE"
+  entityType  String   // e.g., "Article", "TaxRule"
+  entityId    String   // ID of the entity affected
+  oldValue    String?  @db.Text // JSON string of old value
+  newValue    String?  @db.Text // JSON string of new value
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+model AdminSetting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String   @db.Text
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([key])
+}
