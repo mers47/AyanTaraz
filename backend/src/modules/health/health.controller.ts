@@ -1,14 +1,20 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Inject } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Public } from '../../common/decorators/public.decorator';
+import { PrismaService } from '../../prisma/prisma.service';
 
 @ApiTags('health')
 @Controller('health')
 @Public()
 export class HealthController {
+  constructor(
+    @Inject('PRISMA_SERVICE') private readonly prisma: PrismaService,
+  ) {}
+
   @Get()
   @ApiOperation({ summary: 'Health check endpoint' })
   @ApiResponse({ status: 200, description: 'Service is healthy' })
+  @ApiResponse({ status: 503, description: 'Service is unhealthy' })
   async healthCheck() {
     return {
       status: 'healthy',
@@ -21,12 +27,18 @@ export class HealthController {
   @Get('db')
   @ApiOperation({ summary: 'Database health check' })
   @ApiResponse({ status: 200, description: 'Database is healthy' })
+  @ApiResponse({ status: 503, description: 'Database is unhealthy' })
   async dbHealthCheck() {
-    // In a real implementation, you would check database connectivity
-    return {
-      status: 'healthy',
-      database: 'postgresql',
-      timestamp: new Date().toISOString(),
-    };
+    try {
+      // Execute a simple query to verify database connectivity
+      await this.prisma.$queryRaw`SELECT 1`;
+      return {
+        status: 'healthy',
+        database: 'postgresql',
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      throw new Error('Database connection failed');
+    }
   }
 }
