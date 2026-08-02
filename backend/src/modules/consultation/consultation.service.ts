@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   Inject,
+  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { OTPService } from '../auth/otp.service';
@@ -15,6 +16,8 @@ import {
 
 @Injectable()
 export class ConsultationService {
+  private readonly logger = new Logger(ConsultationService.name);
+
   constructor(
     @Inject('REDIS_CLIENT') private readonly redis: any,
     private readonly prisma: PrismaService,
@@ -108,19 +111,18 @@ export class ConsultationService {
       'BOOKING_VERIFICATION',
     );
 
-    // Get slot with lock to prevent concurrent bookings
     const lockKey = `${this.BOOKING_LOCK_PREFIX}${createBookingDto.slotId}`;
-    const lock = await this.redis.setnx(lockKey, 'locked');
-
-    if (!lock) {
-      throw new ConflictException(
-        'This slot is being booked by another user. Please try again.',
-      );
-    }
-
-    await this.redis.expire(lockKey, this.BOOKING_LOCK_EXPIRY);
 
     try {
+      // Acquire lock with expiry to prevent deadlocks
+      const lock = await this.redis.setnx(lockKey, 'locked');
+      if (!lock) {
+        throw new ConflictException(
+          'This slot is being booked by another user. Please try again.',
+        );
+      }
+      await this.redis.expire(lockKey, this.BOOKING_LOCK_EXPIRY);
+
       // Get slot with current bookings
       const slot = await this.prisma.consultationSlot.findUnique({
         where: { id: createBookingDto.slotId },
@@ -175,8 +177,13 @@ export class ConsultationService {
 
       return this.mapToBookingEntity(booking);
     } finally {
-      // Release lock
-      await this.redis.del(lockKey);
+      // Always release the lock to prevent deadlocks
+      try {
+        await this.redis.del(lockKey);
+        this.logger.debug(`Released booking lock for slot: ${createBookingDto.slotId}`);
+      } catch (e) {
+        this.logger.error(`Failed to release booking lock: ${e}`);
+      }
     }
   }
 
