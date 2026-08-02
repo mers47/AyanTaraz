@@ -3,20 +3,48 @@ import {
   NotFoundException,
   BadRequestException,
   Inject,
+  Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import * as Minio from 'minio';
 
 @Injectable()
 export class MediaService {
+  private readonly logger = new Logger(MediaService.name);
+  private minioClient: Minio.Client | null = null;
+
   constructor(
     @Inject('REDIS_CLIENT') private readonly redis: any,
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
-  ) {}
+  ) {
+    // Initialize MinIO client if configured
+    const storageProvider = this.configService.get<string>('STORAGE_PROVIDER', 'local');
+    if (storageProvider === 'minio') {
+      const endPoint = this.configService.get<string>('S3_ENDPOINT');
+      const port = this.configService.get<number>('S3_PORT', 9000);
+      const useSSL = this.configService.get<boolean>('S3_USE_SSL', true);
+      const accessKey = this.configService.get<string>('S3_ACCESS_KEY');
+      const secretKey = this.configService.get<string>('S3_SECRET_KEY');
+
+      if (endPoint && accessKey && secretKey) {
+        this.minioClient = new Minio.Client({
+          endPoint,
+          port,
+          useSSL,
+          accessKey,
+          secretKey,
+        });
+        this.logger.log('MinIO client initialized');
+      } else {
+        this.logger.warn('MinIO configuration incomplete. Falling back to local storage.');
+      }
+    }
+  }
 
   private readonly UPLOAD_DIR = path.join(process.cwd(), 'uploads');
   private readonly ALLOWED_TYPES = this.configService
@@ -24,6 +52,17 @@ export class MediaService {
     .split(',')
     .map((t) => t.trim());
   private readonly MAX_FILE_SIZE = this.configService.get<number>('MAX_FILE_SIZE', 5242880); // 5MB
+  private readonly BUCKET_NAME = this.configService.get<string>('S3_BUCKET', 'ayan-taraz');
+
+  async ensureMinioBucket() {
+    if (!this.minioClient) return;
+
+    const bucketExists = await this.minioClient.bucketExists(this.BUCKET_NAME);
+    if (!bucketExists) {
+      await this.minioClient.makeBucket(this.BUCKET_NAME);
+      this.logger.log(`Created MinIO bucket: ${this.BUCKET_NAME}`);
+    }
+  }
 
   async ensureUploadDir() {
     try {
@@ -66,17 +105,39 @@ export class MediaService {
     // Generate unique filename
     const ext = path.extname(file.originalname);
     const fileName = `${uuidv4()}${ext}`;
-    const filePath = path.join(this.UPLOAD_DIR, fileName);
 
-    // Save file
-    await this.ensureUploadDir();
-    await fs.writeFile(filePath, file.buffer);
+    let fileUrl: string;
+    let filePath: string;
+
+    // Use MinIO if available, otherwise fall back to local storage
+    if (this.minioClient) {
+      await this.ensureMinioBucket();
+      const objectName = `uploads/${fileName}`;
+      await this.minioClient.putObject(
+        this.BUCKET_NAME,
+        objectName,
+        file.buffer,
+        file.size,
+        { 'Content-Type': file.mimetype },
+      );
+      fileUrl = `/uploads/${fileName}`;
+      filePath = objectName;
+      this.logger.log(`Uploaded file to MinIO: ${objectName}`);
+    } else {
+      // Fallback to local storage (for development)
+      filePath = path.join(this.UPLOAD_DIR, fileName);
+      await this.ensureUploadDir();
+      await fs.writeFile(filePath, file.buffer);
+      fileUrl = `/uploads/${fileName}`;
+      this.logger.warn(`Using local storage for file: ${filePath} (MinIO not configured)`);
+    }
 
     // Get file dimensions for images
     let dimensions: string | null = null;
     if (file.mimetype.startsWith('image/')) {
       // In production, use a library like 'sharp' to get dimensions
-      dimensions = '0x0'; // Placeholder
+      // For now, use placeholder or implement later
+      dimensions = null;
     }
 
     // Save to database
@@ -84,7 +145,7 @@ export class MediaService {
       data: {
         name: file.originalname,
         fileName,
-        fileUrl: `/uploads/${fileName}`,
+        fileUrl,
         fileSize: file.size,
         mimeType: file.mimetype,
         dimensions,
@@ -133,13 +194,18 @@ export class MediaService {
       throw new NotFoundException('Media not found');
     }
 
-    // Delete file from filesystem
+    // Delete file from MinIO or local storage
     try {
-      const filePath = path.join(this.UPLOAD_DIR, media.fileName);
-      await fs.unlink(filePath);
+      if (this.minioClient) {
+        await this.minioClient.removeObject(this.BUCKET_NAME, `uploads/${media.fileName}`);
+        this.logger.log(`Deleted file from MinIO: uploads/${media.fileName}`);
+      } else {
+        const filePath = path.join(this.UPLOAD_DIR, media.fileName);
+        await fs.unlink(filePath);
+        this.logger.log(`Deleted file from local storage: ${filePath}`);
+      }
     } catch (e) {
-      // File might not exist, but we still want to delete the record
-      console.error(`Failed to delete file: ${e}`);
+      this.logger.error(`Failed to delete file: ${e}`);
     }
 
     // Delete from database
