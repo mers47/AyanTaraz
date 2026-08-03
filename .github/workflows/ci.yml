@@ -1,0 +1,55 @@
+name: CI
+on:
+  push:
+    branches: [main, persian-modular-monolith]
+  pull_request:
+    branches: [main]
+jobs:
+  backend:
+    name: Backend Build & Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run build --if-present
+      - run: npx prisma generate
+      - name: Run Tests
+        run: node test/full-suite.test.ts
+  frontend:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run build
+  pages:
+    name: Pages & Modules Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Pages
+        run: |
+          for p in frontend/src/app/page.tsx frontend/src/app/chatbot/page.tsx frontend/src/app/consultation/page.tsx frontend/src/app/admin/page.tsx frontend/src/app/videos/page.tsx frontend/src/app/articles/page.tsx frontend/src/app/minibooks/page.tsx frontend/src/app/about/page.tsx; do
+            [ -f "$p" ] && echo "OK $p" || (echo "MISSING $p"; exit 1)
+          done
+      - name: Check Modules
+        run: |
+          for m in auth users admin content tax tax-assistant consultation media seo health audit; do
+            [ -d "backend/src/modules/$m" ] && echo "OK $m" || (echo "MISSING $m"; exit 1)
+          done
