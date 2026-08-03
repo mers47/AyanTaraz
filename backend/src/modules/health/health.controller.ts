@@ -1,32 +1,21 @@
-import { Controller, Get } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Controller, Get, Inject } from '@nestjs/common';
 import { Public } from '../../common/decorators/public.decorator';
+import { PrismaService } from '../../prisma/prisma.service';
+import Redis from 'ioredis';
 
-@ApiTags('health')
 @Controller('health')
 @Public()
 export class HealthController {
-  @Get()
-  @ApiOperation({ summary: 'Health check endpoint' })
-  @ApiResponse({ status: 200, description: 'Service is healthy' })
-  async healthCheck() {
-    return {
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
-      service: 'ayan-taraz-backend',
-      version: '1.0.0',
-    };
+  constructor(private readonly prisma: PrismaService, @Inject('REDIS_CLIENT') private readonly redis: Redis) {}
+
+  @Get() async check() {
+    const db = await this.prisma.$queryRaw`SELECT 1`.then(()=>true).catch(()=>false);
+    const rds = await this.redis.ping().then(r=>r==='PONG').catch(()=>false);
+    return { status: db && rds ? 'healthy' : 'degraded', timestamp: new Date().toISOString(), service: 'ayan-taraz-backend', version: '1.0.0', checks: { database: db ? 'ok' : 'fail', redis: rds ? 'ok' : 'fail' } };
   }
 
-  @Get('db')
-  @ApiOperation({ summary: 'Database health check' })
-  @ApiResponse({ status: 200, description: 'Database is healthy' })
-  async dbHealthCheck() {
-    // In a real implementation, you would check database connectivity
-    return {
-      status: 'healthy',
-      database: 'postgresql',
-      timestamp: new Date().toISOString(),
-    };
+  @Get('ready') async ready() {
+    try { await this.prisma.$queryRaw`SELECT 1`; await this.redis.ping(); return { status: 'ready' }; }
+    catch { return { status: 'not_ready' }; }
   }
 }

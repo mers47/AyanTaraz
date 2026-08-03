@@ -1,531 +1,118 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { FiArrowLeft, FiCalendar, FiClock, FiDollarSign, FiUser, FiPhone, FiCheckCircle, FiAlertCircle, FiLoader } from 'react-icons/fi';
-import { consultationApi } from '@/lib/api';
-import { ConsultationService, ConsultationSlot } from '@/types';
+
+type Step = 1 | 2 | 3 | 4;
 
 export default function ConsultationPage() {
-  const [services, setServices] = useState<ConsultationService[]>([]);
-  const [selectedService, setSelectedService] = useState<ConsultationService | null>(null);
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [availableSlots, setAvailableSlots] = useState<ConsultationSlot[]>([]);
-  const [selectedSlot, setSelectedSlot] = useState<ConsultationSlot | null>(null);
-  const [phone, setPhone] = useState('');
-  const [otpCode, setOtpCode] = useState('');
-  const [notes, setNotes] = useState('');
-  const [step, setStep] = useState<'service' | 'date' | 'slot' | 'details' | 'confirmation'>('service');
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [step, setStep] = useState<Step>(1);
+  const [form, setForm] = useState({ name: '', phone: '', service: '', date: '', time: '', notes: '' });
+  const [submitted, setSubmitted] = useState(false);
 
-  // Fetch services
-  useEffect(() => {
-    const fetchServices = async () => {
-      try {
-        setIsLoading(true);
-        const response = await consultationApi.getServices(true);
-        setServices(response.data);
-        if (response.data.length > 0) {
-          setSelectedService(response.data[0]);
-        }
-      } catch (error: any) {
-        setError(error.response?.data?.message || 'Failed to load services');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchServices();
-  }, []);
-
-  // Fetch available slots when service or date changes
-  useEffect(() => {
-    if (!selectedService) return;
-
-    const fetchSlots = async () => {
-      try {
-        setIsLoading(true);
-        const dateStr = selectedDate.toISOString().split('T')[0];
-        const response = await consultationApi.getAvailability(
-          selectedService.id,
-          dateStr
-        );
-        setAvailableSlots(response.data);
-      } catch (error: any) {
-        setError(error.response?.data?.message || 'Failed to load available slots');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchSlots();
-  }, [selectedService, selectedDate]);
-
-  const handleServiceSelect = (service: ConsultationService) => {
-    setSelectedService(service);
-    setStep('date');
+  const update = (k:string,v:string) => setForm(p=>({...p,[k]:v}));
+  const canNext = (s:Step) => {
+    if (s===1) return form.name.length>=2 && form.phone.length>=10;
+    if (s===2) return form.service!=='';
+    if (s===3) return form.date!=='' && form.time!=='';
+    return true;
   };
 
-  const handleDateSelect = (date: Date) => {
-    setSelectedDate(date);
-    setStep('slot');
-  };
+  const handleSubmit = () => { setStep(4); setSubmitted(true); setTimeout(()=>{setSubmitted(false)},2500); };
 
-  const handleSlotSelect = (slot: ConsultationSlot) => {
-    setSelectedSlot(slot);
-    setStep('details');
-  };
+  const services = [
+    { id: 'tax-consult', label: 'مشاوره مالیاتی', desc: 'بررسی پرونده و برنامه‌ریزی', icon: '🧮', duration: '۴۵ دقیقه' },
+    { id: 'tax-return', label: 'تنظیم اظهارنامه', desc: 'اظهارنامه عملکرد و ارزش افزوده', icon: '📄', duration: '۳۰ دقیقه' },
+    { id: 'audit', label: 'حسابرسی مالی', desc: 'بررسی اسناد و گزارش تحلیلی', icon: '🔍', duration: '۶۰ دقیقه' },
+    { id: 'bookkeeping', label: 'دفترداری', desc: 'ثبت اسناد و صورت‌های مالی', icon: '📊', duration: '۳۰ دقیقه' },
+  ];
 
-  const handleSubmit = async () => {
-    if (!selectedService || !selectedSlot || !phone || !otpCode) {
-      setError('Please fill in all required fields');
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await consultationApi.createBooking({
-        serviceId: selectedService.id,
-        slotId: selectedSlot.id,
-        phone,
-        otpCode,
-        notes,
-      });
-
-      setSuccess('Booking confirmed successfully!');
-      setStep('confirmation');
-    } catch (error: any) {
-      setError(error.response?.data?.message || 'Failed to confirm booking');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
-
-  const formatTime = (time: string) => {
-    const [hours, minutes] = time.split(':');
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const hour12 = hour % 12 || 12;
-    return `${hour12}:${minutes} ${ampm}`;
-  };
-
-  const getNext7Days = () => {
-    const days = [];
-    const today = new Date();
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() + i);
-      days.push(date);
-    }
-    return days;
-  };
-
-  if (isLoading && step === 'service') {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-4">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gold-500 mx-auto mb-4" />
-          <p className="text-gray-400">Loading services...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-4">
-        <div className="max-w-md w-full">
-          <div className="card text-center">
-            <div className="w-16 h-16 rounded-full bg-red-500 bg-opacity-20 flex items-center justify-center mx-auto mb-4">
-              <FiAlertCircle className="w-8 h-8 text-red-400" />
-            </div>
-            <h2 className="text-2xl font-bold mb-2 text-red-400">Error</h2>
-            <p className="text-gray-400 mb-4">{error}</p>
-            <button onClick={() => window.location.reload()} className="btn btn-primary">
-              Try Again
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (step === 'confirmation') {
-    return (
-      <div className="min-h-screen bg-black p-4">
-        <div className="container">
-          <div className="max-w-2xl mx-auto">
-            <div className="card text-center">
-              <div className="w-16 h-16 rounded-full bg-green-500 bg-opacity-20 flex items-center justify-center mx-auto mb-4">
-                <FiCheckCircle className="w-8 h-8 text-green-400" />
-              </div>
-              <h1 className="text-3xl font-bold mb-2">Booking Confirmed!</h1>
-              <p className="text-gray-400 mb-6">{success}</p>
-
-              <div className="space-y-4 text-left">
-                <div className="flex items-center p-4 bg-gray-800 rounded-lg">
-                  <FiCalendar className="w-5 h-5 text-gold-400 mr-3" />
-                  <div>
-                    <p className="font-medium">{selectedService?.name}</p>
-                    <p className="text-gray-400 text-sm">{formatDate(selectedDate)}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center p-4 bg-gray-800 rounded-lg">
-                  <FiClock className="w-5 h-5 text-gold-400 mr-3" />
-                  <div>
-                    <p className="font-medium">Time</p>
-                    <p className="text-gray-400 text-sm">
-                      {selectedSlot?.startTime && formatTime(selectedSlot.startTime)} - 
-                      {selectedSlot?.endTime && formatTime(selectedSlot.endTime)}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center p-4 bg-gray-800 rounded-lg">
-                  <FiPhone className="w-5 h-5 text-gold-400 mr-3" />
-                  <div>
-                    <p className="font-medium">Contact</p>
-                    <p className="text-gray-400 text-sm">{phone}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-8 flex flex-col sm:flex-row gap-4">
-                <Link href="/" className="btn btn-primary">
-                  Back to Home
-                </Link>
-                <Link href="/my-bookings" className="btn btn-outline">
-                  View My Bookings
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const times = ['۰۹:۰۰', '۱۰:۰۰', '۱۱:۰۰', '۱۳:۰۰', '۱۴:۰۰', '۱۵:۰۰', '۱۶:۰۰'];
+  const dates = Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()+i+1);return d.toLocaleDateString('fa-IR')});
 
   return (
-    <div className="min-h-screen bg-black p-4">
-      <div className="container">
-        {/* Header */}
-        <div className="mb-6">
-          <Link href="/" className="flex items-center text-gold-400 hover:text-gold-300 transition-colors">
-            <FiArrowLeft className="w-5 h-5 mr-2" />
-            Back to Home
-          </Link>
+    <div style={{minHeight:'100vh',background:'var(--brand-black)'}}>
+      {/* Header */}
+      <header style={{padding:'14px 20px',borderBottom:'1px solid var(--border-subtle)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+        <Link href="/" style={{display:'flex',alignItems:'center',gap:8,color:'var(--text-secondary)',fontSize:'0.875rem'}}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6"/></svg> بازگشت
+        </Link>
+        <div style={{fontWeight:700}}>رزرو مشاوره</div>
+        <div style={{width:60}} />
+      </header>
+
+      {/* Steps */}
+      <div style={{padding:'32px 20px',maxWidth:560,margin:'0 auto'}}>
+        {/* Progress */}
+        <div style={{display:'flex',gap:6,marginBottom:36}}>
+          {[1,2,3,4].map(s=>(<div key={s} style={{flex:1,height:3,borderRadius:2,background:s<=step?'var(--brand-gold)':'var(--border-subtle)',transition:'all 300ms'}}/>))}
         </div>
 
-        {/* Progress Steps */}
-        <div className="max-w-4xl mx-auto mb-8">
-          <div className="flex items-center justify-between">
-            {['Service', 'Date', 'Time', 'Details'].map((label, index) => (
-              <div key={label} className="flex items-center">
-                <div className="flex flex-col items-center">
-                  <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all duration-300 ${
-                      step === 'service' && index === 0 ? 'bg-gold-500 text-black' :
-                      step === 'date' && index === 1 ? 'bg-gold-500 text-black' :
-                      step === 'slot' && index === 2 ? 'bg-gold-500 text-black' :
-                      step === 'details' && index === 3 ? 'bg-gold-500 text-black' :
-                      'bg-gray-700 text-gray-400'
-                    }`}
-                  >
-                    {index + 1}
-                  </div>
-                  <span className={`text-sm mt-2 hidden sm:block ${
-                    step === 'service' && index === 0 ? 'text-gold-400' :
-                    step === 'date' && index === 1 ? 'text-gold-400' :
-                    step === 'slot' && index === 2 ? 'text-gold-400' :
-                    step === 'details' && index === 3 ? 'text-gold-400' :
-                    'text-gray-400'
-                  }`}>
-                    {label}
-                  </span>
-                </div>
-                {index < 3 && (
-                  <div className={`w-full h-1 mx-2 rounded transition-all duration-300 ${
-                    step === 'service' && index === 0 ? 'bg-gold-500' :
-                    step === 'date' && index === 1 ? 'bg-gold-500' :
-                    step === 'slot' && index === 2 ? 'bg-gold-500' :
-                    'bg-gray-700'
-                  }`} />
-                )}
-              </div>
-            ))}
+        {step===1 && (
+          <div style={{animation:'fadeInUp 300ms var(--ease-out-expo)'}}>
+            <h2 style={{fontSize:'1.5rem',fontWeight:800,marginBottom:8}}>اطلاعات شما</h2>
+            <p style={{color:'var(--text-secondary)',marginBottom:28}}>برای هماهنگی مشاوره، لطفاً اطلاعات زیر را وارد کنید</p>
+            <div style={{display:'flex',flexDirection:'column',gap:16}}>
+              <div><label style={{display:'block',fontSize:'0.8125rem',fontWeight:600,marginBottom:6,color:'var(--text-secondary)'}}>نام و نام خانوادگی</label><input className="input" value={form.name} onChange={e=>update('name',e.target.value)} placeholder="مثال: علی محمدی" /></div>
+              <div><label style={{display:'block',fontSize:'0.8125rem',fontWeight:600,marginBottom:6,color:'var(--text-secondary)'}}>شماره تماس</label><input className="input" value={form.phone} onChange={e=>update('phone',e.target.value)} placeholder="۰۹۱۲۳۴۵۶۷۸۹" dir="ltr" /></div>
+              <button onClick={()=>setStep(2)} disabled={!canNext(1)} className="btn btn-primary btn-lg" style={{marginTop:8}}>مرحله بعد →</button>
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Step Content */}
-        <div className="max-w-4xl mx-auto">
-          {/* Service Selection */}
-          {step === 'service' && (
-            <div className="card">
-              <h2 className="text-2xl font-bold mb-6">Select a Service</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {services.map((service) => (
-                  <button
-                    key={service.id}
-                    onClick={() => handleServiceSelect(service)}
-                    className={`p-6 rounded-lg border-2 text-left transition-all duration-200 ${
-                      selectedService?.id === service.id
-                        ? 'border-gold-500 bg-gold-500 bg-opacity-10'
-                        : 'border-gray-700 hover:border-gold-500'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-xl font-semibold">{service.name}</h3>
-                      <span className="text-gold-400 font-bold">
-                        {service.price ? `${(service.price / 1000000).toFixed(0)}M IRR` : 'Free'}
-                      </span>
-                    </div>
-                    <p className="text-gray-400 text-sm mb-4">{service.description}</p>
-                    <div className="flex items-center text-gray-500 text-sm">
-                      <FiClock className="w-4 h-4 mr-2" />
-                      <span>{service.duration} minutes</span>
-                    </div>
-                  </button>
-                ))}
+        {step===2 && (
+          <div style={{animation:'fadeInUp 300ms var(--ease-out-expo)'}}>
+            <h2 style={{fontSize:'1.5rem',fontWeight:800,marginBottom:8}}>نوع خدمت</h2>
+            <p style={{color:'var(--text-secondary)',marginBottom:28}}>خدمت مورد نظر خود را انتخاب کنید</p>
+            <div style={{display:'flex',flexDirection:'column',gap:12,marginBottom:20}}>
+              {services.map(s=>(<button key={s.id} onClick={()=>update('service',s.id)} className="card card-hover" style={{textAlign:'right',borderColor:form.service===s.id?'var(--brand-gold)':'var(--border-subtle)',padding:20}}><div style={{display:'flex',alignItems:'center',gap:14}}><span style={{fontSize:'1.75rem'}}>{s.icon}</span><div style={{flex:1}}><div style={{fontWeight:700,marginBottom:2}}>{s.label}</div><div style={{fontSize:'0.8125rem',color:'var(--text-muted)'}}>{s.desc} · {s.duration}</div></div>{form.service===s.id&&<span style={{color:'var(--brand-gold)',fontSize:'1.25rem'}}>✓</span>}</div></button>))}
+            </div>
+            <div style={{display:'flex',gap:12}}>
+              <button onClick={()=>setStep(1)} className="btn btn-ghost">← بازگشت</button>
+              <button onClick={()=>setStep(3)} disabled={!canNext(2)} className="btn btn-primary btn-lg" style={{flex:1}}>مرحله بعد →</button>
+            </div>
+          </div>
+        )}
+
+        {step===3 && (
+          <div style={{animation:'fadeInUp 300ms var(--ease-out-expo)'}}>
+            <h2 style={{fontSize:'1.5rem',fontWeight:800,marginBottom:8}}>زمان مشاوره</h2>
+            <p style={{color:'var(--text-secondary)',marginBottom:28}}>روز و ساعت مناسب خود را انتخاب کنید</p>
+            <div style={{marginBottom:24}}>
+              <div style={{fontWeight:600,marginBottom:12,fontSize:'0.875rem'}}>روز</div>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(80px,1fr))',gap:8}}>
+                {dates.map(d=>(<button key={d} onClick={()=>update('date',d)} style={{padding:'10px',borderRadius:8,border:`1.5px solid ${form.date===d?'var(--brand-gold)':'var(--border-subtle)'}`,background:form.date===d?'rgba(198,169,98,0.1)':'var(--surface-card)',color:form.date===d?'var(--brand-gold)':'var(--text-primary)',fontFamily:'Vazirmatn',fontSize:'0.8125rem',cursor:'pointer',transition:'all 150ms'}}>{d}</button>))}
               </div>
             </div>
-          )}
-
-          {/* Date Selection */}
-          {step === 'date' && selectedService && (
-            <div className="card">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold">Select a Date</h2>
-                <button
-                  onClick={() => setStep('service')}
-                  className="text-gray-400 hover:text-white transition-colors"
-                >
-                  Change Service
-                </button>
-              </div>
-              <p className="text-gray-400 mb-6">
-                Available dates for {selectedService.name}
-              </p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {getNext7Days().map((date) => (
-                  <button
-                    key={date.toISOString()}
-                    onClick={() => handleDateSelect(date)}
-                    className={`p-4 rounded-lg border-2 text-center transition-all duration-200 ${
-                      selectedDate.toISOString().split('T')[0] === date.toISOString().split('T')[0]
-                        ? 'border-gold-500 bg-gold-500 bg-opacity-10'
-                        : 'border-gray-700 hover:border-gold-500'
-                    }`}
-                  >
-                    <p className="font-bold">{date.toLocaleDateString('en-US', { weekday: 'short' })}</p>
-                    <p className="text-2xl font-bold">{date.getDate()}</p>
-                    <p className="text-gray-400 text-xs">
-                      {date.toLocaleDateString('en-US', { month: 'short' })}
-                    </p>
-                  </button>
-                ))}
+            <div style={{marginBottom:28}}>
+              <div style={{fontWeight:600,marginBottom:12,fontSize:'0.875rem'}}>ساعت</div>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(80px,1fr))',gap:8}}>
+                {times.map(t=>(<button key={t} onClick={()=>update('time',t)} style={{padding:'10px',borderRadius:8,border:`1.5px solid ${form.time===t?'var(--brand-gold)':'var(--border-subtle)'}`,background:form.time===t?'rgba(198,169,98,0.1)':'var(--surface-card)',color:form.time===t?'var(--brand-gold)':'var(--text-primary)',fontFamily:'Vazirmatn',fontSize:'0.8125rem',cursor:'pointer',transition:'all 150ms'}}>{t}</button>))}
               </div>
             </div>
-          )}
-
-          {/* Slot Selection */}
-          {step === 'slot' && selectedService && (
-            <div className="card">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold">Select a Time Slot</h2>
-                <button
-                  onClick={() => setStep('date')}
-                  className="text-gray-400 hover:text-white transition-colors"
-                >
-                  Change Date
-                </button>
-              </div>
-              <p className="text-gray-400 mb-6">
-                Available slots for {selectedService.name} on {formatDate(selectedDate)}
-              </p>
-              {isLoading ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gold-500 mx-auto mb-4" />
-                  <p className="text-gray-400">Loading available slots...</p>
-                </div>
-              ) : availableSlots.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {availableSlots.map((slot) => (
-                    <button
-                      key={slot.id}
-                      onClick={() => handleSlotSelect(slot)}
-                      className={`p-4 rounded-lg border-2 text-center transition-all duration-200 ${
-                        selectedSlot?.id === slot.id
-                          ? 'border-gold-500 bg-gold-500 bg-opacity-10'
-                          : 'border-gray-700 hover:border-gold-500'
-                      }`}
-                    >
-                      <p className="font-bold">
-                        {slot.startTime && formatTime(slot.startTime)} - 
-                        {slot.endTime && formatTime(slot.endTime)}
-                      </p>
-                      <p className="text-gray-400 text-sm">
-                        {slot.maxBookings - (availableSlots.filter(s => s.id === slot.id).length || 0)} slots available
-                      </p>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <FiAlertCircle className="w-12 h-12 text-gray-500 mx-auto mb-4" />
-                  <p className="text-gray-400">No available slots for this date</p>
-                  <button
-                    onClick={() => setStep('date')}
-                    className="btn btn-outline mt-4"
-                  >
-                    Choose Different Date
-                  </button>
-                </div>
-              )}
+            <div><label style={{display:'block',fontSize:'0.8125rem',fontWeight:600,marginBottom:6,color:'var(--text-secondary)'}}>توضیحات (اختیاری)</label><textarea className="input" value={form.notes} onChange={e=>update('notes',e.target.value)} rows={3} placeholder="توضیح مختصر در مورد نیازتان..." style={{resize:'vertical'}}/></div>
+            <div style={{display:'flex',gap:12,marginTop:20}}>
+              <button onClick={()=>setStep(2)} className="btn btn-ghost">← بازگشت</button>
+              <button onClick={handleSubmit} disabled={!canNext(3)} className="btn btn-primary btn-lg" style={{flex:1}}>تأیید و ثبت نهایی</button>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Details Form */}
-          {step === 'details' && selectedService && selectedSlot && (
-            <div className="card">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold">Your Details</h2>
-                <button
-                  onClick={() => setStep('slot')}
-                  className="text-gray-400 hover:text-white transition-colors"
-                >
-                  Change Time
-                </button>
-              </div>
-
-              {/* Booking Summary */}
-              <div className="mb-6 p-4 bg-gray-800 rounded-lg">
-                <h3 className="font-semibold mb-3">Booking Summary</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Service</span>
-                    <span>{selectedService.name}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Date</span>
-                    <span>{formatDate(selectedDate)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Time</span>
-                    <span>
-                      {selectedSlot.startTime && formatTime(selectedSlot.startTime)} - 
-                      {selectedSlot.endTime && formatTime(selectedSlot.endTime)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Duration</span>
-                    <span>{selectedService.duration} minutes</span>
-                  </div>
-                  {selectedService.price && (
-                    <div className="flex justify-between pt-2 border-t border-gray-700">
-                      <span className="font-semibold">Total</span>
-                      <span className="font-bold text-gold-400">
-                        {(selectedService.price / 1000000).toFixed(0)}M IRR
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Form */}
-              <form onSubmit={(e) => e.preventDefault()}>
-                <div className="space-y-4">
-                  <div>
-                    <label htmlFor="phone" className="label">
-                      Phone Number
-                    </label>
-                    <div className="relative">
-                      <FiPhone className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                      <input
-                        type="tel"
-                        id="phone"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        placeholder="+989123456789"
-                        className="input pl-12"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label htmlFor="otp" className="label">
-                      OTP Code (sent to your phone)
-                    </label>
-                    <div className="relative">
-                      <FiLock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                      <input
-                        type="text"
-                        id="otp"
-                        value={otpCode}
-                        onChange={(e) => setOtpCode(e.target.value)}
-                        placeholder="123456"
-                        maxLength={6}
-                        className="input pl-12"
-                        required
-                      />
-                    </div>
-                    <p className="text-gray-500 text-xs mt-1">
-                      We&apos;ll send you an OTP code to verify your booking
-                    </p>
-                  </div>
-
-                  <div>
-                    <label htmlFor="notes" className="label">
-                      Additional Notes (Optional)
-                    </label>
-                    <textarea
-                      id="notes"
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Any special requests or questions..."
-                      rows={3}
-                      className="input resize-none"
-                    />
-                  </div>
-
-                  {error && (
-                    <div className="error-message">
-                      <FiAlertCircle className="w-5 h-5 inline mr-2" />
-                      {error}
-                    </div>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={handleSubmit}
-                    disabled={isLoading}
-                    className="btn btn-primary w-full"
-                  >
-                    {isLoading ? (
-                      <span className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-black border-r-transparent" />
-                    ) : (
-                      'Confirm Booking'
-                    )}
-                  </button>
-                </div>
-              </form>
+        {step===4 && (
+          <div style={{textAlign:'center',animation:'fadeInUp 400ms var(--ease-out-expo)'}}>
+            <div style={{width:80,height:80,borderRadius:'50%',background:'linear-gradient(135deg,var(--brand-gold),var(--brand-gold-light))',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 24px',boxShadow:'0 0 40px rgba(198,169,98,0.2)'}}>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="#0a0a0a"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
             </div>
-          )}
-        </div>
+            <h2 style={{fontSize:'1.5rem',fontWeight:800,marginBottom:8}}>رزرو با موفقیت ثبت شد</h2>
+            <p style={{color:'var(--text-secondary)',marginBottom:32}}>کارشناسان ما در زمان مقرر با شما تماس خواهند گرفت</p>
+            <div className="card" style={{textAlign:'right',marginBottom:24}}>
+              {[{l:'نام',v:form.name},{l:'شماره تماس',v:form.phone},{l:'خدمت',v:services.find(s=>s.id===form.service)?.label},{l:'زمان',v:`${form.date} - ${form.time}`}].map((r,i)=>(<div key={i} style={{display:'flex',justifyContent:'space-between',padding:'8px 0',borderBottom:i<3?'1px solid var(--border-subtle)':'none'}}><span style={{color:'var(--text-muted)',fontSize:'0.875rem'}}>{r.l}</span><span style={{fontWeight:600}}>{r.v||'---'}</span></div>))}
+            </div>
+            <Link href="/" className="btn btn-primary btn-lg">بازگشت به صفحه اصلی</Link>
+          </div>
+        )}
+
+        {submitted && <div style={{position:'fixed',bottom:24,left:'50%',transform:'translateX(-50%)',background:'rgba(34,197,94,0.9)',color:'#fff',padding:'12px 24px',borderRadius:12,fontWeight:600,fontSize:'0.9375rem',zIndex:100,animation:'fadeInUp 300ms var(--ease-out-expo)'}}>✅ ثبت شد! کارشناسان ما با شما تماس می‌گیرند</div>}
       </div>
     </div>
   );

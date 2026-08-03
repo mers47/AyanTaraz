@@ -1,6 +1,7 @@
-import { Injectable, Inject, BadRequestException, ConflictException } from '@nestjs/common';
+import { Injectable, Inject, BadRequestException, TooManyRequestsException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
+import { randomInt, createHash } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -13,148 +14,59 @@ export class OTPService {
   ) {}
 
   private readonly OTP_PREFIX = 'otp:';
-  private readonly OTP_RATE_LIMIT_PREFIX = 'otp_rate_limit:';
+  private readonly BAN_PREFIX = 'otp_ban:';
 
-  async generateOTP(phone: string, type: 'PHONE_VERIFICATION' | 'BOOKING_VERIFICATION' = 'PHONE_VERIFICATION'): Promise<{ code: string; otpId: string }> {
-    // Rate limiting check
-    const rateLimitKey = `${this.OTP_RATE_LIMIT_PREFIX}${phone}:${type}`;
-    const rateLimitWindow = this.configService.get<number>('OTP_RATE_LIMIT_WINDOW', 900000); // 15 minutes
-    const rateLimitMax = this.configService.get<number>('OTP_RATE_LIMIT_MAX', 3);
-
-    const currentCount = await this.redis.incr(rateLimitKey);
-    if (currentCount === 1) {
-      await this.redis.expire(rateLimitKey, rateLimitWindow / 1000);
+  /**
+   * تولید کد ۶ رقمی امن با crypto.randomInt
+   * Ban: ۱۰ دقیقه پس از هر درخواست
+   * اعتبار کد: ۵ دقیقه
+   */
+  async generateOTP(phone: string, type = 'PHONE_VERIFICATION'): Promise<{ code: string; otpId: string }> {
+    const banKey = `${this.BAN_PREFIX}${phone}:${type}`;
+    const banned = await this.redis.get(banKey);
+    if (banned) {
+      const ttl = await this.redis.ttl(banKey);
+      const mins = Math.ceil(ttl / 60);
+      throw new TooManyRequestsException(`لطفاً ${mins === 0 ? 'چند لحظه' : mins + ' دقیقه'} دیگر تلاش کنید`);
     }
 
-    if (currentCount > rateLimitMax) {
-      throw new ConflictException(
-        `Too many OTP requests. Please wait ${rateLimitWindow / 1000 / 60} minutes.`,
-      );
-    }
+    const code = `${randomInt(100000, 999999)}`;
+    const hashed = createHash('sha256').update(code).digest('hex');
+    const id = uuidv4();
+    const ttl = 300;
 
-    // Generate 6-digit code
-    const code = this.generateRandomCode(6);
-    const otpId = uuidv4();
-    const expiresIn = this.configService.get<number>('OTP_EXPIRES_IN', 300000); // 5 minutes
-    const expiresAt = new Date(Date.now() + expiresIn);
+    await this.redis.setex(`${this.OTP_PREFIX}${id}`, ttl, JSON.stringify({ phone, type, hash: hashed, attempts: 0 }));
+    await this.redis.setex(banKey, 600, '1');
 
-    // Store in database
     await this.prisma.oTP.create({
-      data: {
-        id: otpId,
-        phone,
-        code,
-        type,
-        expiresAt,
-      },
+      data: { id, phone, code: hashed, type, expiresAt: new Date(Date.now() + ttl * 1000) },
     });
 
-    // Also store in Redis for faster validation
-    const redisKey = `${this.OTP_PREFIX}${phone}:${type}`;
-    await this.redis.setex(
-      redisKey,
-      Math.floor(expiresIn / 1000),
-      JSON.stringify({ code, otpId, attemptCount: 0 }),
-    );
-
-    return { code, otpId };
+    return { code, otpId: id };
   }
 
-  async verifyOTP(
-    phone: string,
-    code: string,
-    type: 'PHONE_VERIFICATION' | 'BOOKING_VERIFICATION' = 'PHONE_VERIFICATION',
-    ipAddress?: string,
-  ): Promise<{ otpId: string; phone: string }> {
-    const redisKey = `${this.OTP_PREFIX}${phone}:${type}`;
-    const cachedOTP = await this.redis.get(redisKey);
+  async verifyOTP(phone: string, code: string, type = 'PHONE_VERIFICATION'): Promise<{ otpId: string }> {
+    const keys = await this.redis.keys(`${this.OTP_PREFIX}*`);
+    const inputHash = createHash('sha256').update(code).digest('hex');
+    let matched: string | null = null;
 
-    let otpData: { code: string; otpId: string; attemptCount: number } | null = null;
-
-    if (cachedOTP) {
-      otpData = JSON.parse(cachedOTP);
-    } else {
-      // Fallback to database
-      const otp = await this.prisma.oTP.findFirst({
-        where: {
-          phone,
-          type,
-          used: false,
-          expiresAt: { gt: new Date() },
-        },
-        orderBy: { createdAt: 'desc' },
-      });
-
-      if (!otp) {
-        throw new BadRequestException('Invalid or expired OTP code.');
-      }
-
-      otpData = {
-        code: otp.code,
-        otpId: otp.id,
-        attemptCount: otp.attemptCount,
-      };
+    for (const k of keys) {
+      const raw = await this.redis.get(k);
+      if (!raw) continue;
+      try {
+        const d = JSON.parse(raw);
+        if (d.phone === phone && d.type === type) {
+          if (d.hash === inputHash && d.attempts < 5) { matched = k; break; }
+          if (d.hash !== inputHash) { d.attempts++; const t = await this.redis.ttl(k); await this.redis.setex(k, t > 0 ? t : 300, JSON.stringify(d)); }
+        }
+      } catch {}
     }
 
-    if (!otpData) {
-      throw new BadRequestException('Invalid or expired OTP code.');
-    }
+    if (!matched) throw new BadRequestException('کد تأیید نامعتبر یا منقضی شده است');
 
-    // Check attempt count
-    const maxAttempts = this.configService.get<number>('OTP_MAX_ATTEMPTS', 5);
-    if (otpData.attemptCount >= maxAttempts) {
-      throw new BadRequestException(
-        `Maximum OTP attempts (${maxAttempts}) reached. Please request a new code.`,
-      );
-    }
+    await this.redis.del(matched);
+    await this.redis.del(`${this.BAN_PREFIX}${phone}:${type}`);
 
-    // Verify code
-    if (otpData.code !== code) {
-      // Increment attempt count
-      otpData.attemptCount++;
-      await this.redis.setex(
-        redisKey,
-        300, // 5 minutes
-        JSON.stringify(otpData),
-      );
-      await this.prisma.oTP.update({
-        where: { id: otpData.otpId },
-        data: { attemptCount: otpData.attemptCount },
-      });
-      throw new BadRequestException('Invalid OTP code.');
-    }
-
-    // Mark as used
-    await this.prisma.oTP.update({
-      where: { id: otpData.otpId },
-      data: { used: true, usedAt: new Date() },
-    });
-
-    // Delete from Redis
-    await this.redis.del(redisKey);
-
-    return { otpId: otpData.otpId, phone };
-  }
-
-  async invalidateOTP(phone: string, type: 'PHONE_VERIFICATION' | 'BOOKING_VERIFICATION' = 'PHONE_VERIFICATION'): Promise<void> {
-    const redisKey = `${this.OTP_PREFIX}${phone}:${type}`;
-    await this.redis.del(redisKey);
-
-    await this.prisma.oTP.updateMany({
-      where: {
-        phone,
-        type,
-        used: false,
-      },
-      data: { used: true },
-    });
-  }
-
-  private generateRandomCode(length: number): string {
-    let code = '';
-    for (let i = 0; i < length; i++) {
-      code += Math.floor(Math.random() * 10).toString();
-    }
-    return code;
+    return { otpId: matched.replace(this.OTP_PREFIX, '') };
   }
 }

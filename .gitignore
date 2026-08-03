@@ -1,70 +1,10 @@
-# Dependencies
 node_modules/
-
-# Build outputs
-backend/dist/
-backend/coverage/
-frontend/.next/
-frontend/out/
-frontend/build/
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Environment
+dist/
 .env
 .env.local
 .env.*.local
-
-# Logs
-logs/
 *.log
-npm-debug.log*
-
-# Runtime
-*.pid
-*.seed
-*.pid.lock
-
-# Docker
-.docker/
-
-# Temporary files
-tmp/
-temp/
-
-# Uploads (keep in production, but ignore in git)
-uploads/
-
-# SSL certificates
-infra/ssl/
-
-# Database dumps
-*.sql
-*.backup
-
-# Test files
-*.spec.ts
-*.test.ts
-
-# Coverage
+.DS_Store
 coverage/
-
-# Prisma
-backend/prisma/migrations/**/migration_lock.toml
-
-# Next.js
-frontend/.next/cache/
-frontend/.next/BUILD_ID
-
-# TypeScript
-*.tsbuildinfo
-backend/tsconfig.tsbuildinfo
-frontend/tsconfig.tsbuildinfo
+.turbo/
+.next/

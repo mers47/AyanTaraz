@@ -1,113 +1,23 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Param,
-  UseGuards,
-  Request,
-  Query,
-  ParseISODatePipe,
-} from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { Public } from '../../common/decorators/public.decorator';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ConsultationService } from './consultation.service';
-import { CreateBookingDto } from './dto/create-booking.dto';
-import {
-  ConsultationService as ConsultationServiceEntity,
-  ConsultationSlot,
-  ConsultationBooking,
-} from './entities/consultation-booking.entity';
 
 @ApiTags('consultation')
 @Controller('consultation')
 @Public()
 export class ConsultationController {
-  constructor(private readonly consultationService: ConsultationService) {}
+  constructor(private readonly svc: ConsultationService) {}
 
   @Get('services')
-  @ApiOperation({ summary: 'Get all consultation services' })
-  @ApiQuery({ name: 'active', required: false, type: Boolean })
-  @ApiResponse({ status: 200, description: 'List of services' })
-  async getServices(
-    @Query('active') active: boolean = true,
-  ): Promise<ConsultationServiceEntity[]> {
-    return this.consultationService.getServices(active);
-  }
+  async getServices() { return this.svc.getServices(); }
 
-  @Get('services/:slug')
-  @ApiOperation({ summary: 'Get consultation service by slug' })
-  @ApiResponse({ status: 200, description: 'Service data' })
-  @ApiResponse({ status: 404, description: 'Service not found' })
-  async getServiceBySlug(
-    @Param('slug') slug: string,
-  ): Promise<ConsultationServiceEntity> {
-    const service = await this.consultationService.getServiceBySlug(slug);
-    if (!service) {
-      throw new Error('Service not found');
-    }
-    return service;
-  }
+  @Get('availability/:sid')
+  async getAvailability(@Param('sid') sid: string) { return this.svc.getAvailability(sid); }
 
-  @Get('services/:serviceId/availability')
-  @ApiOperation({ summary: 'Get available slots for a service on a date' })
-  @ApiQuery({ name: 'date', required: true, type: String })
-  @ApiResponse({ status: 200, description: 'List of available slots' })
-  async getAvailability(
-    @Param('serviceId') serviceId: string,
-    @Query('date', ParseISODatePipe) date: Date,
-  ): Promise<ConsultationSlot[]> {
-    return this.consultationService.getAvailability(serviceId, date);
-  }
+  @Post('book')
+  async book(@Body() d: { serviceId: string; date: string; time: string; phone: string; name: string; notes?: string }) { return this.svc.book(d); }
 
-  @Post('bookings')
-  @ApiOperation({ summary: 'Create a new booking' })
-  @ApiResponse({ status: 201, description: 'Booking created' })
-  async createBooking(
-    @Body() createBookingDto: CreateBookingDto,
-    @Request() req: { user?: { id: string } },
-  ): Promise<ConsultationBooking> {
-    return this.consultationService.createBooking(
-      createBookingDto,
-      req.user?.id,
-    );
-  }
-
-  @Get('bookings/:id')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get booking by ID' })
-  @ApiResponse({ status: 200, description: 'Booking data' })
-  @ApiResponse({ status: 404, description: 'Booking not found' })
-  async getBooking(@Param('id') id: string): Promise<ConsultationBooking> {
-    const booking = await this.consultationService.getBooking(id);
-    if (!booking) {
-      throw new Error('Booking not found');
-    }
-    return booking;
-  }
-
-  @Get('my-bookings')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get my bookings' })
-  @ApiResponse({ status: 200, description: 'List of user bookings' })
-  async getMyBookings(
-    @Request() req: { user: { id: string } },
-  ): Promise<ConsultationBooking[]> {
-    return this.consultationService.getUserBookings(req.user.id);
-  }
-
-  @Post('bookings/:id/cancel')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Cancel a booking' })
-  @ApiResponse({ status: 200, description: 'Booking cancelled' })
-  async cancelBooking(
-    @Param('id') id: string,
-    @Request() req: { user: { id: string } },
-  ): Promise<ConsultationBooking> {
-    return this.consultationService.cancelBooking(id, req.user.id);
-  }
+  @Get('bookings')
+  async getBookings(@Query('phone') phone: string) { return this.svc.getBookings(phone); }
 }

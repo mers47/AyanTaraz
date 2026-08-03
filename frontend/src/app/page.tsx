@@ -1,198 +1,27 @@
 'use client';
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import { FiArrowRight, FiCheckCircle, FiUsers, FiFileText, FiCalculator, FiCalendar, FiPhone } from 'react-icons/fi';
 
-// Components
-import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
-import HeroSection from '@/components/HeroSection';
-import FeatureCard from '@/components/FeatureCard';
-import CTASection from '@/components/CTASection';
+const sl=[{t:'راهکارهای هوشمند مالیاتی',s:'با آیان تراز، پیچیدگی‌های مالیاتی را به فرصت تبدیل کنید',tag:'مشاوره تخصصی'},{t:'تنظیم اظهارنامه مالیاتی',s:'دقیق، به‌موقع و بدون نگرانی از جرایم مالیاتی',tag:'خدمات مالی'},{t:'برنامه‌ریزی مالیاتی کسب‌وکارها',s:'استراتژی‌های کاهش هزینه مالیاتی برای رشد پایدار',tag:'راهبری مالی'}];
+const sv=[{i:'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z',n:'مشاوره مالیاتی',d:'تحلیل پرونده مالیاتی، شناسایی معافیت‌ها و کاهش قانونی بدهی مالیاتی',tags:['بررسی پرونده','معافیت‌ها','برنامه‌ریزی']},{i:'M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z',n:'تنظیم اظهارنامه',d:'تنظیم و ارسال اظهارنامه عملکرد، ارزش افزوده و گزارش‌های فصلی',tags:['اظهارنامه','گزارش فصلی','ارزش افزوده']},{i:'M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z',n:'حسابرسی مالی',d:'بررسی صحت اسناد مالی، کشف مغایرت‌ها و ارائه گزارش‌های تحلیلی',tags:['حسابرسی','گزارش تحلیلی','رفع مغایرت']},{i:'M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z',n:'دفترداری و حسابداری',d:'ثبت و نگهداری اسناد مالی، دفتر روزنامه و کل، تهیه صورت‌های مالی',tags:['دفترداری','صورت‌های مالی','بایگانی']}];
+const st=[{n:'۱۲',l:'سال تجربه'},{n:'۱۰۰۰',l:'پرونده موفق'},{n:'۹۸٪',l:'رضایت مشتریان'},{n:'۷/۲۴',l:'پشتیبانی'}];
+const fq=[{q:'چه زمانی اظهارنامه ارائه دهم؟',a:'اشخاص حقیقی تا پایان خردادماه و اشخاص حقوقی ۴ ماه پس از پایان سال مالی.'},{q:'خدمات شامل اعتراض به برگ تشخیص می‌شود؟',a:'بله، تیم ما تجربه کامل در تنظیم لایحه اعتراض دارد.'},{q:'نرخ ارزش افزوده چقدر است؟',a:'۱۰٪ (۹٪ مالیات + ۱٪ عوارض)'},{q:'مشاوره اولیه رایگان است؟',a:'بله، ۳۰ دقیقه جلسه اولیه رایگان.'}];
 
-const features = [
-  {
-    icon: <FiCheckCircle className="w-8 h-8" />,
-    title: 'Expert Advice',
-    description: 'Get professional guidance from experienced tax and accounting specialists.',
-  },
-  {
-    icon: <FiUsers className="w-8 h-8" />,
-    title: 'Personalized Service',
-    description: 'Tailored solutions for your unique financial situation and goals.',
-  },
-  {
-    icon: <FiFileText className="w-8 h-8" />,
-    title: 'Compliance Assurance',
-    description: 'Stay compliant with all tax regulations and filing requirements.',
-  },
-  {
-    icon: <FiCalculator className="w-8 h-8" />,
-    title: 'Tax Optimization',
-    description: 'Maximize deductions and minimize liabilities with strategic planning.',
-  },
-  {
-    icon: <FiCalendar className="w-8 h-8" />,
-    title: 'Timely Service',
-    description: 'Meet all deadlines with our proactive approach to tax management.',
-  },
-  {
-    icon: <FiPhone className="w-8 h-8" />,
-    title: 'Responsive Support',
-    description: 'Get answers to your questions with our dedicated support team.',
-  },
-];
+function uiv(t=0.05){const r=useRef<HTMLDivElement>(null);const[v,sv]=useState(false);useEffect(()=>{const e=r.current;if(!e)return;const o=new IntersectionObserver(([x])=>{if(x.isIntersecting){sv(true);o.unobserve(e)}},{threshold:t});o.observe(e);return()=>o.disconnect()},[t]);return{ref:r,inView:v}}
 
-export default function HomePage() {
-  const [isLoading, setIsLoading] = useState(true);
+export default function Home(){const[as,sa]=useState(0);const[sc,ss]=useState(false);const[mm,sm]=useState(false);const ns=useCallback(()=>sa(s=>(s+1)%sl.length),[]);useEffect(()=>{const t=setInterval(ns,4500);return()=>clearInterval(t)},[ns]);useEffect(()=>{const f=()=>ss(window.scrollY>30);window.addEventListener('scroll',f,{passive:true});return()=>window.removeEventListener('scroll',f)},[]);
+return<div className="bg-pattern" style={{background:'var(--brand-black)',minHeight:'100vh'}}><H sc={sc} mm={mm} sm={sm}/><Hero as={as} sa={sa} sl={sl}/><Stats st={st}/><Svc sv={sv}/><CTA/><Faq fq={fq}/><Foo/></div>}
 
-  useEffect(() => {
-    // Simulate loading
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
+function H({sc,mm,sm}:any){return<header className={`site-header${sc?' scrolled':''}`}><div className="container" style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}><Link href="/" style={{display:'flex',alignItems:'center',gap:10,fontWeight:800,fontSize:'1.2rem',color:'var(--brand-gold)'}}><span style={{width:34,height:34,borderRadius:'50%',background:'linear-gradient(135deg,var(--brand-gold),var(--brand-gold-light))',display:'flex',alignItems:'center',justifyContent:'center',color:'#0a0a0a',fontWeight:900,fontSize:'0.8rem'}}>آت</span>آیان تراز</Link><nav className="hide-mobile" style={{display:'none'}}>{['خدمات','دستیار','رزرو'].map((l,i)=><Link key={i} href={i===0?'#services':i===1?'/chatbot':'/consultation'} style={{padding:'8px 16px',color:'var(--text-secondary)',fontSize:'0.85rem'}}>{l}</Link>)}</nav><style>{`@media(min-width:768px){nav.hide-mobile{display:flex!important;align-items:center;gap:4px}}`}</style><div style={{display:'flex',alignItems:'center',gap:10}}><Link href="/chatbot" className="btn btn-primary hide-mobile" style={{fontSize:'0.8rem',padding:'10px 18px'}}>مشاوره رایگان</Link><button onClick={()=>sm(!mm)} className="hide-desktop" style={{background:'none',border:'none',color:'var(--text-primary)',cursor:'pointer',padding:8,display:'none'}}><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">{mm?<path d="M18 6L6 18M6 6l12 12"/>:<path d="M3 12h18M3 6h18M3 18h18"/>}</svg></button></div></div><style>{`@media(max-width:767px){button.hide-desktop{display:block!important}}`}</style>{mm&&<div style={{background:'rgba(10,10,10,.98)',backdropFilter:'blur(20px)',borderTop:'1px solid var(--border-subtle)',padding:'16px 20px'}}>{['خدمات','دستیار','رزرو'].map((l,i)=><Link key={i} href={i===0?'#services':i===1?'/chatbot':'/consultation'} onClick={()=>sm(false)} style={{display:'block',padding:'14px 0',color:'var(--text-secondary)',borderBottom:'1px solid var(--border-subtle)'}}>{l}</Link>)}<Link href="/chatbot" onClick={()=>sm(false)} className="btn btn-primary" style={{marginTop:16,width:'100%'}}>مشاوره رایگان</Link></div>}</header>}
 
-    return () => clearTimeout(timer);
-  }, []);
+function Hero({as,sa,sl}:any){return<section style={{position:'relative',minHeight:'100vh',display:'flex',alignItems:'center',overflow:'hidden',paddingTop:80}}><div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse at 15% 40%,rgba(198,169,98,.1) 0%,transparent 55%),radial-gradient(ellipse at 85% 25%,rgba(224,200,120,.05) 0%,transparent 50%)'}}/><div className="container" style={{position:'relative',zIndex:2}}><div style={{maxWidth:720}}><span className="badge badge-gold" style={{marginBottom:20}}>{sl[as].tag}</span><h1 key={`t-${as}`} className="animate-in" style={{fontSize:'clamp(2rem,5.5vw,3.5rem)',fontWeight:900,lineHeight:1.12,marginBottom:20}}>{sl[as].t}</h1><p key={`s-${as}`} className="animate-in stagger-1" style={{fontSize:'1.05rem',color:'var(--text-secondary)',marginBottom:36,maxWidth:560,lineHeight:1.85}}>{sl[as].s}</p><div className="animate-in stagger-2" style={{display:'flex',gap:12,flexWrap:'wrap'}}><Link href="/chatbot" className="btn btn-primary btn-lg"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>دستیار هوشمند</Link><Link href="/consultation" className="btn btn-outline btn-lg">رزرو مشاوره</Link></div></div></div><div style={{position:'absolute',bottom:36,left:0,right:0,display:'flex',justifyContent:'center',gap:8,zIndex:10}}>{sl.map((_:any,i:number)=><button key={i} onClick={()=>sa(i)} style={{width:i===as?28:8,height:8,borderRadius:4,border:'none',background:i===as?'var(--brand-gold)':'rgba(255,255,255,.2)',cursor:'pointer',transition:'all .3s'}}/>)}</div></section>}
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gold-500"></div>
-      </div>
-    );
-  }
+function Stats({st}:any){return<section style={{borderTop:'1px solid var(--border-subtle)',borderBottom:'1px solid var(--border-subtle)',padding:'44px 0'}}><div className="container" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:28,textAlign:'center'}}>{st.map((s:any,i:number)=>{const{ref,inView}=uiv(0.1);return<div key={i} ref={ref} style={{opacity:inView?1:0,transform:inView?'translateY(0)':'translateY(16px)',transition:`all .4s var(--ease-expo) ${i*120}ms`}}><div className="gradient-text" style={{fontSize:'clamp(1.5rem,4vw,2.25rem)',fontWeight:900,marginBottom:2}}>{s.n}</div><div style={{fontSize:'0.85rem',color:'var(--text-muted)'}}>{s.l}</div></div>})}</div></section>}
 
-  return (
-    <div className="min-h-screen bg-black text-white">
-      <Navbar />
-      
-      {/* Hero Section */}
-      <HeroSection
-        title="Professional Accounting & Tax Advisory"
-        subtitle="Expert financial guidance for individuals and businesses"
-        description="Navigate the complexities of tax regulations and financial management with confidence. Our team of experienced professionals provides personalized solutions tailored to your unique needs."
-        ctaText="Start Your Consultation"
-        ctaHref="/consultation"
-        secondaryCtaText="Learn More"
-        secondaryCtaHref="/about"
-      />
+function Svc({sv}:any){return<section id="services" className="section"><div className="container"><div className="section-header"><span className="section-tag">خدمات ما</span><h2 className="section-title">راهکارهای <span className="gradient-text">جامع مالی و مالیاتی</span></h2><p className="section-subtitle">از مشاوره تا اجرا، تمام نیازهای مالی و مالیاتی شما</p></div><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:20}}>{sv.map((s:any,i:number)=>{const{ref,inView}=uiv(0.08);return<div key={i} ref={ref} className="glass-card service-card" style={{opacity:inView?1:0,transform:inView?'translateY(0)':'translateY(24px)',transition:`all .45s var(--ease-expo) ${i*100}ms`,padding:30}}><div style={{width:50,height:50,borderRadius:14,background:'rgba(198,169,98,.1)',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:18}}><svg width="22" height="22" viewBox="0 0 24 24" fill="var(--brand-gold)"><path d={s.i}/></svg></div><h3 style={{fontSize:'1.1rem',fontWeight:700,marginBottom:8}}>{s.n}</h3><p style={{fontSize:'0.85rem',color:'var(--text-secondary)',lineHeight:1.8,marginBottom:18}}>{s.d}</p><div style={{display:'flex',flexWrap:'wrap',gap:6}}>{s.tags.map((t:string,j:number)=><span key={j} style={{fontSize:'0.72rem',padding:'4px 10px',borderRadius:6,background:'rgba(255,255,255,.04)',color:'var(--text-muted)',border:'1px solid var(--border-subtle)'}}>{t}</span>)}</div></div>})}</div></div></section>}
 
-      {/* Features Section */}
-      <section className="py-16 md:py-24 bg-black">
-        <div className="container">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Why Choose Ayan Taraz?
-            </h2>
-            <p className="text-gray-400 max-w-2xl mx-auto">
-              We combine expertise with personalized service to deliver exceptional results
-            </p>
-          </div>
+function CTA(){return<section style={{padding:'80px 0',position:'relative',overflow:'hidden'}}><div style={{position:'absolute',inset:0,background:'linear-gradient(135deg,rgba(198,169,98,.06) 0%,transparent 40%,rgba(198,169,98,.04) 100%)'}}/><div className="container" style={{position:'relative',zIndex:2,textAlign:'center',maxWidth:620,margin:'0 auto'}}><div className="glass-card" style={{padding:48}}><div style={{width:60,height:60,borderRadius:'50%',background:'linear-gradient(135deg,var(--brand-gold),var(--brand-gold-light))',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 22px',boxShadow:'0 0 36px rgba(198,169,98,.25)'}}><svg width="26" height="26" viewBox="0 0 24 24" fill="#0a0a0a"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div><h2 style={{fontSize:'clamp(1.5rem,4vw,2.2rem)',fontWeight:800,marginBottom:16}}>برای <span className="gradient-text">مشاوره تخصصی</span> آماده‌اید؟</h2><p style={{color:'var(--text-secondary)',marginBottom:32,fontSize:'1.05rem',lineHeight:1.8}}>همین حالا با دستیار هوشمند مالیاتی ما گفتگو کنید.</p><Link href="/chatbot" className="btn btn-primary btn-lg" style={{fontSize:'1rem'}}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>شروع گفتگو با دستیار مالیاتی</Link></div></div></section>}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {features.map((feature, index) => (
-              <FeatureCard
-                key={index}
-                icon={feature.icon}
-                title={feature.title}
-                description={feature.description}
-                index={index}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
+function Faq({fq}:any){return<section className="section"><div className="container" style={{maxWidth:720}}><div className="section-header"><span className="section-tag">سوالات متداول</span><h2 className="section-title">پرسش‌های پرتکرار</h2></div><div style={{display:'flex',flexDirection:'column',gap:10}}>{fq.map((f:any,i:number)=><details key={i} style={{border:'1px solid var(--border-subtle)',borderRadius:'var(--radius-md)',overflow:'hidden'}}><summary style={{padding:'16px 22px',fontWeight:600,fontSize:'0.92rem',cursor:'pointer',listStyle:'none',display:'flex',justifyContent:'space-between',alignItems:'center',background:'var(--surface-card)'}}>{f.q}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--brand-gold)" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg></summary><div style={{padding:'14px 22px',color:'var(--text-secondary)',fontSize:'0.85rem',lineHeight:1.9,borderTop:'1px solid var(--border-subtle)'}}>{f.a}</div></details>)}</div></div></section>}
 
-      {/* Services Section */}
-      <section className="py-16 md:py-24 bg-gray-900 bg-opacity-50">
-        <div className="container">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Our Services
-            </h2>
-            <p className="text-gray-400 max-w-2xl mx-auto">
-              Comprehensive solutions for all your accounting and tax needs
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Tax Consultation */}
-            <div className="card card-hover group">
-              <div className="flex items-center mb-4">
-                <div className="w-12 h-12 rounded-lg bg-gold-500 bg-opacity-20 flex items-center justify-center group-hover:bg-gold-500 transition-colors duration-300">
-                  <FiCalculator className="w-6 h-6 text-gold-500 group-hover:text-black transition-colors duration-300" />
-                </div>
-                <h3 className="text-xl font-semibold ml-4">Tax Consultation</h3>
-              </div>
-              <p className="text-gray-400 mb-4">
-                Personalized tax planning and strategy to minimize your liability and maximize savings.
-              </p>
-              <Link
-                href="/services/tax-consultation"
-                className="inline-flex items-center text-gold-400 hover:text-gold-300 transition-colors duration-200 font-medium"
-              >
-                Learn more <FiArrowRight className="w-4 h-4 ml-1" />
-              </Link>
-            </div>
-
-            {/* Accounting Services */}
-            <div className="card card-hover group">
-              <div className="flex items-center mb-4">
-                <div className="w-12 h-12 rounded-lg bg-gold-500 bg-opacity-20 flex items-center justify-center group-hover:bg-gold-500 transition-colors duration-300">
-                  <FiFileText className="w-6 h-6 text-gold-500 group-hover:text-black transition-colors duration-300" />
-                </div>
-                <h3 className="text-xl font-semibold ml-4">Accounting Services</h3>
-              </div>
-              <p className="text-gray-400 mb-4">
-                Comprehensive bookkeeping, financial reporting, and business advisory services.
-              </p>
-              <Link
-                href="/services/accounting"
-                className="inline-flex items-center text-gold-400 hover:text-gold-300 transition-colors duration-200 font-medium"
-              >
-                Learn more <FiArrowRight className="w-4 h-4 ml-1" />
-              </Link>
-            </div>
-
-            {/* Tax Assistant */}
-            <div className="card card-hover group md:col-span-2">
-              <div className="flex flex-col md:flex-row md:items-center">
-                <div className="flex items-center mb-4 md:mb-0">
-                  <div className="w-12 h-12 rounded-lg bg-gold-500 bg-opacity-20 flex items-center justify-center group-hover:bg-gold-500 transition-colors duration-300">
-                    <FiUsers className="w-6 h-6 text-gold-500 group-hover:text-black transition-colors duration-300" />
-                  </div>
-                  <h3 className="text-xl font-semibold ml-4">Interactive Tax Assistant</h3>
-                </div>
-                <div className="md:ml-auto">
-                  <Link
-                    href="/tax-assistant"
-                    className="btn btn-outline"
-                  >
-                    Try it now
-                  </Link>
-                </div>
-              </div>
-              <p className="text-gray-400 mt-4">
-                Get instant, personalized tax advice with our intelligent assistant. Answer a few questions and receive tailored recommendations based on your specific situation.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <CTASection
-        title="Ready to Take Control of Your Finances?"
-        description="Schedule a consultation with one of our experts today and discover how we can help you achieve your financial goals."
-        ctaText="Book a Consultation"
-        ctaHref="/consultation"
-        secondaryCtaText="Contact Us"
-        secondaryCtaHref="/contact"
-      />
-
-      <Footer />
-    </div>
-  );
-}
+function Foo(){return<footer style={{borderTop:'1px solid var(--border-subtle)',padding:'44px 0',background:'var(--brand-black-soft)'}}><div className="container"><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:36,marginBottom:36}}><div><div style={{fontWeight:800,fontSize:'1.1rem',color:'var(--brand-gold)',marginBottom:10}}>آیان تراز</div><p style={{fontSize:'0.85rem',color:'var(--text-muted)',lineHeight:1.9}}>خدمات تخصصی حسابداری و مشاوره مالیاتی از سال ۱۳۹۰</p></div><div><div style={{fontWeight:700,fontSize:'0.9rem',marginBottom:10}}>دسترسی سریع</div><div style={{display:'flex',flexDirection:'column',gap:8}}>{['دستیار مالیاتی','رزرو مشاوره','پنل مدیریت'].map((l,i)=><Link key={i} href={['/chatbot','/consultation','/admin'][i]} style={{fontSize:'0.85rem',color:'var(--text-muted)'}}>{l}</Link>)}</div></div><div><div style={{fontWeight:700,fontSize:'0.9rem',marginBottom:10}}>تماس</div><div style={{fontSize:'0.85rem',color:'var(--text-muted)',lineHeight:2}}>تهران، ایران<br/>۰۲۱-۱۲۳۴۵۶۷۸</div></div></div><div style={{borderTop:'1px solid var(--border-subtle)',paddingTop:22,display:'flex',justifyContent:'space-between',fontSize:'0.8rem',color:'var(--text-muted)'}}><span>© ۱۴۰۴ آیان تراز</span><Link href="/admin" style={{color:'var(--text-muted)'}}>پنل مدیریت</Link></div></div></footer>}

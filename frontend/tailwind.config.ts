@@ -1,125 +1,22 @@
 import type { Config } from 'tailwindcss';
-
 const config: Config = {
-  content: [
-    './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
-    './src/components/**/*.{js,ts,jsx,tsx,mdx}',
-    './src/app/**/*.{js,ts,jsx,tsx,mdx}',
-  ],
+  content: ['./src/app/**/*.{js,ts,jsx,tsx,mdx}'],
   theme: {
     extend: {
       colors: {
-        // Premium Black/Gold Theme
-        primary: {
-          50: '#f5f5f5',
-          100: '#e5e5e5',
-          200: '#d4d4d4',
-          300: '#a3a3a3',
-          400: '#737373',
-          500: '#404040',
-          600: '#262626',
-          700: '#1a1a1a',
-          800: '#0f0f0f',
-          900: '#000000',
-          950: '#000000',
-        },
-        gold: {
-          50: '#fefce8',
-          100: '#fef9c3',
-          200: '#fef08a',
-          300: '#fde047',
-          400: '#facc15',
-          500: '#eab308',
-          600: '#ca8a04',
-          700: '#a16207',
-          800: '#854d0e',
-          900: '#713f12',
-          950: '#422006',
-        },
-        // Semantic colors
-        success: '#10b981',
-        warning: '#f59e0b',
-        error: '#ef4444',
-        info: '#3b82f6',
+        brand: { black: '#0a0a0a', 'black-soft': '#111111', 'black-card': '#18181b' },
+        gold: { 50: '#fdf8ec', 100: '#f9edcc', 200: '#f3da94', 300: '#ecc25c', 400: '#e0c878', 500: '#c6a962', 600: '#a68b3c', 700: '#8b7232', 800: '#705c29', 900: '#5a4a22', 950: '#302710' },
+        surface: { card: '#18181b', hover: '#222228', raised: '#252530' },
+        border: { subtle: '#27272a', default: '#3f3f46', strong: '#52525b' },
       },
-      fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        serif: ['Georgia', 'Cambria', 'serif'],
-        mono: ['Menlo', 'Monaco', 'monospace'],
-      },
-      fontSize: {
-        '2xs': ['0.625rem', { lineHeight: '0.75rem' }],
-      },
-      spacing: {
-        '18': '4.5rem',
-        '88': '22rem',
-        '128': '32rem',
-      },
-      maxWidth: {
-        '8xl': '88rem',
-        '9xl': '96rem',
-      },
-      typography: {
-        DEFAULT: {
-          css: {
-            maxWidth: 'none',
-            color: '#374151',
-            a: {
-              color: '#ca8a04',
-              '&:hover': {
-                color: '#a16207',
-              },
-            },
-            h1: {
-              color: '#111827',
-              fontWeight: '800',
-            },
-            h2: {
-              color: '#111827',
-              fontWeight: '700',
-            },
-            h3: {
-              color: '#111827',
-              fontWeight: '600',
-            },
-            blockquote: {
-              borderLeftColor: '#ca8a04',
-              fontStyle: 'italic',
-            },
-          },
-        },
-      },
-      animation: {
-        'fade-in': 'fadeIn 0.5s ease-in-out',
-        'slide-up': 'slideUp 0.5s ease-out',
-        'slide-down': 'slideDown 0.3s ease-out',
-        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-      },
-      keyframes: {
-        fadeIn: {
-          '0%': { opacity: '0' },
-          '100%': { opacity: '1' },
-        },
-        slideUp: {
-          '0%': { transform: 'translateY(20px)', opacity: '0' },
-          '100%': { transform: 'translateY(0)', opacity: '1' },
-        },
-        slideDown: {
-          '0%': { transform: 'translateY(-10px)', opacity: '0' },
-          '100%': { transform: 'translateY(0)', opacity: '1' },
-        },
-      },
-      boxShadow: {
-        'gold': '0 4px 14px 0 rgba(202, 138, 4, 0.39)',
-        'gold-lg': '0 10px 25px 0 rgba(202, 138, 4, 0.25)',
-      },
-      backgroundImage: {
-        'gradient-gold': 'linear-gradient(135deg, #ca8a04 0%, #f59e0b 100%)',
-        'gradient-dark': 'linear-gradient(135deg, #1a1a1a 0%, #000000 100%)',
-      },
+      fontFamily: { sans: ['Vazirmatn', 'Inter', 'system-ui', 'sans-serif'] },
+      animation: { 'fade-in-up': 'fadeInUp 0.5s cubic-bezier(0.16,1,0.3,1) both', 'gradient-shift': 'gradientShift 4s ease infinite', 'spin-border': 'spinBorder 8s linear infinite', 'spin-border-fast': 'spinBorder 3s linear infinite', 'wave-bar': 'waveBar 1.2s ease-in-out infinite' },
+      keyframes: { fadeInUp: { '0%': { opacity: '0', transform: 'translateY(24px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } }, gradientShift: { '0%, 100%': { backgroundPosition: '0% 50%' }, '50%': { backgroundPosition: '100% 50%' } }, spinBorder: { to: { '--angle': '360deg' } }, waveBar: { '0%, 100%': { height: '10px' }, '50%': { height: '26px' } } },
+      boxShadow: { 'gold-sm': '0 2px 12px rgba(198,169,98,0.3)', 'gold': '0 4px 24px rgba(198,169,98,0.45)', 'card': '0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(198,169,98,0.2)' },
+      backgroundImage: { 'gradient-gold': 'linear-gradient(135deg, #c6a962, #e0c878 50%, #c6a962)', 'gradient-text': 'linear-gradient(135deg, #c6a962, #e0c878, #a68b3c, #e0c878, #c6a962)', 'radial-hero': 'radial-gradient(ellipse at 15% 40%, rgba(198,169,98,0.1) 0%, transparent 55%), radial-gradient(ellipse at 85% 25%, rgba(224,200,120,0.05) 0%, transparent 50%)', 'pattern-lines': 'repeating-linear-gradient(45deg, #c6a962 0, #c6a962 1px, transparent 0, transparent 40px)' },
+      borderRadius: { 'sm': '8px', 'md': '12px', 'lg': '16px', 'xl': '20px' },
     },
   },
   plugins: [],
 };
-
 export default config;

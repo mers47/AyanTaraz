@@ -1,99 +1,19 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  UseGuards,
-  Request,
-  Query,
-  ParseIntPipe,
-} from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
 import { AdminService } from './admin.service';
+import { UserRole } from '@prisma/client';
 
-@ApiTags('admin')
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
-@ApiBearerAuth()
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(private readonly svc: AdminService) {}
 
-  @Get('dashboard')
-  @ApiOperation({ summary: 'Get dashboard statistics' })
-  @ApiResponse({ status: 200, description: 'Dashboard stats' })
-  async getDashboardStats() {
-    return this.adminService.getDashboardStats();
-  }
-
-  @Get('recent-activity')
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiOperation({ summary: 'Get recent activity' })
-  @ApiResponse({ status: 200, description: 'Recent activity' })
-  async getRecentActivity(@Query('limit', ParseIntPipe) limit: number = 10) {
-    return this.adminService.getRecentActivity(limit);
-  }
-
-  @Get('users/admin')
-  @ApiOperation({ summary: 'Get all admin users' })
-  @ApiResponse({ status: 200, description: 'List of admin users' })
-  async getAdminUsers() {
-    return this.adminService.getAdminUsers();
-  }
-
-  @Post('users/admin')
-  @Roles(UserRole.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Create a new admin user (Super Admin only)' })
-  @ApiResponse({ status: 201, description: 'Admin user created' })
-  async createAdminUser(
-    @Body() body: { phone: string; firstName: string; lastName: string; role?: UserRole },
-    @Request() req: { user: { id: string } },
-  ) {
-    return this.adminService.createAdminUser(
-      body.phone,
-      body.firstName,
-      body.lastName,
-      body.role || UserRole.ADMIN,
-      req.user.id,
-    );
-  }
-
-  @Post('users/admin/:id')
-  @Roles(UserRole.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Update admin user (Super Admin only)' })
-  @ApiResponse({ status: 200, description: 'Admin user updated' })
-  async updateAdminUser(
-    @Param('id') id: string,
-    @Body() body: { firstName?: string; lastName?: string; role?: UserRole; isActive?: boolean },
-  ) {
-    return this.adminService.updateAdminUser(id, body);
-  }
-
-  @Get('audit-logs')
-  @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiQuery({ name: 'action', required: false, type: String })
-  @ApiQuery({ name: 'userId', required: false, type: String })
-  @ApiQuery({ name: 'entityType', required: false, type: String })
-  @ApiOperation({ summary: 'Get audit logs' })
-  @ApiResponse({ status: 200, description: 'Audit logs' })
-  async getAuditLogs(
-    @Query('page', ParseIntPipe) page: number = 1,
-    @Query('limit', ParseIntPipe) limit: number = 20,
-    @Query('action') action?: string,
-    @Query('userId') userId?: string,
-    @Query('entityType') entityType?: string,
-  ) {
-    return this.adminService.getAuditLogs(
-      page,
-      limit,
-      action,
-      userId,
-      entityType,
-    );
-  }
+  @Get('dashboard') async dash() { return this.svc.getDashboardStats(); }
+  @Get('recent-activity') async rec(@Query('limit') l?: number) { return this.svc.getRecentActivity(l ? +l : 10); }
+  @Get('users') async users(@Query('page') p?: number, @Query('limit') l?: number, @Query('search') s?: string) { return this.svc.getUsers(p ? +p : 1, l ? +l : 20, s); }
+  @Get('users/admin') async admins() { return this.svc.getAdminUsers(); }
+  @Post('users/admin') async ca(@Body() b: { phone: string; firstName: string; lastName: string; role?: UserRole }) { return this.svc.createAdminUser(b.phone, b.firstName, b.lastName, b.role); }
+  @Patch('users/admin/:id') async ua(@Param('id') id: string, @Body() b: { firstName?: string; lastName?: string; role?: UserRole; isActive?: boolean }) { return this.svc.updateAdminUser(id, b); }
+  @Get('audit-logs') async al(@Query('page') p?: number, @Query('limit') l?: number, @Query('action') a?: string, @Query('userId') u?: string, @Query('entityType') e?: string) { return this.svc.getAuditLogs(p ? +p : 1, l ? +l : 20, a, u, e); }
 }

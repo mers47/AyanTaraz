@@ -2,230 +2,59 @@ import { Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import Redis from 'ioredis';
 import { PrismaService } from '../../prisma/prisma.service';
-import { StartAssistantDto } from './dto/start-assistant.dto';
-import { AnswerQuestionDto } from './dto/answer-question.dto';
-import { AssistantSession, AssistantQuestion, AssistantResult } from './entities/assistant-session.entity';
+
+interface Session { id: string; userId: string | null; currentQuestionId: string; answers: Record<string, string>; result: any | null; createdAt: Date; updatedAt: Date }
 
 @Injectable()
 export class TaxAssistantService {
-  constructor(
-    @Inject('REDIS_CLIENT') private readonly redis: Redis,
-    private readonly prisma: PrismaService,
-  ) {}
+  constructor(@Inject('REDIS_CLIENT') private readonly redis: Redis, private readonly prisma: PrismaService) {}
 
-  private readonly SESSION_PREFIX = 'tax_assistant_session:';
-  private readonly SESSION_EXPIRY = 86400; // 24 hours
+  private readonly PREFIX = 'tax_session:';
+  private readonly TTL = 3600;
 
-  async startSession(
-    startAssistantDto: StartAssistantDto,
-    userId?: string,
-  ): Promise<{ sessionId: string; question: AssistantQuestion }> {
-    const sessionId = uuidv4();
-
-    // Get the first question
-    let currentQuestionId = startAssistantDto.questionId;
-    if (!currentQuestionId) {
-      const firstQuestion = await this.prisma.taxQuestion.findFirst({
-        where: { isActive: true },
-        orderBy: { sortOrder: 'asc' },
-      });
-      if (!firstQuestion) {
-        throw new NotFoundException('No questions available for tax assistant');
-      }
-      currentQuestionId = firstQuestion.id;
-    }
-
-    // Get the question with options
-    const question = await this.getQuestionWithOptions(currentQuestionId);
-    if (!question) {
-      throw new NotFoundException('Question not found');
-    }
-
-    // Create session
-    const session: AssistantSession = {
-      id: sessionId,
-      userId: userId || null,
-      currentQuestionId,
-      answers: startAssistantDto.answers || {},
-      result: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    // Store in Redis
-    await this.redis.setex(
-      `${this.SESSION_PREFIX}${sessionId}`,
-      this.SESSION_EXPIRY,
-      JSON.stringify(session),
-    );
-
-    return { sessionId, question };
+  async startSession(questionId?: string, answers?: Record<string, string>, userId?: string) {
+    const sid = uuidv4(); let qid = questionId;
+    if (!qid) { const q = await this.prisma.taxQuestion.findFirst({ where: { isActive: true }, orderBy: { sortOrder: 'asc' } }); if (!q) throw new NotFoundException('No questions'); qid = q.id; }
+    const q = await this.getQ(qid); if (!q) throw new NotFoundException('Q not found');
+    const s: Session = { id: sid, userId: userId || null, currentQuestionId: qid, answers: answers || {}, result: null, createdAt: new Date(), updatedAt: new Date() };
+    await this.redis.setex(`${this.PREFIX}${sid}`, this.TTL, JSON.stringify(s));
+    return { sessionId: sid, question: q };
   }
 
-  async answerQuestion(
-    answerQuestionDto: AnswerQuestionDto,
-  ): Promise<{ question: AssistantQuestion | null; result: AssistantResult | null; completed: boolean }> {
-    // Get session
-    const sessionKey = `${this.SESSION_PREFIX}${answerQuestionDto.sessionId}`;
-    const sessionData = await this.redis.get(sessionKey);
-
-    if (!sessionData) {
-      throw new NotFoundException('Session not found or expired');
-    }
-
-    const session: AssistantSession = JSON.parse(sessionData);
-
-    // Store answer
-    session.answers[answerQuestionDto.questionId] = answerQuestionDto.optionValue;
-    session.updatedAt = new Date();
-
-    // Find the flow based on the answer
-    const flow = await this.prisma.taxQuestionFlow.findFirst({
-      where: {
-        fromQuestionId: answerQuestionDto.questionId,
-        optionId: answerQuestionDto.optionId,
-      },
-    });
-
-    let nextQuestionId: string | null = null;
-    let result: AssistantResult | null = null;
-    let completed = false;
-
-    if (flow) {
-      // Check if flow has a condition (for dynamic routing)
-      if (flow.condition) {
-        try {
-          const condition = JSON.parse(flow.condition);
-          // Simple condition evaluation (extend for complex logic)
-          if (condition.field && condition.op && condition.value) {
-            const answerValue = session.answers[condition.field];
-            if (answerValue) {
-              const shouldFollow = this.evaluateCondition(
-                answerValue,
-                condition.op,
-                condition.value,
-              );
-              if (shouldFollow) {
-                nextQuestionId = flow.toQuestionId;
-              }
-            }
-          }
-        } catch (e) {
-          // If condition evaluation fails, follow the flow
-          nextQuestionId = flow.toQuestionId;
-        }
-      } else {
-        nextQuestionId = flow.toQuestionId;
-      }
-    }
-
-    // If no next question, check if we have a result
-    if (!nextQuestionId) {
-      // Find result based on answers
-      result = await this.determineResult(session.answers);
-      completed = true;
-    } else {
-      // Get the next question
-      const nextQuestion = await this.getQuestionWithOptions(nextQuestionId);
-      if (!nextQuestion) {
-        // If next question not found, try to determine result
-        result = await this.determineResult(session.answers);
-        completed = true;
-      } else {
-        session.currentQuestionId = nextQuestionId;
-      }
-    }
-
-    // Update session
-    session.result = result;
-    await this.redis.setex(
-      sessionKey,
-      this.SESSION_EXPIRY,
-      JSON.stringify(session),
-    );
-
-    return {
-      question: nextQuestionId ? await this.getQuestionWithOptions(nextQuestionId) : null,
-      result,
-      completed,
-    };
+  async answerQuestion(sessionId: string, questionId: string, optionId: string, optionValue: string) {
+    const key = `${this.PREFIX}${sessionId}`; const raw = await this.redis.get(key);
+    if (!raw) throw new NotFoundException('Session expired');
+    const s: Session = JSON.parse(raw); s.answers[questionId] = optionValue; s.updatedAt = new Date();
+    const flow = await this.prisma.taxQuestionFlow.findFirst({ where: { fromQuestionId: questionId, optionId } });
+    let nid: string | null = null; let result: any = null; let done = false;
+    if (flow) nid = flow.toQuestionId;
+    if (!nid) { result = await this.determine(s.answers); done = true; }
+    else { const nq = await this.getQ(nid); if (!nq) { result = await this.determine(s.answers); done = true; } else s.currentQuestionId = nid; }
+    s.result = result; await this.redis.setex(key, this.TTL, JSON.stringify(s));
+    return { question: done ? null : await this.getQ(nid!), result, completed: done };
   }
 
-  async getQuestionWithOptions(questionId: string): Promise<AssistantQuestion | null> {
-    const question = await this.prisma.taxQuestion.findUnique({
-      where: { id: questionId, isActive: true },
-      include: {
-        options: {
-          where: { isActive: true },
-          orderBy: { sortOrder: 'asc' },
-        },
-      },
-    });
-
-    if (!question) {
-      return null;
-    }
-
-    return {
-      id: question.id,
-      question: question.question,
-      description: question.description,
-      options: question.options.map((option) => ({
-        id: option.id,
-        label: option.label,
-        value: option.value,
-      })),
-    };
+  private async getQ(qid: string) {
+    const q = await this.prisma.taxQuestion.findUnique({ where: { id: qid, isActive: true }, include: { options: { where: { isActive: true }, orderBy: { sortOrder: 'asc' } } } });
+    if (!q) return null;
+    return { id: q.id, question: q.question, description: q.description, options: q.options.map(o => ({ id: o.id, label: o.label, value: o.value })) };
   }
 
-  private async determineResult(answers: Record<string, string>): Promise<AssistantResult | null> {
-    // This is a simplified implementation
-    // In production, implement a more sophisticated decision engine
-    // based on the answers and tax rules
-
-    // For now, return a default result
-    const defaultResult = await this.prisma.taxAssistantResult.findFirst({
-      where: { isActive: true },
-      orderBy: { createdAt: 'asc' },
-    });
-
-    if (!defaultResult) {
-      return null;
-    }
-
-    return {
-      id: defaultResult.id,
-      name: defaultResult.name,
-      title: defaultResult.title,
-      description: defaultResult.description,
-      ruleIds: defaultResult.ruleIds as string[],
-      action: defaultResult.action,
-      severity: defaultResult.severity,
-    };
-  }
-
-  private evaluateCondition(
-    value: string,
-    op: string,
-    target: string | number,
-  ): boolean {
-    switch (op) {
-      case '==':
-        return value === String(target);
-      case '!=':
-        return value !== String(target);
-      case '>':
-        return Number(value) > Number(target);
-      case '<':
-        return Number(value) < Number(target);
-      case '>=':
-        return Number(value) >= Number(target);
-      case '<=':
-        return Number(value) <= Number(target);
-      case 'in':
-        return (target as string).split(',').includes(value);
-      default:
-        return false;
-    }
+  private async determine(answers: Record<string, string>) {
+    const vals = Object.values(answers);
+    let name = 'expert';
+    if ((vals.includes('sal')||vals.includes('salary')) && vals.includes('lo')) name = 'exempt';
+    else if ((vals.includes('sal')||vals.includes('salary')) && (vals.includes('mid')||vals.includes('hi')||vals.includes('top'))) name = 'sal';
+    else if ((vals.includes('biz')||vals.includes('business')) && vals.includes('lo')) name = 'exempt';
+    else if ((vals.includes('biz')||vals.includes('business')) && (vals.includes('mid')||vals.includes('hi')||vals.includes('top'))) name = 'biz';
+    else if (vals.includes('corp')||vals.includes('corporation')) name = 'corp';
+    else if (vals.includes('vat_yes')||vals.includes('vat_noreg')) name = 'vat';
+    else if (vals.includes('no')||vals.includes('not_filed')||vals.includes('late')) name = 'late';
+    else if (vals.includes('knowledge')||vals.includes('kb')) name = 'kb';
+    else if (vals.includes('freezone')||vals.includes('art132')||vals.includes('a132')||vals.includes('fz')) name = 'expert';
+    else if (vals.includes('agri')) name = 'exempt';
+    const r = await this.prisma.taxAssistantResult.findFirst({ where: { name, isActive: true } });
+    if (!r) { const fallback = await this.prisma.taxAssistantResult.findFirst({ where: { isActive: true }, orderBy: { createdAt: 'asc' } }); return fallback ? { id: fallback.id, name: fallback.name, title: fallback.title, description: fallback.description, ruleIds: fallback.ruleIds as string[], action: fallback.action, severity: fallback.severity } : null; }
+    return { id: r.id, name: r.name, title: r.title, description: r.description, ruleIds: r.ruleIds as string[], action: r.action, severity: r.severity };
   }
 }
