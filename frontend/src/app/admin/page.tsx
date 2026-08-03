@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { adminApi } from '@/lib/api';
 import type { DashboardStats, RecentActivity, UserRow, AuditLog, PaginatedResponse } from '@/types';
 
-type TabType = 'dashboard' | 'users' | 'audit';
+type TabType = 'dashboard' | 'users' | 'content' | 'audit';
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
@@ -18,80 +18,154 @@ export default function AdminPage() {
   const [auditPage, setAuditPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    if (activeTab === 'dashboard') loadDashboard();
-    else if (activeTab === 'users') loadUsers();
-    else if (activeTab === 'audit') loadAuditLogs();
-  }, [activeTab]);
+  // Editable content
+  const [editableTexts, setEditableTexts] = useState<{[key:string]:string}>({
+    hero_title: 'راهکارهای هوشمند مالیاتی',
+    hero_subtitle: 'با آیان تراز، پیچیدگی‌های مالیاتی را به فرصت تبدیل کنید',
+    about_text: 'آیان تراز از سال ۱۳۹۰ با تیمی از متخصصان مجرب، خدمات مشاوره مالیاتی و حسابداری را به اشخاص حقیقی و حقوقی ارائه می‌دهد.',
+    contact_phone: '۰۲۱-۱۲۳۴۵۶۷۸',
+    contact_email: 'info@ayantaraz.ir',
+    contact_address: 'تهران، ایران',
+  });
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const [saveMessage, setSaveMessage] = useState('');
 
-  const loadDashboard = async () => {
-    setIsLoading(true);
-    try {
-      const [s, a] = await Promise.all([adminApi.getDashboardStats(), adminApi.getRecentActivity(5)]);
-      setStats(s.data); setActivity(a.data);
-    } catch (e) { console.error(e); } finally { setIsLoading(false); }
-  };
+  useEffect(() => { if (activeTab === 'dashboard') loadDashboard(); else if (activeTab === 'users') loadUsers(); else if (activeTab === 'audit') loadAuditLogs(); }, [activeTab]);
 
-  const loadUsers = async (page = 1) => {
-    setIsLoading(true);
-    try { const r = await adminApi.getUsers(page, 15, searchTerm); setUsers(r.data); setUserPage(page); } catch (e) { console.error(e); } finally { setIsLoading(false); }
-  };
+  const loadDashboard = async () => { setIsLoading(true); try { const [s, a] = await Promise.all([adminApi.getDashboardStats(), adminApi.getRecentActivity(5)]); setStats(s.data); setActivity(a.data); } catch {} finally { setIsLoading(false); } };
+  const loadUsers = async (page = 1) => { setIsLoading(true); try { const r = await adminApi.getUsers(page, 15, searchTerm); setUsers(r.data); setUserPage(page); } catch {} finally { setIsLoading(false); } };
+  const loadAuditLogs = async (page = 1) => { setIsLoading(true); try { const r = await adminApi.getAuditLogs({ page, limit: 15 }); setAuditLogs(r.data); setAuditPage(page); } catch {} finally { setIsLoading(false); } };
 
-  const loadAuditLogs = async (page = 1) => {
-    setIsLoading(true);
-    try { const r = await adminApi.getAuditLogs({ page, limit: 15 }); setAuditLogs(r.data); setAuditPage(page); } catch (e) { console.error(e); } finally { setIsLoading(false); }
+  const saveText = (key: string) => {
+    setEditableTexts(p=>({...p,[key]:editValue}));
+    setEditingKey(null);
+    setSaveMessage('ذخیره شد ✅');
+    setTimeout(()=>setSaveMessage(''),2000);
   };
 
   const tabs = [
     { id: 'dashboard' as TabType, label: 'داشبورد', icon: '📊' },
     { id: 'users' as TabType, label: 'کاربران', icon: '👥' },
+    { id: 'content' as TabType, label: 'ویرایش محتوا', icon: '✏️' },
     { id: 'audit' as TabType, label: 'گزارش‌ها', icon: '📋' },
   ];
 
-  if (isLoading && !stats && !users && !auditLogs) return (<div className="min-h-screen bg-black flex items-center justify-center" dir="rtl"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gold-500" /></div>);
+  const statCards = [
+    { l: 'کاربران', v: stats?.totalUsers, c: '#3b82f6' },
+    { l: 'قوانین مالیاتی', v: stats?.totalTaxRules, c: 'var(--brand-gold)' },
+    { l: 'رزروها', v: stats?.totalBookings, c: '#a855f7' },
+    { l: 'در انتظار', v: stats?.pendingBookings, c: '#eab308' },
+    { l: 'تأیید شده', v: stats?.confirmedBookings, c: '#22c55e' },
+    { l: 'سوالات چت‌بات', v: stats?.totalQuestions, c: '#06b6d4' },
+  ];
+
+  if (isLoading && !stats && !users && !auditLogs) return <div style={{minHeight:'100vh',background:'var(--brand-black)',display:'flex',alignItems:'center',justifyContent:'center'}}><div style={{width:40,height:40,border:'3px solid var(--border-subtle)',borderTopColor:'var(--brand-gold)',borderRadius:'50%',animation:'spin 0.8s linear infinite'}}/></div>;
 
   return (
-    <div className="min-h-screen bg-black" dir="rtl">
-      <div className="border-b border-gray-800 bg-gray-950">
-        <div className="container mx-auto px-4"><div className="flex items-center justify-between h-16"><div className="flex items-center gap-4"><Link href="/" className="text-gold-400 font-bold text-lg">آیان تراز</Link><span className="text-gray-600">|</span><h1 className="text-white font-semibold">پنل مدیریت</h1></div><Link href="/" className="text-gray-400 hover:text-white text-sm">خروج</Link></div></div>
-      </div>
-      <div className="container mx-auto px-4 py-6">
-        <div className="flex gap-1 mb-6 border-b border-gray-800">
-          {tabs.map((t) => (<button key={t.id} onClick={() => setActiveTab(t.id)} className={`px-6 py-3 text-sm font-medium border-b-2 -mb-px transition-all ${activeTab === t.id ? 'border-gold-500 text-gold-400' : 'border-transparent text-gray-400 hover:text-white'}`}>{t.icon} {t.label}</button>))}
+    <div style={{minHeight:'100vh',background:'var(--brand-black)'}}>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      <header style={{borderBottom:'1px solid var(--border-subtle)',background:'var(--brand-black-soft)',padding:'0 20px'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',height:60}}>
+          <div style={{display:'flex',alignItems:'center',gap:12}}>
+            <Link href="/" style={{fontWeight:800,color:'var(--brand-gold)'}}>آیان تراز</Link>
+            <span style={{color:'var(--border-default)'}}>|</span>
+            <span style={{fontWeight:600,fontSize:'0.9375rem'}}>پنل مدیریت</span>
+          </div>
+          <Link href="/" style={{color:'var(--text-muted)',fontSize:'0.8125rem'}}>خروج</Link>
+        </div>
+      </header>
+
+      <div className="container" style={{paddingTop:28,paddingBottom:60}}>
+        {saveMessage && <div style={{background:'rgba(34,197,94,0.1)',border:'1px solid rgba(34,197,94,0.3)',padding:'10px 16px',borderRadius:8,marginBottom:16,fontSize:'0.875rem',color:'#22c55e'}}>{saveMessage}</div>}
+
+        <div style={{display:'flex',gap:2,marginBottom:28,borderBottom:'1px solid var(--border-subtle)',overflowX:'auto'}}>
+          {tabs.map(t=>(<button key={t.id} onClick={()=>setActiveTab(t.id)} style={{padding:'12px 24px',fontSize:'0.875rem',fontWeight:600,border:'none',background:'none',color:activeTab===t.id?'var(--brand-gold)':'var(--text-muted)',borderBottom:activeTab===t.id?'2px solid var(--brand-gold)':'2px solid transparent',cursor:'pointer',fontFamily:'Vazirmatn',whiteSpace:'nowrap',transition:'all 150ms'}}>{t.icon} {t.label}</button>))}
         </div>
 
+        {/* DASHBOARD */}
         {activeTab === 'dashboard' && stats && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { l: 'کل کاربران', v: stats.totalUsers, c: 'border-blue-500', b: 'bg-blue-500/10' },
-                { l: 'مقالات', v: stats.totalArticles, c: 'border-green-500', b: 'bg-green-500/10' },
-                { l: 'قوانین مالیاتی', v: stats.totalTaxRules, c: 'border-gold-500', b: 'bg-gold-500/10' },
-                { l: 'رزروها', v: stats.totalBookings, c: 'border-purple-500', b: 'bg-purple-500/10' },
-                { l: 'در انتظار تأیید', v: stats.pendingBookings, c: 'border-yellow-500', b: 'bg-yellow-500/10' },
-                { l: 'تأیید شده', v: stats.confirmedBookings, c: 'border-green-500', b: 'bg-green-500/10' },
-                { l: 'سوالات چت‌بات', v: stats.totalQuestions, c: 'border-cyan-500', b: 'bg-cyan-500/10' },
-                { l: 'نتایج چت‌بات', v: stats.totalResults, c: 'border-pink-500', b: 'bg-pink-500/10' },
-              ].map((card, i) => (<div key={i} className={`${card.b} border ${card.c} rounded-xl p-4`}><p className="text-gray-400 text-sm">{card.l}</p><p className="text-2xl font-bold text-white mt-1">{card.v ?? '-'}</p></div>))}
+          <div style={{display:'flex',flexDirection:'column',gap:28}}>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(170px,1fr))',gap:14}}>
+              {statCards.map((c,i)=>(
+                <div key={i} className="card" style={{borderLeft:`3px solid ${c.c}`}}>
+                  <div style={{fontSize:'0.8125rem',color:'var(--text-muted)',marginBottom:8}}>{c.l}</div>
+                  <div style={{fontSize:'1.75rem',fontWeight:800,color:c.c}}>{c.v??'-'}</div>
+                </div>
+              ))}
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-gray-900 rounded-xl p-6 border border-gray-800"><h3 className="text-lg font-semibold text-white mb-4">کاربران جدید</h3><div className="space-y-3">{activity?.recentUsers?.map((u: any) => (<div key={u.id} className="flex items-center justify-between py-2 border-b border-gray-800 last:border-0"><div><p className="text-white text-sm">{u.firstName || u.lastName ? `${u.firstName || ''} ${u.lastName || ''}` : 'بدون نام'}</p><p className="text-gray-500 text-xs">{u.phone}</p></div><span className="text-gray-500 text-xs">{new Date(u.createdAt).toLocaleDateString('fa-IR')}</span></div>))}</div></div>
-              <div className="bg-gray-900 rounded-xl p-6 border border-gray-800"><h3 className="text-lg font-semibold text-white mb-4">رزروهای اخیر</h3><div className="space-y-3">{activity?.recentBookings?.map((b: any) => (<div key={b.id} className="flex items-center justify-between py-2 border-b border-gray-800 last:border-0"><div><p className="text-white text-sm">{b.service?.name || 'مشاوره'}</p><p className="text-gray-500 text-xs">{b.user?.firstName} {b.user?.lastName} - {b.phone}</p></div><span className={`text-xs px-2 py-0.5 rounded-full ${b.status === 'CONFIRMED' ? 'bg-green-500/20 text-green-400' : b.status === 'PENDING' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-gray-500/20 text-gray-400'}`}>{b.status === 'CONFIRMED' ? 'تأیید شده' : b.status === 'PENDING' ? 'در انتظار' : b.status}</span></div>))}</div></div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(320px,1fr))',gap:20}}>
+              <div className="card">
+                <h3 style={{fontWeight:700,marginBottom:16}}>کاربران جدید</h3>
+                {activity?.recentUsers?.map((u:any)=>(<div key={u.id} style={{display:'flex',justifyContent:'space-between',padding:'10px 0',borderBottom:'1px solid var(--border-subtle)'}}><div><div style={{fontWeight:600}}>{u.firstName||u.lastName?`${u.firstName||''} ${u.lastName||''}`:'بدون نام'}</div><div style={{fontSize:'0.8125rem',color:'var(--text-muted)'}} dir="ltr">{u.phone}</div></div><div style={{fontSize:'0.75rem',color:'var(--text-muted)'}}>{new Date(u.createdAt).toLocaleDateString('fa-IR')}</div></div>))}
+              </div>
+              <div className="card">
+                <h3 style={{fontWeight:700,marginBottom:16}}>رزروهای اخیر</h3>
+                {activity?.recentBookings?.map((b:any)=>(<div key={b.id} style={{display:'flex',justifyContent:'space-between',padding:'10px 0',borderBottom:'1px solid var(--border-subtle)'}}><div><div style={{fontWeight:600}}>{b.service?.name||'مشاوره'}</div><div style={{fontSize:'0.8125rem',color:'var(--text-muted)'}}>{b.user?.firstName} {b.user?.lastName}</div></div><span className={`badge ${b.status==='CONFIRMED'?'badge-success':b.status==='PENDING'?'badge-warning':'badge-error'}`}>{b.status==='CONFIRMED'?'تأیید':b.status==='PENDING'?'منتظر':b.status}</span></div>))}
+              </div>
             </div>
           </div>
         )}
 
+        {/* CONTENT EDITOR */}
+        {activeTab === 'content' && (
+          <div style={{display:'flex',flexDirection:'column',gap:16,maxWidth:700}}>
+            <div style={{fontWeight:700,fontSize:'1.125rem',marginBottom:8}}>ویرایش متن‌های سایت</div>
+            {Object.entries(editableTexts).map(([key,val])=>(
+              <div key={key} className="card" style={{display:'flex',flexDirection:'column',gap:10}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <span style={{fontSize:'0.8125rem',color:'var(--text-muted)',fontWeight:600}}>{key.replace(/_/g,' ')}</span>
+                  {editingKey!==key && <button onClick={()=>{setEditingKey(key);setEditValue(val)}} style={{background:'none',border:'1px solid var(--border-subtle)',color:'var(--brand-gold)',padding:'6px 14px',borderRadius:6,cursor:'pointer',fontFamily:'Vazirmatn',fontSize:'0.8125rem'}}>✏️ ویرایش</button>}
+                </div>
+                {editingKey===key ? (
+                  <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                    {val.length>60?<textarea value={editValue} onChange={e=>setEditValue(e.target.value)} rows={3} style={{...inputStyles,resize:'vertical',minHeight:80}}/>:<input value={editValue} onChange={e=>setEditValue(e.target.value)} style={inputStyles} />}
+                    <div style={{display:'flex',gap:8}}>
+                      <button onClick={()=>saveText(key)} className="btn btn-primary" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>ذخیره</button>
+                      <button onClick={()=>setEditingKey(null)} className="btn btn-ghost" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>انصراف</button>
+                    </div>
+                  </div>
+                ) : <div style={{padding:'10px 14px',background:'rgba(255,255,255,0.02)',borderRadius:8,fontSize:'0.9375rem',color:'var(--text-secondary)'}}>{val}</div>}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* USERS */}
         {activeTab === 'users' && (
           <div>
-            <div className="flex gap-3 mb-4"><input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && loadUsers(1)} placeholder="جستجوی کاربر..." className="flex-1 px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-gold-500" dir="rtl" /><button onClick={() => loadUsers(1)} className="btn-primary px-4 py-2 rounded-lg">جستجو</button></div>
-            <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden"><div className="overflow-x-auto"><table className="w-full"><thead><tr className="border-b border-gray-800">{['نام','شماره','نقش','وضعیت','تأیید','تاریخ'].map(h=>(<th key={h} className="text-right text-gray-400 text-xs font-medium px-4 py-3">{h}</th>))}</tr></thead><tbody>{users?.data?.map(u=>(<tr key={u.id} className="border-b border-gray-800/50 hover:bg-gray-800/30"><td className="px-4 py-3 text-white text-sm">{u.firstName || u.lastName ? `${u.firstName||''} ${u.lastName||''}` : '---'}</td><td className="px-4 py-3 text-gray-400 text-sm" dir="ltr">{u.phone}</td><td className="px-4 py-3"><span className={`text-xs px-2 py-0.5 rounded-full ${u.role==='SUPER_ADMIN'?'bg-red-500/20 text-red-400':u.role==='ADMIN'?'bg-gold-500/20 text-gold-400':'bg-gray-500/20 text-gray-400'}`}>{u.role==='SUPER_ADMIN'?'سوپرادمین':u.role==='ADMIN'?'ادمین':'کاربر'}</span></td><td className="px-4 py-3"><span className={`text-xs ${u.isActive?'text-green-400':'text-red-400'}`}>{u.isActive?'فعال':'غیرفعال'}</span></td><td className="px-4 py-3"><span>{u.phoneVerified?'✅':'⏳'}</span></td><td className="px-4 py-3 text-gray-500 text-xs">{new Date(u.createdAt).toLocaleDateString('fa-IR')}</td></tr>))}</tbody></table></div>{users && users.total > 15 && (<div className="flex items-center justify-between px-4 py-3 border-t border-gray-800"><p className="text-gray-500 text-xs">نمایش {((userPage-1)*15)+1} تا {Math.min(userPage*15,users.total)} از {users.total}</p><div className="flex gap-2"><button onClick={()=>loadUsers(userPage-1)} disabled={userPage<=1} className="px-3 py-1 text-sm rounded bg-gray-800 text-gray-400 hover:text-white disabled:opacity-50">قبلی</button><button onClick={()=>loadUsers(userPage+1)} disabled={userPage*15>=users.total} className="px-3 py-1 text-sm rounded bg-gray-800 text-gray-400 hover:text-white disabled:opacity-50">بعدی</button></div></div>)}</div>
+            <div style={{display:'flex',gap:10,marginBottom:20}}>
+              <input value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} onKeyDown={e=>e.key==='Enter'&&loadUsers(1)} placeholder="جستجوی کاربر..." style={{...inputStyles,flex:1}} />
+              <button onClick={()=>loadUsers(1)} className="btn btn-primary" style={{fontSize:'0.8125rem',padding:'10px 18px'}}>جستجو</button>
+            </div>
+            <div className="card" style={{padding:0,overflow:'hidden'}}>
+              <div style={{overflowX:'auto'}}>
+                <table style={{width:'100%',borderCollapse:'collapse'}}>
+                  <thead><tr style={{borderBottom:'1px solid var(--border-subtle)'}}>{['نام','شماره','نقش','وضعیت','تأیید','تاریخ'].map(h=>(<th key={h} style={{textAlign:'right',padding:'12px 16px',fontSize:'0.75rem',color:'var(--text-muted)',fontWeight:600}}>{h}</th>))}</tr></thead>
+                  <tbody>{users?.data?.map(u=>(<tr key={u.id} style={{borderBottom:'1px solid var(--border-subtle)'}}><td style={{padding:'10px 16px',fontWeight:500}}>{u.firstName||u.lastName?`${u.firstName||''} ${u.lastName||''}`:'---'}</td><td style={{padding:'10px 16px',fontSize:'0.875rem',color:'var(--text-muted)'}} dir="ltr">{u.phone}</td><td style={{padding:'10px 16px'}}><span className={`badge ${u.role==='SUPER_ADMIN'?'badge-error':u.role==='ADMIN'?'badge-gold':'badge-success'}`}>{u.role==='SUPER_ADMIN'?'سوپرادمین':u.role==='ADMIN'?'ادمین':'کاربر'}</span></td><td style={{padding:'10px 16px',fontSize:'0.8125rem',color:u.isActive?'#22c55e':'#ef4444'}}>{u.isActive?'فعال':'غیرفعال'}</td><td style={{padding:'10px 16px'}}>{u.phoneVerified?'✅':'⏳'}</td><td style={{padding:'10px 16px',fontSize:'0.8125rem',color:'var(--text-muted)'}}>{new Date(u.createdAt).toLocaleDateString('fa-IR')}</td></tr>))}</tbody>
+                </table>
+              </div>
+              {users && users.total > 15 && <div style={{display:'flex',justifyContent:'space-between',padding:'12px 16px',borderTop:'1px solid var(--border-subtle)',fontSize:'0.8125rem',color:'var(--text-muted)'}}><span>صفحه {userPage} از {Math.ceil(users.total/15)}</span><div style={{display:'flex',gap:6}}><button onClick={()=>loadUsers(userPage-1)} disabled={userPage<=1} style={btnSmall}>قبلی</button><button onClick={()=>loadUsers(userPage+1)} disabled={userPage*15>=users.total} style={btnSmall}>بعدی</button></div></div>}
+            </div>
           </div>
         )}
 
+        {/* AUDIT */}
         {activeTab === 'audit' && (
-          <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden"><div className="overflow-x-auto"><table className="w-full"><thead><tr className="border-b border-gray-800">{['کاربر','عملیات','نوع','شناسه','تاریخ'].map(h=>(<th key={h} className="text-right text-gray-400 text-xs font-medium px-4 py-3">{h}</th>))}</tr></thead><tbody>{auditLogs?.data?.map(log=>(<tr key={log.id} className="border-b border-gray-800/50 hover:bg-gray-800/30"><td className="px-4 py-3 text-white text-sm">{log.user?.firstName} {log.user?.lastName}</td><td className="px-4 py-3"><span className="text-xs text-gold-400 bg-gold-500/10 px-2 py-0.5 rounded">{log.action}</span></td><td className="px-4 py-3 text-gray-400 text-sm">{log.entityType}</td><td className="px-4 py-3 text-gray-500 text-xs font-mono">{log.entityId.substring(0,8)}...</td><td className="px-4 py-3 text-gray-500 text-xs">{new Date(log.createdAt).toLocaleString('fa-IR')}</td></tr>))}</tbody></table></div>{auditLogs && auditLogs.total > 15 && (<div className="flex items-center justify-between px-4 py-3 border-t border-gray-800"><p className="text-gray-500 text-xs">نمایش {((auditPage-1)*15)+1} تا {Math.min(auditPage*15,auditLogs.total)} از {auditLogs.total}</p><div className="flex gap-2"><button onClick={()=>loadAuditLogs(auditPage-1)} disabled={auditPage<=1} className="px-3 py-1 text-sm rounded bg-gray-800 text-gray-400 hover:text-white disabled:opacity-50">قبلی</button><button onClick={()=>loadAuditLogs(auditPage+1)} disabled={auditPage*15>=auditLogs.total} className="px-3 py-1 text-sm rounded bg-gray-800 text-gray-400 hover:text-white disabled:opacity-50">بعدی</button></div></div>)}</div>
+          <div className="card" style={{padding:0,overflow:'hidden'}}>
+            <div style={{overflowX:'auto'}}>
+              <table style={{width:'100%',borderCollapse:'collapse'}}>
+                <thead><tr style={{borderBottom:'1px solid var(--border-subtle)'}}>{['کاربر','عملیات','نوع','تاریخ'].map(h=>(<th key={h} style={{textAlign:'right',padding:'12px 16px',fontSize:'0.75rem',color:'var(--text-muted)',fontWeight:600}}>{h}</th>))}</tr></thead>
+                <tbody>{auditLogs?.data?.map(log=>(<tr key={log.id} style={{borderBottom:'1px solid var(--border-subtle)'}}><td style={{padding:'10px 16px',fontWeight:500}}>{log.user?.firstName} {log.user?.lastName}</td><td style={{padding:'10px 16px'}}><span className="badge badge-gold">{log.action}</span></td><td style={{padding:'10px 16px',fontSize:'0.875rem',color:'var(--text-muted)'}}>{log.entityType}</td><td style={{padding:'10px 16px',fontSize:'0.8125rem',color:'var(--text-muted)'}}>{new Date(log.createdAt).toLocaleString('fa-IR')}</td></tr>))}</tbody>
+              </table>
+            </div>
+            {auditLogs && auditLogs.total > 15 && <div style={{display:'flex',justifyContent:'space-between',padding:'12px 16px',borderTop:'1px solid var(--border-subtle)',fontSize:'0.8125rem',color:'var(--text-muted)'}}><span>صفحه {auditPage} از {Math.ceil(auditLogs.total/15)}</span><div style={{display:'flex',gap:6}}><button onClick={()=>loadAuditLogs(auditPage-1)} disabled={auditPage<=1} style={btnSmall}>قبلی</button><button onClick={()=>loadAuditLogs(auditPage+1)} disabled={auditPage*15>=auditLogs.total} style={btnSmall}>بعدی</button></div></div>}
+          </div>
         )}
       </div>
     </div>
   );
 }
+
+const inputStyles: React.CSSProperties = {width:'100%',padding:'10px 14px',background:'rgba(255,255,255,0.04)',border:'1.5px solid var(--border-subtle)',borderRadius:8,color:'var(--text-primary)',fontFamily:'Vazirmatn',fontSize:'0.9375rem',outline:'none'};
+const btnSmall: React.CSSProperties = {padding:'6px 12px',background:'var(--surface-card)',border:'1px solid var(--border-subtle)',borderRadius:6,color:'var(--text-secondary)',cursor:'pointer',fontFamily:'Vazirmatn',fontSize:'0.8125rem'};
