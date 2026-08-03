@@ -1,10 +1,6 @@
 import { Module } from '@nestjs/common';
-import { ConsultationController } from './consultation.controller';
 import { ConsultationService } from './consultation.service';
+import { ConsultationController } from './consultation.controller';
 
-@Module({
-  controllers: [ConsultationController],
-  providers: [ConsultationService],
-  exports: [ConsultationService],
-})
+@Module({ controllers: [ConsultationController], providers: [ConsultationService], exports: [ConsultationService] })
 export class ConsultationModule {}
