@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { FiArrowLeft, FiCalendar, FiClock, FiDollarSign, FiUser, FiPhone, FiCheckCircle, FiAlertCircle, FiLoader } from 'react-icons/fi';
+import { FiArrowLeft, FiCalendar, FiClock, FiDollarSign, FiUser, FiPhone, FiCheckCircle, FiAlertCircle, FiLoader, FiLock } from 'react-icons/fi';
 import { consultationApi } from '@/lib/api';
 import { ConsultationService, ConsultationSlot } from '@/types';
 

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { FiArrowLeft, FiCalculator, FiFileText, FiUsers, FiTrendingUp, FiShield, FiDollarSign } from 'react-icons/fi';
+import { FiArrowLeft, FiFile, FiFileText, FiUsers, FiTrendingUp, FiShield, FiDollarSign } from 'react-icons/fi';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import CTASection from '@/components/CTASection';
@@ -11,7 +11,7 @@ const services = [
     id: 'tax-consultation',
     title: 'Tax Consultation',
     description: 'Expert advice on tax planning, compliance, and optimization strategies tailored to your specific situation.',
-    icon: <FiCalculator className="w-8 h-8" />,
+    icon: <FiFile className="w-8 h-8" />,
     features: [
       'Personalized tax planning',
       'Tax compliance assistance',
@@ -159,7 +159,7 @@ export default function ServicesPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="card text-center">
               <div className="w-16 h-16 rounded-full bg-gold-500 bg-opacity-20 flex items-center justify-center mx-auto mb-4">
-                <FiCalculator className="w-8 h-8 text-gold-400" />
+                <FiFile className="w-8 h-8 text-gold-400" />
               </div>
               <h3 className="text-xl font-semibold mb-2">Tax Services</h3>
               <p className="text-gray-400 mb-4">

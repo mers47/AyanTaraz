@@ -25,4 +25,12 @@ export class AnswerQuestionDto {
   @IsString()
   @IsNotEmpty()
   optionValue: string;
+
+  @ApiProperty({
+    description: 'Selected option ID',
+    example: 'uuid',
+  })
+  @IsString()
+  @IsNotEmpty()
+  optionId: string;
 }

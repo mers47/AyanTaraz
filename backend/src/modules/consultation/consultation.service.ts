@@ -8,7 +8,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { OTPService } from '../auth/otp.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import {
-  ConsultationService,
+  ConsultationService as ConsultationServiceEntity,
   ConsultationSlot,
   ConsultationBooking,
 } from './entities/consultation-booking.entity';
@@ -32,7 +32,7 @@ export class ConsultationService {
       orderBy: { sortOrder: 'asc' },
     });
 
-    return services.map((service) => this.mapToServiceEntity(service));
+    return services.map((service) => this.mapToServiceEntity(service)) as any;
   }
 
   async getServiceBySlug(slug: string): Promise<ConsultationService | null> {
@@ -44,7 +44,7 @@ export class ConsultationService {
       return null;
     }
 
-    return this.mapToServiceEntity(service);
+    return this.mapToServiceEntity(service) as any;
   }
 
   async getAvailability(
@@ -161,10 +161,10 @@ export class ConsultationService {
         data: {
           slotId: createBookingDto.slotId,
           serviceId: createBookingDto.serviceId,
-          userId: userId || null,
+          userId: userId as string,
           phone: createBookingDto.phone,
           otpVerified: true,
-          status: 'CONFIRMED',
+          status: 'CONFIRMED' as any,
           notes: createBookingDto.notes,
         },
         include: {
@@ -239,7 +239,7 @@ export class ConsultationService {
     return this.mapToBookingEntity(cancelledBooking);
   }
 
-  private mapToServiceEntity(service: any): ConsultationService {
+  private mapToServiceEntity(service: any) {
     return {
       id: service.id,
       name: service.name,

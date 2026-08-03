@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { FiArrowRight, FiCheckCircle, FiUsers, FiFileText, FiCalculator, FiCalendar, FiPhone } from 'react-icons/fi';
+import { FiArrowRight, FiCheckCircle, FiUsers, FiFileText, FiFile, FiCalendar, FiPhone } from 'react-icons/fi';
 
 // Components
 import Navbar from '@/components/Navbar';
@@ -28,7 +28,7 @@ const features = [
     description: 'Stay compliant with all tax regulations and filing requirements.',
   },
   {
-    icon: <FiCalculator className="w-8 h-8" />,
+    icon: <FiFile className="w-8 h-8" />,
     title: 'Tax Optimization',
     description: 'Maximize deductions and minimize liabilities with strategic planning.',
   },
@@ -122,7 +122,7 @@ export default function HomePage() {
             <div className="card card-hover group">
               <div className="flex items-center mb-4">
                 <div className="w-12 h-12 rounded-lg bg-gold-500 bg-opacity-20 flex items-center justify-center group-hover:bg-gold-500 transition-colors duration-300">
-                  <FiCalculator className="w-6 h-6 text-gold-500 group-hover:text-black transition-colors duration-300" />
+                  <FiFile className="w-6 h-6 text-gold-500 group-hover:text-black transition-colors duration-300" />
                 </div>
                 <h3 className="text-xl font-semibold ml-4">Tax Consultation</h3>
               </div>

@@ -37,7 +37,6 @@ export class AuthController {
   async sendOTP(
     @Body() sendOTPDto: SendOTPDto,
     @Ip() ipAddress: string,
-    @Header('user-agent') userAgent: string,
   ) {
     return this.authService.sendOTP(sendOTPDto.phone, sendOTPDto.type);
   }
@@ -68,13 +67,11 @@ export class AuthController {
   async login(
     @Body() loginDto: LoginDto,
     @Ip() ipAddress: string,
-    @Header('user-agent') userAgent: string,
   ) {
     return this.authService.verifyOTPAndLogin(
       loginDto.phone,
       loginDto.code,
       ipAddress,
-      userAgent,
     );
   }
 
@@ -87,10 +84,8 @@ export class AuthController {
   async logout(
     @Request() req: { user: { id: string } },
     @Body() logoutDto: LogoutDto,
-    @Header('authorization') authorization: string,
   ) {
-    const token = authorization?.replace('Bearer ', '');
-    return this.authService.logout(req.user.id, token, logoutDto.allSessions);
+    return this.authService.logout(req.user.id, undefined, logoutDto.allSessions);
   }
 
   @Post('refresh')

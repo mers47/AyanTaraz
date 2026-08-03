@@ -62,7 +62,6 @@ export class AuthService {
     phone: string,
     code: string,
     ipAddress?: string,
-    userAgent?: string,
   ): Promise<SessionToken & { user: Omit<User, 'password'> }> {
     // Verify OTP
     const { otpId } = await this.otpService.verifyOTP(phone, code, 'PHONE_VERIFICATION', ipAddress);
@@ -87,7 +86,7 @@ export class AuthService {
     }
 
     // Create session
-    const { accessToken, expiresIn } = await this.createSession(user, ipAddress, userAgent);
+    const { accessToken, expiresIn } = await this.createSession(user, ipAddress);
 
     return {
       accessToken,
@@ -110,7 +109,6 @@ export class AuthService {
   async createSession(
     user: { id: string; phone: string; role: string },
     ipAddress?: string,
-    userAgent?: string,
   ): Promise<{ accessToken: string; expiresIn: number }> {
     const payload: JwtPayload = {
       sub: user.id,
@@ -132,7 +130,6 @@ export class AuthService {
         token: accessToken,
         expiresAt,
         ipAddress,
-        userAgent,
       },
     });
 
@@ -141,7 +138,7 @@ export class AuthService {
     await this.redis.setex(
       sessionKey,
       expiresIn,
-      JSON.stringify({ userId: user.id, sessionId, ipAddress, userAgent }),
+      JSON.stringify({ userId: user.id, sessionId, ipAddress }),
     );
 
     return { accessToken, expiresIn };
@@ -194,10 +191,10 @@ export class AuthService {
     });
   }
 
-  async logout(userId: string, token: string, allSessions: boolean = false): Promise<{ message: string }> {
+  async logout(userId: string, token?: string, allSessions: boolean = false): Promise<{ message: string }> {
     if (allSessions) {
       await this.invalidateAllSessions(userId);
-    } else {
+    } else if (token) {
       await this.invalidateSession(token);
     }
 
@@ -219,8 +216,6 @@ export class AuthService {
 
       const { accessToken, expiresIn } = await this.createSession(
         { id: user.id, phone: user.phone, role: user.role },
-        undefined,
-        undefined,
       );
 
       return { accessToken, expiresIn };

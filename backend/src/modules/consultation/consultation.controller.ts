@@ -7,7 +7,6 @@ import {
   UseGuards,
   Request,
   Query,
-  ParseISODatePipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { Public } from '../../common/decorators/public.decorator';
@@ -15,7 +14,6 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ConsultationService } from './consultation.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import {
-  ConsultationService as ConsultationServiceEntity,
   ConsultationSlot,
   ConsultationBooking,
 } from './entities/consultation-booking.entity';
@@ -32,7 +30,7 @@ export class ConsultationController {
   @ApiResponse({ status: 200, description: 'List of services' })
   async getServices(
     @Query('active') active: boolean = true,
-  ): Promise<ConsultationServiceEntity[]> {
+  ): Promise<any[]> {
     return this.consultationService.getServices(active);
   }
 
@@ -42,7 +40,7 @@ export class ConsultationController {
   @ApiResponse({ status: 404, description: 'Service not found' })
   async getServiceBySlug(
     @Param('slug') slug: string,
-  ): Promise<ConsultationServiceEntity> {
+  ): Promise<any> {
     const service = await this.consultationService.getServiceBySlug(slug);
     if (!service) {
       throw new Error('Service not found');
@@ -56,7 +54,7 @@ export class ConsultationController {
   @ApiResponse({ status: 200, description: 'List of available slots' })
   async getAvailability(
     @Param('serviceId') serviceId: string,
-    @Query('date', ParseISODatePipe) date: Date,
+    @Query('date') date: Date,
   ): Promise<ConsultationSlot[]> {
     return this.consultationService.getAvailability(serviceId, date);
   }

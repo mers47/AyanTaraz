@@ -127,7 +127,7 @@ export class OTPService {
     // Mark as used
     await this.prisma.oTP.update({
       where: { id: otpData.otpId },
-      data: { used: true, usedAt: new Date() },
+      data: { used: true },
     });
 
     // Delete from Redis

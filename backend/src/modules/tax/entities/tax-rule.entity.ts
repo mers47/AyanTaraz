@@ -1,4 +1,4 @@
-import { TaxRuleStatus } from '@prisma/client';
+import { TaxRuleStatus, TaxRuleVersionStatus } from '@prisma/client';
 
 export interface TaxRule {
   id: string;
@@ -6,7 +6,7 @@ export interface TaxRule {
   name: string;
   slug: string;
   description: string | null;
-  status: TaxRuleStatus;
+  status: TaxRuleStatus | string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -19,7 +19,7 @@ export interface TaxRuleVersion {
   sourceId: string;
   effectiveFrom: Date;
   effectiveTo: Date | null;
-  status: string;
+  status: TaxRuleVersionStatus | string;
   reviewNotes: string | null;
   reviewedById: string | null;
   reviewedAt: Date | null;

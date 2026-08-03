@@ -8,6 +8,7 @@ import {
   Request,
   Query,
   ParseIntPipe,
+  NotFoundException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -26,7 +27,9 @@ export class UsersController {
   @ApiOperation({ summary: 'Get current user profile' })
   @ApiResponse({ status: 200, description: 'User profile' })
   async getMe(@Request() req: { user: any }): Promise<User> {
-    return this.usersService.findById(req.user.id);
+    const user = await this.usersService.findById(req.user.id);
+    if (!user) throw new NotFoundException('User not found');
+    return user;
   }
 
   @Patch('me')

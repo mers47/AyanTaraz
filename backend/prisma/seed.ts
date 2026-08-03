@@ -89,6 +89,15 @@ async function main() {
     },
   });
 
+  const businessTag = await prisma.tag.upsert({
+    where: { slug: 'business' },
+    update: {},
+    create: {
+      name: 'Business',
+      slug: 'business',
+    },
+  });
+
   console.log('Created tags');
 
   // Create sample articles

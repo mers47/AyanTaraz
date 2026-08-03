@@ -1,6 +1,6 @@
 import { IsString, IsOptional, IsEnum, IsDateString, IsArray } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { TaxRuleStatus } from '@prisma/client';
+import { TaxRuleVersionStatus } from '@prisma/client';
 
 export class CreateTaxRuleDto {
   @ApiProperty({ description: 'Tax topic ID', example: 'uuid' })
@@ -37,8 +37,8 @@ export class CreateTaxRuleDto {
   @IsDateString()
   effectiveTo?: string;
 
-  @ApiProperty({ description: 'Rule status', enum: TaxRuleStatus, default: TaxRuleStatus.DRAFT })
+  @ApiProperty({ description: 'Rule status', enum: TaxRuleVersionStatus, default: TaxRuleVersionStatus.DRAFT })
   @IsOptional()
-  @IsEnum(TaxRuleStatus)
-  status?: TaxRuleStatus = TaxRuleStatus.DRAFT;
+  @IsEnum(TaxRuleVersionStatus)
+  status?: TaxRuleVersionStatus = TaxRuleVersionStatus.DRAFT;
 }

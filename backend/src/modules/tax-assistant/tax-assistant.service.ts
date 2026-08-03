@@ -170,7 +170,7 @@ export class TaxAssistantService {
       id: question.id,
       question: question.question,
       description: question.description,
-      options: question.options.map((option) => ({
+      options: question.options.map((option: any) => ({
         id: option.id,
         label: option.label,
         value: option.value,
@@ -201,6 +201,9 @@ export class TaxAssistantService {
       ruleIds: defaultResult.ruleIds as string[],
       action: defaultResult.action,
       severity: defaultResult.severity,
+      isActive: defaultResult.isActive,
+      createdAt: defaultResult.createdAt,
+      updatedAt: defaultResult.updatedAt,
     };
   }
 

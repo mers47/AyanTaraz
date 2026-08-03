@@ -3,7 +3,7 @@ import { TaxAssistantResult } from '@prisma/client';
 export interface AssistantSession {
   id: string;
   userId: string | null;
-  currentQuestionId: string;
+  currentQuestionId: string | null;
   answers: Record<string, string>;
   result: TaxAssistantResult | null;
   createdAt: Date;
@@ -28,5 +28,8 @@ export interface AssistantResult {
   description: string;
   ruleIds: string[];
   action: string | null;
-  severity: string;
+  severity: any;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }

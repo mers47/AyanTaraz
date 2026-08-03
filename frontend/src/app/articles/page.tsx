@@ -38,8 +38,8 @@ export default function ArticlesPage() {
         const articlesRes = await contentApi.getArticles(
           currentPage,
           articlesPerPage,
-          selectedCategory,
-          selectedTag,
+          selectedCategory || undefined,
+          selectedTag || undefined,
           'PUBLISHED'
         );
         setArticles(articlesRes.data.data);
@@ -62,8 +62,8 @@ export default function ArticlesPage() {
         const articlesRes = await contentApi.getArticles(
           1,
           articlesPerPage,
-          selectedCategory,
-          selectedTag,
+          selectedCategory || undefined,
+          selectedTag || undefined,
           'PUBLISHED'
         );
         setArticles(articlesRes.data.data);

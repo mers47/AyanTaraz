@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsSlug, IsEnum, IsArray } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsArray } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { ContentStatus } from '@prisma/client';
 
@@ -8,7 +8,7 @@ export class CreateArticleDto {
   title: string;
 
   @ApiProperty({ description: 'Article slug', example: 'tax-deductions-guide' })
-  @IsSlug()
+  @IsString()
   slug: string;
 
   @ApiProperty({ description: 'Article excerpt', example: 'A comprehensive guide...', required: false })

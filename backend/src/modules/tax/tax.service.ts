@@ -27,7 +27,7 @@ export class TaxService {
         name: createTaxRuleDto.name,
         slug: createTaxRuleDto.slug,
         description: createTaxRuleDto.description,
-        status: createTaxRuleDto.status,
+        status: createTaxRuleDto.status as any,
       },
     });
 
@@ -42,7 +42,7 @@ export class TaxService {
         effectiveTo: createTaxRuleDto.effectiveTo
           ? new Date(createTaxRuleDto.effectiveTo)
           : null,
-        status: createTaxRuleDto.status,
+        status: createTaxRuleDto.status as any,
         publishedById: createdById,
         publishedAt: new Date(),
       },

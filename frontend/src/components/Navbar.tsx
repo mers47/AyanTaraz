@@ -3,13 +3,13 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { FiMenu, FiX, FiPhone, FiUser, FiHome, FiFileText, FiCalculator, FiCalendar, FiInfo, FiMail } from 'react-icons/fi';
+import { FiMenu, FiX, FiPhone, FiUser, FiHome, FiFileText, FiFile, FiCalendar, FiInfo, FiMail } from 'react-icons/fi';
 
 const navLinks = [
   { href: '/', label: 'Home', icon: <FiHome className="w-5 h-5" /> },
   { href: '/services', label: 'Services', icon: <FiFileText className="w-5 h-5" /> },
   { href: '/articles', label: 'Articles', icon: <FiFileText className="w-5 h-5" /> },
-  { href: '/tax-assistant', label: 'Tax Assistant', icon: <FiCalculator className="w-5 h-5" /> },
+  { href: '/tax-assistant', label: 'Tax Assistant', icon: <FiFile className="w-5 h-5" /> },
   { href: '/consultation', label: 'Consultation', icon: <FiCalendar className="w-5 h-5" /> },
   { href: '/about', label: 'About', icon: <FiInfo className="w-5 h-5" /> },
   { href: '/contact', label: 'Contact', icon: <FiMail className="w-5 h-5" /> },

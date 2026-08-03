@@ -14,11 +14,13 @@ import Redis from 'ioredis';
         const redisPort = configService.get<number>('REDIS_PORT', 6379);
         const redisPassword = configService.get<string>('REDIS_PASSWORD');
 
+        if (redisUrl) {
+          return new Redis(redisUrl);
+        }
         return new Redis({
           host: redisHost,
           port: redisPort,
           password: redisPassword,
-          url: redisUrl,
           enableOfflineQueue: false,
           retryStrategy: (times) => {
             return Math.min(times * 100, 5000);
