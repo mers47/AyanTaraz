@@ -1,47 +1,19 @@
 import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
 import { AdminService } from './admin.service';
 import { UserRole } from '@prisma/client';
 
-@ApiTags('پنل مدیریت')
 @Controller('admin')
-@ApiBearerAuth()
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(private readonly svc: AdminService) {}
 
-  @Get('dashboard')
-  @ApiOperation({ summary: 'آمار داشبورد' })
-  getDashboardStats() { return this.adminService.getDashboardStats(); }
-
-  @Get('recent-activity')
-  @ApiOperation({ summary: 'فعالیت‌های اخیر' })
-  getRecentActivity(@Query('limit') limit?: number) { return this.adminService.getRecentActivity(limit ? +limit : 10); }
-
-  @Get('users')
-  @ApiOperation({ summary: 'لیست کاربران' })
-  getUsers(@Query('page') page?: number, @Query('limit') limit?: number, @Query('search') search?: string) {
-    return this.adminService.getUsers(page ? +page : 1, limit ? +limit : 20, search);
-  }
-
-  @Get('users/admin')
-  @ApiOperation({ summary: 'لیست ادمین‌ها' })
-  getAdminUsers() { return this.adminService.getAdminUsers(); }
-
-  @Post('users/admin')
-  @ApiOperation({ summary: 'ایجاد ادمین جدید (فقط سوپرادمین)' })
-  createAdminUser(@Body() body: { phone: string; firstName: string; lastName: string; role?: UserRole }) {
-    return this.adminService.createAdminUser(body.phone, body.firstName, body.lastName, body.role);
-  }
-
-  @Patch('users/admin/:id')
-  @ApiOperation({ summary: 'ویرایش ادمین (فقط سوپرادمین)' })
-  updateAdminUser(@Param('id') id: string, @Body() body: { firstName?: string; lastName?: string; role?: UserRole; isActive?: boolean }) {
-    return this.adminService.updateAdminUser(id, body);
-  }
-
-  @Get('audit-logs')
-  @ApiOperation({ summary: 'گزارش‌های حسابرسی' })
-  getAuditLogs(@Query('page') page?: number, @Query('limit') limit?: number, @Query('action') action?: string, @Query('userId') userId?: string, @Query('entityType') entityType?: string) {
-    return this.adminService.getAuditLogs(page ? +page : 1, limit ? +limit : 20, action, userId, entityType);
-  }
+  @Get('dashboard') async dash() { return this.svc.getDashboardStats(); }
+  @Get('recent-activity') async rec(@Query('limit') l?: number) { return this.svc.getRecentActivity(l ? +l : 10); }
+  @Get('users') async users(@Query('page') p?: number, @Query('limit') l?: number, @Query('search') s?: string) { return this.svc.getUsers(p ? +p : 1, l ? +l : 20, s); }
+  @Get('users/admin') async admins() { return this.svc.getAdminUsers(); }
+  @Post('users/admin') async ca(@Body() b: { phone: string; firstName: string; lastName: string; role?: UserRole }) { return this.svc.createAdminUser(b.phone, b.firstName, b.lastName, b.role); }
+  @Patch('users/admin/:id') async ua(@Param('id') id: string, @Body() b: { firstName?: string; lastName?: string; role?: UserRole; isActive?: boolean }) { return this.svc.updateAdminUser(id, b); }
+  @Get('audit-logs') async al(@Query('page') p?: number, @Query('limit') l?: number, @Query('action') a?: string, @Query('userId') u?: string, @Query('entityType') e?: string) { return this.svc.getAuditLogs(p ? +p : 1, l ? +l : 20, a, u, e); }
 }
