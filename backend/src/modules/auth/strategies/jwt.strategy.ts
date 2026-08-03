@@ -1,43 +1,25 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
-import { AuthService } from '../auth.service';
-import { JwtPayload } from '../auth.service';
+
+export interface JwtPayload { sub: string; phone: string; role: string; iat?: number; exp?: number; }
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(
-    private readonly configService: ConfigService,
-    private readonly authService: AuthService,
-  ) {
+  constructor(private readonly configService: ConfigService) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      ignoreExpiration: false,
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        (req) => req?.cookies?.access_token || ExtractJwt.fromAuthHeaderAsBearerToken()(req),
+      ]),
+      ignoreExpiration: true,
       secretOrKey: configService.get<string>('JWT_SECRET'),
-      passReqToCallback: false,
     });
   }
 
   async validate(payload: JwtPayload) {
-    // Validate the session
-    const session = await this.authService.validateSession(
-      this.configService.get<string>('JWT_SECRET') +
-        '.' +
-        payload.sub +
-        '.' +
-        payload.role,
-    );
-
-    if (!session) {
-      return null;
-    }
-
-    // Return user information
-    return {
-      id: payload.sub,
-      phone: payload.phone,
-      role: payload.role,
-    };
+    if (!payload.sub || !payload.phone) return null;
+    if (payload.exp && payload.exp * 1000 < Date.now()) return null;
+    return { id: payload.sub, phone: payload.phone, role: payload.role };
   }
 }

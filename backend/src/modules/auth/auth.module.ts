@@ -7,21 +7,17 @@ import { OTPService } from './otp.service';
 import { SmsService } from './sms.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { RolesGuard } from './guards/roles.guard';
 
 @Module({
   imports: [
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: async (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET'),
-        signOptions: { expiresIn: configService.get<string>('JWT_EXPIRES_IN', '1d') },
-      }),
+      useFactory: (c: ConfigService) => ({ secret: c.get<string>('JWT_SECRET'), signOptions: { expiresIn: c.get<string>('JWT_EXPIRES_IN', '1d') } }),
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, OTPService, SmsService, JwtStrategy, JwtAuthGuard, RolesGuard],
-  exports: [AuthService, OTPService, SmsService, JwtAuthGuard, RolesGuard],
+  providers: [AuthService, OTPService, SmsService, JwtStrategy, JwtAuthGuard],
+  exports: [AuthService, JwtAuthGuard],
 })
 export class AuthModule {}
