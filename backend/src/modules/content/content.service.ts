@@ -1,197 +1,43 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CreateArticleDto } from './dto/create-article.dto';
-import { Article } from './entities/article.entity';
+
+export const LAWS = {
+  salary: {title:'مالیات حقوق ۱۴۰۵',hero:'راهکارهای هوشمند مالیاتی ۱۴۰۵',subtitle:'بخشنامه ۲۰۰/۱۰۰۵/ص — سقف معافیت ۴۰ میلیون تومان',description:'مالیات حقوق ۱۴۰۵: سقف معافیت ۴۰M ماهانه\nنرخ‌ها: ۱۰٪(۴۰-۸۰M), ۱۵٪(۸۰-۱۰۰M), ۲۰٪(۱۰۰-۱۲۰M), ۲۵٪(۱۲۰-۱۴۰M), ۳۰٪(+۱۴۰M)\nعیدی معاف: ۴۰M'},
+  business: {title:'مالیات مشاغل ۱۴۰۵',hero:'کسب‌وکار هوشمند',subtitle:'معافیت ۲۰۰M (POS:۴۳۲M) — نرخ ۱۵-۲۵٪',description:'معافیت:۲۰۰M\nنرخ‌ها:۱۵٪(تا۵۰۰M),۲۰٪(۵۰۰M-۱B),۲۵٪(+۱B)\nمهلت:۳۱ خرداد'},
+  corporate: {title:'اشخاص حقوقی ۱۴۰۵',hero:'نرخ ۲۵٪ + ماده ۱۳۲',subtitle:'سقف معافیت ۶۰۰B — ۴ ماه پس از سال مالی',description:'نرخ:۲۵٪\nماده۱۳۲:۸۰٪ معاف تولید\nمهلت:۴ماه پس از سال مالی'},
+  vat: {title:'VAT ۱۴۰۵ — ۱۲٪',hero:'نرخ جدید ۱۲٪',subtitle:'افزایش از ۱۰٪',description:'نرخ:۱۲٪\nکالاهای معاف:کشاورزی،دارو،کتاب\nجرایم:۷۵٪+۵۰٪'},
+  penalties: {title:'جرایم ۱۴۰۵',hero:'از جرایم جلوگیری کنید',subtitle:'۳۰٪+۲.۵٪ماهانه — بخشودگی ۱۰۰٪',description:'عدم اظهارنامه:۳۰٪|تأخیر:۲.۵٪ماهانه|بخشودگی:تا۱۰۰٪'},
+  exemptions: {title:'معافیت‌های ۱۴۰۵',hero:'از معافیت‌ها بهره ببرید',subtitle:'حقوق۴۰M|مشاغل۲۰۰M|دانش‌بنیان۱۵سال',description:'سقف‌ها:حقوق۴۰M,مشاغل۲۰۰M,حقیقی۶۰B,حقوقی۶۰۰B'},
+  obligations: {title:'تکالیف ۱۴۰۵',hero:'تکالیف خود را بشناسید',subtitle:'مهلت‌ها و الزامات',description:'ثبت‌نام مودیان|تفکیک حساب|POS|اظهارنامه|نگهداری اسناد ۵سال'},
+  consultation: {title:'مشاوره آیان تراز',hero:'برای مشاوره آماده‌اید؟',subtitle:'گفتگو با دستیار هوشمند',description:'مشاوره۳۰دقیقه رایگان|تخصصی۶۰دقیقه|تنظیم اظهارنامه|اعتراض'},
+};
 
 @Injectable()
 export class ContentService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createArticle(
-    createArticleDto: CreateArticleDto,
-    authorId: string,
-  ): Promise<Article> {
-    // Check if slug already exists
-    const existingArticle = await this.prisma.article.findUnique({
-      where: { slug: createArticleDto.slug },
-    });
-
-    if (existingArticle) {
-      throw new ConflictException('Article with this slug already exists');
-    }
-
-    // Create article with related tags
-    const article = await this.prisma.article.create({
-      data: {
-        title: createArticleDto.title,
-        slug: createArticleDto.slug,
-        excerpt: createArticleDto.excerpt,
-        content: createArticleDto.content,
-        status: createArticleDto.status,
-        featuredImage: createArticleDto.featuredImage,
-        metaTitle: createArticleDto.metaTitle,
-        metaDescription: createArticleDto.metaDescription,
-        categoryId: createArticleDto.categoryId,
-        authorId,
-        publishedAt: createArticleDto.status === 'PUBLISHED' ? new Date() : null,
-        tags: createArticleDto.tagIds
-          ? { connect: createArticleDto.tagIds.map((id) => ({ id })) }
-          : undefined,
-      },
-      include: {
-        category: true,
-        tags: true,
-        author: true,
-      },
-    });
-
-    // Handle related articles
-    if (createArticleDto.relatedArticleIds && createArticleDto.relatedArticleIds.length > 0) {
-      await this.prisma.articleRelation.createMany({
-        data: createArticleDto.relatedArticleIds.map((relatedId, index) => ({
-          fromArticleId: article.id,
-          toArticleId: relatedId,
-          sortOrder: index,
-        })),
-      });
-    }
-
-    return this.mapToArticleEntity(article);
+  async getAll() {
+    const rows = await this.prisma.adminSetting.findMany({ where: { key: { startsWith: 'content_' } } });
+    const r: any = {};
+    for (const row of rows) { try { r[row.key] = JSON.parse(row.value); } catch { r[row.key] = row.value; } }
+    return r;
   }
 
-  async findArticleBySlug(slug: string): Promise<Article | null> {
-    const article = await this.prisma.article.findUnique({
-      where: { slug },
-      include: {
-        category: true,
-        tags: true,
-        author: true,
-        relatedArticles: {
-          include: {
-            toArticle: true,
-          },
-        },
-      },
-    });
-
-    if (!article) {
-      return null;
-    }
-
-    return this.mapToArticleEntity(article);
+  async get(key: string) {
+    const row = await this.prisma.adminSetting.findUnique({ where: { key: `content_${key}` } });
+    return row ? (()=>{try{return JSON.parse(row.value)}catch{return row.value}})() : null;
   }
 
-  async findArticles(
-    page: number = 1,
-    limit: number = 10,
-    categorySlug?: string,
-    tagSlug?: string,
-    status?: string,
-  ): Promise<{ data: Article[]; total: number; page: number; limit: number }> {
-    const skip = (page - 1) * limit;
-
-    const where: any = {};
-    if (categorySlug) {
-      const category = await this.prisma.category.findUnique({
-        where: { slug: categorySlug },
-      });
-      if (category) {
-        where.categoryId = category.id;
-      }
-    }
-    if (tagSlug) {
-      const tag = await this.prisma.tag.findUnique({
-        where: { slug: tagSlug },
-      });
-      if (tag) {
-        where.tags = { some: { id: tag.id } };
-      }
-    }
-    if (status) {
-      where.status = status as any;
-    }
-
-    const [articles, total] = await Promise.all([
-      this.prisma.article.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { publishedAt: 'desc' },
-        include: {
-          category: true,
-          tags: true,
-          author: true,
-        },
-      }),
-      this.prisma.article.count({ where }),
-    ]);
-
-    return {
-      data: articles.map((article) => this.mapToArticleEntity(article)),
-      total,
-      page,
-      limit,
-    };
+  async save(key: string, data: any) {
+    const val = typeof data === 'string' ? data : JSON.stringify(data);
+    await this.prisma.adminSetting.upsert({ where: { key: `content_${key}` }, create: { key: `content_${key}`, value: val }, update: { value: val } });
+    return { ok: true };
   }
 
-  async findFeaturedArticles(limit: number = 5): Promise<Article[]> {
-    const articles = await this.prisma.article.findMany({
-      where: {
-        status: 'PUBLISHED',
-        featuredImage: { not: null },
-      },
-      take: limit,
-      orderBy: { publishedAt: 'desc' },
-      include: {
-        category: true,
-        tags: true,
-        author: true,
-      },
-    });
-
-    return articles.map((article) => this.mapToArticleEntity(article));
-  }
-
-  async findRelatedArticles(
-    articleId: string,
-    limit: number = 3,
-  ): Promise<Article[]> {
-    const relations = await this.prisma.articleRelation.findMany({
-      where: {
-        fromArticleId: articleId,
-      },
-      include: {
-        toArticle: {
-          include: {
-            category: true,
-            tags: true,
-            author: true,
-          },
-        },
-      },
-      take: limit,
-    });
-
-    return relations.map((relation) => this.mapToArticleEntity(relation.toArticle));
-  }
-
-  private mapToArticleEntity(article: any): Article {
-    return {
-      id: article.id,
-      title: article.title,
-      slug: article.slug,
-      excerpt: article.excerpt,
-      content: article.content,
-      status: article.status as any,
-      featuredImage: article.featuredImage,
-      publishedAt: article.publishedAt,
-      createdAt: article.createdAt,
-      updatedAt: article.updatedAt,
-      metaTitle: article.metaTitle,
-      metaDescription: article.metaDescription,
-      canonicalUrl: article.canonicalUrl,
-      categoryId: article.categoryId,
-      authorId: article.authorId,
-    };
+  async autoFill() {
+    for (const [k, v] of Object.entries(LAWS)) {
+      await this.prisma.adminSetting.upsert({ where: { key: `content_${k}` }, create: { key: `content_${k}`, value: JSON.stringify(v) }, update: { value: JSON.stringify(v) } });
+    }
+    return { ok: true, count: Object.keys(LAWS).length, message: '✅ ۸ بخش قوانین ۱۴۰۵ جای‌گذاری شد' };
   }
 }

@@ -5,4 +5,5 @@ api.interceptors.response.use(r=>r,async e=>{const o=e.config;if(e.response?.sta
 export const authApi={sendOTP:(p:string)=>api.post('/auth/send-otp',{phone:p}),login:(p:string,c:string)=>api.post('/auth/login',{phone:p,code:c}),refresh:()=>api.post('/auth/refresh'),logout:()=>api.post('/auth/logout')};
 export const taxAssistantApi={startSession:(q?:string)=>api.post('/tax-assistant/start',{questionId:q}),answerQuestion:(s:string,q:string,o:string,v:string)=>api.post('/tax-assistant/answer',{sessionId:s,questionId:q,optionId:o,optionValue:v})};
 export const adminApi={getDashboardStats:()=>api.get('/admin/dashboard'),getRecentActivity:(l?:number)=>api.get('/admin/recent-activity',{params:{limit:l}}),getUsers:(p?:number,l?:number,s?:string)=>api.get('/admin/users',{params:{page:p,limit:l,search:s}}),getAuditLogs:(pr?:any)=>api.get('/admin/audit-logs',{params:pr})};
+export const contentApi={getAll:()=>api.get('/content'),get:(k:string)=>api.get(`/content/${k}`),save:(k:string,d:any)=>api.put(`/content/${k}`,d),autoFill:()=>api.post('/content/autofill')};
 export default api;
