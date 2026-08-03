@@ -1,86 +1,76 @@
 import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
+const P = new PrismaClient();
 
 async function main() {
-  console.log('🌱 بارگذاری کامل داده‌های ۱۴۰۴-۱۴۰۵...\n');
-
-  const [cat1,cat2,cat3,cat4] = await Promise.all([
-    prisma.category.create({data:{name:'مالیات مستقیم',slug:'direct-tax',sortOrder:1}}),
-    prisma.category.create({data:{name:'مالیات بر ارزش افزوده',slug:'vat',sortOrder:2}}),
-    prisma.category.create({data:{name:'مشاوره مالیاتی',slug:'tax-consultation',sortOrder:3}}),
-    prisma.category.create({data:{name:'قوانین ۱۴۰۴',slug:'regs-1404',sortOrder:4}}),
+  console.log('🌱 بارگذاری ۱۴۰۵\n');
+  const [c1] = await Promise.all([
+    P.category.create({data:{name:'مالیات مستقیم',slug:'direct-tax',sortOrder:1}}),
+    P.category.create({data:{name:'ارزش افزوده',slug:'vat',sortOrder:2}}),
+    P.category.create({data:{name:'مشاوره',slug:'consult',sortOrder:3}}),
+    P.category.create({data:{name:'قوانین ۱۴۰۵',slug:'regs-1405',sortOrder:4}}),
   ]);
-  console.log('✅ ۴ دسته‌بندی');
 
-  const [src1,src2] = await Promise.all([
-    prisma.taxSource.create({data:{name:'قانون مالیات‌های مستقیم ۱۴۰۴',officialName:'سازمان امور مالیاتی',url:'https://intamedia.ir',description:'اصلاحیه ۱۴۰۴'}}),
-    prisma.taxSource.create({data:{name:'قانون ارزش افزوده ۱۴۰۴',officialName:'سازمان امور مالیاتی',url:'https://evat.ir',description:'نرخ ۱۰٪'}}),
+  const [s1] = await Promise.all([
+    P.taxSource.create({data:{name:'قانون مالیات‌های مستقیم',officialName:'سازمان امور مالیاتی',url:'https://intamedia.ir'}}),
+    P.taxSource.create({data:{name:'قانون VAT',officialName:'سازمان امور مالیاتی',url:'https://evat.ir',description:'۱۲٪ ۱۴۰۵'}}),
   ]);
-  console.log('✅ ۲ منبع قانونی');
 
-  const tops = await Promise.all([
-    prisma.taxTopic.create({data:{name:'مالیات اشخاص حقیقی',slug:'personal-tax',description:'نرخ‌ها و معافیت‌ها',sortOrder:1}}),
-    prisma.taxTopic.create({data:{name:'مالیات اشخاص حقوقی',slug:'corporate-tax',description:'نرخ ۲۵٪',sortOrder:2}}),
-    prisma.taxTopic.create({data:{name:'ارزش افزوده',slug:'vat-rules',description:'۱۰٪',sortOrder:3}}),
-    prisma.taxTopic.create({data:{name:'معافیت‌های ۱۴۰۴',slug:'exemptions-1404',description:'سقف‌های جدید',sortOrder:4}}),
-    prisma.taxTopic.create({data:{name:'تکالیف و جرایم',slug:'obligations',description:'مهلت‌ها و جرایم',sortOrder:5}}),
-    prisma.taxTopic.create({data:{name:'سامانه مودیان',slug:'taxpayer-sys',description:'ثبت‌نام و صورتحساب',sortOrder:6}}),
-    prisma.taxTopic.create({data:{name:'مالیات حقوق ۱۴۰۴',slug:'salary-tax',description:'۲۴ میلیون ماهانه',sortOrder:7}}),
+  const t = await Promise.all([
+    P.taxTopic.create({data:{name:'اشخاص حقیقی',slug:'personal',sortOrder:1}}),
+    P.taxTopic.create({data:{name:'اشخاص حقوقی',slug:'corp',sortOrder:2}}),
+    P.taxTopic.create({data:{name:'ارزش افزوده ۱۴۰۵',slug:'vat-1405',sortOrder:3}}),
+    P.taxTopic.create({data:{name:'معافیت‌ها',slug:'exempt',sortOrder:4}}),
+    P.taxTopic.create({data:{name:'مالیات حقوق ۱۴۰۵',slug:'salary-1405',description:'۴۰M',sortOrder:5}}),
+    P.taxTopic.create({data:{name:'مالیات مشاغل ۱۴۰۵',slug:'biz-1405',sortOrder:6}}),
+    P.taxTopic.create({data:{name:'تکالیف/جرایم',slug:'duties',sortOrder:7}}),
   ]);
-  console.log('✅ ۷ موضوع مالیاتی');
 
-  const rl = [{tid:tops[0].id,n:'معافیت پایه اشخاص حقیقی',s:'personal-exemption',d:'۲۸۸ میلیون سالانه'},{tid:tops[0].id,n:'نرخ پلکانی مشاغل',s:'graduated-rates',d:'۱۵٪ تا ۲۵٪'},{tid:tops[1].id,n:'نرخ مالیات اشخاص حقوقی',s:'corp-rate',d:'۲۵٪'},{tid:tops[2].id,n:'نرخ ارزش افزوده',s:'vat-rate',d:'۱۰٪'},{tid:tops[3].id,n:'معافیت حقوق',s:'salary-exempt',d:'۲۴ میلیون ماهانه'},{tid:tops[3].id,n:'معافیت مشاغل',s:'biz-exempt',d:'۲۰۰ میلیون + POS'},{tid:tops[4].id,n:'جریمه عدم اظهارنامه',s:'late-penalty',d:'۳۰٪'},{tid:tops[5].id,n:'ثبت‌نام مودیان',s:'taxpayer-reg',d:'الزامی'}];
-  for(const r of rl) await prisma.taxRule.create({data:{topicId:r.tid,name:r.n,slug:r.s,description:r.d,status:'PUBLISHED',versions:{create:{version:1,content:`قانون ۱۴۰۴: ${r.d}`,sourceId:src1.id,effectiveFrom:new Date('2025-03-21'),status:'PUBLISHED'}}}});
-  console.log('✅ ۸ قانون');
+  for(const r of [{tid:t[4].id,n:'معافیت حقوق ۱۴۰۵',s:'sal-exempt',d:'۴۰M ماهانه=۴۸۰M سالانه'},{tid:t[4].id,n:'نرخ حقوق ۱۴۰۵',s:'sal-rates',d:'۱۰-۳۰٪ پلکانی'},{tid:t[5].id,n:'معافیت مشاغل ۱۴۰۵',s:'biz-exempt',d:'۲۰۰M (POS:۴۳۲M)'},{tid:t[5].id,n:'نرخ مشاغل',s:'biz-rates',d:'۱۵-۲۵٪'},{tid:t[2].id,n:'VAT ۱۴۰۵',s:'vat-12',d:'۱۲٪'},{tid:t[1].id,n:'نرخ حقوقی',s:'corp-25',d:'۲۵٪'},{tid:t[6].id,n:'جریمه تأخیر',s:'penalty',d:'۳۰٪+۲.۵٪ماهانه'},{tid:t[6].id,n:'مهلت اظهارنامه',s:'deadline',d:'حقیقی:۳۱خرداد'}])
+    await P.taxRule.create({data:{topicId:r.tid,name:r.n,slug:r.s,description:r.d,status:'PUBLISHED',versions:{create:{version:1,content:r.d,sourceId:s1.id,effectiveFrom:new Date('2025-03-21'),status:'PUBLISHED'}}}});
 
-  const q1 = await prisma.taxQuestion.create({data:{question:'نوع فعالیت شما چیست؟',sortOrder:1,options:{create:[{label:'حقوق‌بگیر',value:'salary',sortOrder:1},{label:'کسب‌وکار شخصی',value:'biz',sortOrder:2},{label:'شرکت',value:'corp',sortOrder:3},{label:'حوزه ارزش افزوده',value:'vat',sortOrder:4}]}}});
-  const q2 = await prisma.taxQuestion.create({data:{question:'درآمد سالانه شما چقدر است؟',sortOrder:2,options:{create:[{label:'زیر سقف معافیت',value:'low',sortOrder:1},{label:'تا ۵۰۰ میلیون',value:'mid',sortOrder:2},{label:'۵۰۰ تا ۱ میلیارد',value:'high',sortOrder:3},{label:'بالای ۱ میلیارد',value:'top',sortOrder:4}]}}});
-  const q3 = await prisma.taxQuestion.create({data:{question:'آیا معافیت خاصی دارید؟',sortOrder:3,options:{create:[{label:'خیر',value:'none',sortOrder:1},{label:'مناطق آزاد',value:'freezone',sortOrder:2},{label:'دانش‌بنیان',value:'knowledge',sortOrder:3},{label:'ماده ۱۳۲',value:'art132',sortOrder:4}]}}});
-  const q4 = await prisma.taxQuestion.create({data:{question:'مشمول ارزش افزوده هستید؟',sortOrder:4,options:{create:[{label:'بله',value:'vat_yes',sortOrder:1},{label:'خیر',value:'vat_no',sortOrder:2},{label:'نمی‌دانم',value:'vat_idk',sortOrder:3}]}}});
-  const q5 = await prisma.taxQuestion.create({data:{question:'وضعیت اظهارنامه شما؟',sortOrder:5,options:{create:[{label:'ارسال شده',value:'ok',sortOrder:1},{label:'ارسال نشده',value:'no',sortOrder:2},{label:'با تأخیر',value:'late',sortOrder:3}]}}});
-  const q6 = await prisma.taxQuestion.create({data:{question:'چه کمکی نیاز دارید؟',sortOrder:6,options:{create:[{label:'محاسبه مالیات',value:'calc',sortOrder:1},{label:'اعتراض',value:'appeal',sortOrder:2},{label:'ثبت‌نام',value:'reg',sortOrder:3},{label:'مشاوره',value:'consult',sortOrder:4}]}}});
-  const q7 = await prisma.taxQuestion.create({data:{question:'آیا POS دارید؟',sortOrder:7,options:{create:[{label:'بله',value:'yes',sortOrder:1},{label:'خیر',value:'no',sortOrder:2}]}}});
-  const q8 = await prisma.taxQuestion.create({data:{question:'حساب تجاری تفکیک شده؟',sortOrder:8,options:{create:[{label:'بله',value:'yes',sortOrder:1},{label:'خیر',value:'no',sortOrder:2}]}}});
-  console.log('✅ ۸ سوال + ۳۲ گزینه');
+  const q1 = await P.taxQuestion.create({data:{question:'نوع فعالیت؟',sortOrder:1,options:{create:[{label:'حقوق‌بگیر',value:'s',sortOrder:1},{label:'کسب‌وکار',value:'b',sortOrder:2},{label:'شرکت',value:'c',sortOrder:3},{label:'VAT',value:'v',sortOrder:4}]}}});
+  const q2 = await P.taxQuestion.create({data:{question:'درآمد؟',sortOrder:2,options:{create:[{label:'کم',value:'lo',sortOrder:1},{label:'متوسط',value:'mid',sortOrder:2},{label:'زیاد',value:'hi',sortOrder:3},{label:'خیلی زیاد',value:'top',sortOrder:4}]}}});
+  const q3 = await P.taxQuestion.create({data:{question:'معافیت؟',sortOrder:3,options:{create:[{label:'خیر',value:'no',sortOrder:1},{label:'مناطق آزاد',value:'fz',sortOrder:2},{label:'دانش‌بنیان',value:'kb',sortOrder:3},{label:'ماده۱۳۲',value:'a132',sortOrder:4}]}}});
+  const q4 = await P.taxQuestion.create({data:{question:'VAT؟ ۱۲٪',sortOrder:4,options:{create:[{label:'بله',value:'y',sortOrder:1},{label:'خیر',value:'n',sortOrder:2},{label:'نمی‌دانم',value:'idk',sortOrder:3}]}}});
+  const q5 = await P.taxQuestion.create({data:{question:'اظهارنامه؟',sortOrder:5,options:{create:[{label:'ارسال شده',value:'ok',sortOrder:1},{label:'ارسال نشده',value:'no',sortOrder:2},{label:'با تأخیر',value:'late',sortOrder:3}]}}});
+  const q6 = await P.taxQuestion.create({data:{question:'کمک؟',sortOrder:6,options:{create:[{label:'محاسبه',value:'calc',sortOrder:1},{label:'اعتراض',value:'app',sortOrder:2},{label:'ثبت‌نام',value:'reg',sortOrder:3},{label:'مشاوره',value:'cons',sortOrder:4}]}}});
+  const q7 = await P.taxQuestion.create({data:{question:'POS؟',sortOrder:7,options:{create:[{label:'بله',value:'y',sortOrder:1},{label:'خیر',value:'n',sortOrder:2}]}}});
+  const q8 = await P.taxQuestion.create({data:{question:'حساب تفکیک؟',sortOrder:8,options:{create:[{label:'بله',value:'y',sortOrder:1},{label:'خیر',value:'n',sortOrder:2}]}}});
 
-  const go=async(qid:string,val:string)=>(await prisma.taxQuestionOption.findFirst({where:{questionId:qid,value:val}}))!.id;
-  const fl=[[q1.id,q2.id,await go(q1.id,'salary')],[q1.id,q2.id,await go(q1.id,'biz')],[q1.id,q2.id,await go(q1.id,'corp')],[q1.id,q4.id,await go(q1.id,'vat')],[q2.id,q3.id,await go(q2.id,'low')],[q2.id,q3.id,await go(q2.id,'mid')],[q2.id,q3.id,await go(q2.id,'high')],[q2.id,q3.id,await go(q2.id,'top')],[q3.id,q4.id,await go(q3.id,'none')],[q3.id,q4.id,await go(q3.id,'freezone')],[q3.id,q4.id,await go(q3.id,'knowledge')],[q3.id,q4.id,await go(q3.id,'art132')],[q4.id,q5.id,await go(q4.id,'vat_yes')],[q4.id,q5.id,await go(q4.id,'vat_no')],[q4.id,q5.id,await go(q4.id,'vat_idk')],[q5.id,q6.id,await go(q5.id,'ok')],[q5.id,q6.id,await go(q5.id,'no')],[q5.id,q6.id,await go(q5.id,'late')],[q6.id,q7.id,await go(q6.id,'calc')],[q6.id,q7.id,await go(q6.id,'appeal')],[q6.id,q7.id,await go(q6.id,'reg')],[q6.id,q7.id,await go(q6.id,'consult')],[q7.id,q8.id,await go(q7.id,'yes')],[q7.id,q8.id,await go(q7.id,'no')]];
-  await prisma.taxQuestionFlow.createMany({data:fl.map(([f,t,o]:any)=>({fromQuestionId:f,toQuestionId:t,optionId:o}))});
-  console.log(`✅ ${fl.length} مسیر درخت`);
-
-  await prisma.taxAssistantResult.createMany({data:[
-    {name:'under_exempt',title:'معاف از مالیات',description:'✅ درآمد زیر سقف معافیت\nحقوق: ۲۴ میلیون ماهانه\nمشاغل: ۲۰۰ میلیون سالانه\n⚠️ اظهارنامه الزامیست',ruleIds:[],action:'REGISTER_TAXPAYER',severity:'INFO'},
-    {name:'salary_guide',title:'مالیات حقوق ۱۴۰۴',description:'📊 معافیت: ۲۴M ماهانه\nنرخ: ۱۰٪-۳۰٪ پلکانی\n✅ کسر توسط کارفرما',ruleIds:[],action:null,severity:'INFO'},
-    {name:'biz_guide',title:'مالیات مشاغل ۱۴۰۴',description:'📊 معافیت: ۲۰۰M (با POS: ۴۳۲M)\nنرخ: ۱۵٪-۲۵٪\nاظهارنامه تا ۳۱ خرداد',ruleIds:[],action:'FILE_TAX_RETURN',severity:'INFO'},
-    {name:'corp_guide',title:'مالیات شرکت ۱۴۰۴',description:'📊 نرخ: ۲۵٪\nماده ۱۳۲: معافیت ۸۰٪\n۴ ماه پس از سال مالی',ruleIds:[],action:'CONSULT_ACCOUNTANT',severity:'WARNING'},
-    {name:'vat_guide',title:'ارزش افزوده ۱۴۰۴',description:'📊 نرخ: ۱۰٪\nمهلت: ۱۵ روز\n⚠️ جریمه: ۷۵٪\n📌 ۱۴۰۵ → ۱۲٪',ruleIds:[],action:'REGISTER_VAT',severity:'WARNING'},
-    {name:'late_warn',title:'⚠️ اظهارنامه ارسال نشده',description:'جریمه ۳۰٪\nاقدام فوری:\n۱. ارسال اظهارنامه\n۲. بخشودگی جرایم\n۳. مشاوره',ruleIds:[],action:'FILE_TAX_RETURN',severity:'CRITICAL'},
-    {name:'need_expert',title:'نیاز به مشاوره تخصصی',description:'وضعیت شما پیچیده است\nرزرو وقت با متخصصین آیان تراز',ruleIds:[],action:'BOOK_CONSULTATION',severity:'NEEDS_REVIEW'},
-    {name:'knowledge_guide',title:'دانش‌بنیان',description:'✅ معافیت ۱۵ ساله\n✅ نرخ صفر ارزش افزوده\nشرط: تأیید معاونت علمی',ruleIds:[],action:'CONSULT_ACCOUNTANT',severity:'INFO'},
+  const go=async(q:string,v:string)=>(await P.taxQuestionOption.findFirst({where:{questionId:q,value:v}}))!.id;
+  await P.taxQuestionFlow.createMany({data:[
+    {fromQuestionId:q1.id,toQuestionId:q2.id,optionId:await go(q1.id,'s')},{fromQuestionId:q1.id,toQuestionId:q2.id,optionId:await go(q1.id,'b')},
+    {fromQuestionId:q1.id,toQuestionId:q2.id,optionId:await go(q1.id,'c')},{fromQuestionId:q1.id,toQuestionId:q4.id,optionId:await go(q1.id,'v')},
+    {fromQuestionId:q2.id,toQuestionId:q3.id,optionId:await go(q2.id,'lo')},{fromQuestionId:q2.id,toQuestionId:q3.id,optionId:await go(q2.id,'mid')},
+    {fromQuestionId:q2.id,toQuestionId:q3.id,optionId:await go(q2.id,'hi')},{fromQuestionId:q2.id,toQuestionId:q3.id,optionId:await go(q2.id,'top')},
+    {fromQuestionId:q3.id,toQuestionId:q4.id,optionId:await go(q3.id,'no')},{fromQuestionId:q3.id,toQuestionId:q4.id,optionId:await go(q3.id,'fz')},
+    {fromQuestionId:q3.id,toQuestionId:q4.id,optionId:await go(q3.id,'kb')},{fromQuestionId:q3.id,toQuestionId:q4.id,optionId:await go(q3.id,'a132')},
+    {fromQuestionId:q4.id,toQuestionId:q5.id,optionId:await go(q4.id,'y')},{fromQuestionId:q4.id,toQuestionId:q5.id,optionId:await go(q4.id,'n')},
+    {fromQuestionId:q4.id,toQuestionId:q5.id,optionId:await go(q4.id,'idk')},{fromQuestionId:q5.id,toQuestionId:q6.id,optionId:await go(q5.id,'ok')},
+    {fromQuestionId:q5.id,toQuestionId:q6.id,optionId:await go(q5.id,'no')},{fromQuestionId:q5.id,toQuestionId:q6.id,optionId:await go(q5.id,'late')},
+    {fromQuestionId:q6.id,toQuestionId:q7.id,optionId:await go(q6.id,'calc')},{fromQuestionId:q6.id,toQuestionId:q7.id,optionId:await go(q6.id,'app')},
+    {fromQuestionId:q6.id,toQuestionId:q7.id,optionId:await go(q6.id,'reg')},{fromQuestionId:q6.id,toQuestionId:q7.id,optionId:await go(q6.id,'cons')},
+    {fromQuestionId:q7.id,toQuestionId:q8.id,optionId:await go(q7.id,'y')},{fromQuestionId:q7.id,toQuestionId:q8.id,optionId:await go(q7.id,'n')},
   ]});
-  console.log('✅ ۸ نتیجه');
 
-  const sv1 = await prisma.consultationService.create({data:{name:'مشاوره مالیاتی ۳۰ دقیقه',slug:'consult-30',description:'رایگان',duration:30,price:0,sortOrder:1}});
-  await prisma.consultationService.create({data:{name:'مشاوره تخصصی ۶۰ دقیقه',slug:'consult-60',description:'تحلیل عمیق',duration:60,price:1500000,sortOrder:2}});
-  for(let d=0;d<5;d++) await prisma.consultationAvailability.create({data:{serviceId:sv1.id,dayOfWeek:d,startTime:'09:00',endTime:'17:00'}});
-  console.log('✅ سرویس مشاوره');
-
-  await prisma.adminSetting.createMany({data:[
-    {key:'site_name',value:'آیان تراز'},{key:'vat_rate',value:'10'},{key:'corp_tax',value:'25'},
-    {key:'salary_exempt',value:'240000000'},{key:'biz_exempt',value:'20000000000'},
-    {key:'otp_attempts',value:'5'},{key:'otp_expiry',value:'300'},{key:'otp_ban',value:'600'},
-    {key:'session_ttl',value:'86400'},{key:'refresh_ttl',value:'2592000'},
+  await P.taxAssistantResult.createMany({data:[
+    {name:'exempt',title:'معاف ۱۴۰۵',description:'✅ حقوق:۴۰M\nمشاغل:۲۰۰M\n⚠️اظهارنامه الزامی',action:'REGISTER_TAXPAYER',severity:'INFO'},
+    {name:'sal',title:'مالیات حقوق ۱۴۰۵',description:'۴۰-۸۰M:۱۰٪|۸۰-۱۰۰M:۱۵٪|۱۰۰-۱۲۰M:۲۰٪|۱۲۰-۱۴۰M:۲۵٪|+۱۴۰M:۳۰٪',severity:'INFO'},
+    {name:'biz',title:'مالیات مشاغل ۱۴۰۵',description:'تا۵۰۰M:۱۵٪|۵۰۰M-۱B:۲۰٪|+۱B:۲۵٪\n📅۳۱خرداد',action:'FILE_TAX_RETURN',severity:'INFO'},
+    {name:'corp',title:'شرکت',description:'۲۵٪|ماده۱۳۲:۸۰٪|۴ماه',action:'CONSULT_ACCOUNTANT',severity:'WARNING'},
+    {name:'vat',title:'VAT ۱۴۰۵=۱۲٪',description:'نرخ:۱۲٪|مهلت:۱۵روز|جریمه:۷۵٪',action:'REGISTER_VAT',severity:'WARNING'},
+    {name:'late',title:'⚠️اظهارنامه',description:'جریمه:۳۰٪+۲.۵٪ماهانه',action:'FILE_TAX_RETURN',severity:'CRITICAL'},
+    {name:'expert',title:'نیاز به مشاوره',description:'رزرو وقت آیان تراز',action:'BOOK_CONSULTATION',severity:'NEEDS_REVIEW'},
+    {name:'kb',title:'دانش‌بنیان',description:'معاف۱۵سال|VATصفر',action:'CONSULT_ACCOUNTANT',severity:'INFO'},
   ]});
-  console.log('✅ ۱۰ تنظیمات');
 
-  await prisma.sEOConfig.createMany({data:[
-    {path:'/',title:'آیان تراز | خدمات حسابداری و مالیاتی ۱۴۰۴',description:'مشاوره مالیاتی، اظهارنامه، حسابرسی',indexable:true,followLinks:true},
-    {path:'/chatbot',title:'دستیار مالیاتی | آیان تراز',description:'پاسخ به سوالات مالیاتی بر اساس قوانین ۱۴۰۴',indexable:true},
-    {path:'/consultation',title:'رزرو مشاوره | آیان تراز',description:'رزرو وقت مشاوره با متخصصین',indexable:true},
-  ]});
-  console.log('✅ SEO');
+  const sv1 = await P.consultationService.create({data:{name:'مشاوره ۳۰دقیقه رایگان',slug:'c30',duration:30,price:0,sortOrder:1}});
+  await P.consultationService.create({data:{name:'مشاوره ۶۰دقیقه',slug:'c60',duration:60,price:1500000,sortOrder:2}});
+  for(let d=0;d<5;d++)await P.consultationAvailability.create({data:{serviceId:sv1.id,dayOfWeek:d,startTime:'09:00',endTime:'17:00'}});
 
-  console.log('\n🎉 کامل شد! ۴ دسته + ۷ موضوع + ۸ قانون + ۸ سوال + ۸ نتیجه + ۴ سرویس');
+  await P.adminSetting.createMany({data:[{key:'site','value':'آیان تراز'},{key:'vat_1405','value':'12'},{key:'corp_tax','value':'25'},{key:'salary_1405','value':'4800000000'},{key:'biz_exempt','value':'20000000000'}]});
+  await P.sEOConfig.createMany({data:[{path:'/',title:'آیان تراز ۱۴۰۵',description:'VAT ۱۲٪',indexable:true,followLinks:true}]});
+  console.log('✅ ۱۴۰۵ آماده');
 }
 
-main().catch(e=>{console.error(e);process.exit(1)}).finally(()=>prisma.$disconnect());
+main().catch(e=>{console.error(e);process.exit(1)}).finally(()=>P.$disconnect());
