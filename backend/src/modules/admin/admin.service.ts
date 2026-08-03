@@ -7,24 +7,24 @@ export class AdminService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getDashboardStats() {
-    const [totalUsers, totalArticles, totalTaxRules, totalBookings, pendingBookings, confirmedBookings, totalQuestions, totalResults] = await Promise.all([
-      this.prisma.user.count(), this.prisma.article.count(), this.prisma.taxRule.count(),
+    const [totalUsers, totalTaxRules, totalBookings, pendingBookings, confirmedBookings, totalQuestions, totalResults] = await Promise.all([
+      this.prisma.user.count(),
+      this.prisma.taxRule.count(),
       this.prisma.consultationBooking.count(),
       this.prisma.consultationBooking.count({ where: { status: 'PENDING' } }),
       this.prisma.consultationBooking.count({ where: { status: 'CONFIRMED' } }),
       this.prisma.taxQuestion.count({ where: { isActive: true } }),
       this.prisma.taxAssistantResult.count({ where: { isActive: true } }),
     ]);
-    return { totalUsers, totalArticles, totalTaxRules, totalBookings, pendingBookings, confirmedBookings, totalQuestions, totalResults };
+    return { totalUsers, totalTaxRules, totalBookings, pendingBookings, confirmedBookings, totalQuestions, totalResults };
   }
 
   async getRecentActivity(limit = 10) {
-    const [recentUsers, recentArticles, recentBookings] = await Promise.all([
+    const [recentUsers, recentBookings] = await Promise.all([
       this.prisma.user.findMany({ take: limit, orderBy: { createdAt: 'desc' }, select: { id: true, phone: true, firstName: true, lastName: true, role: true, createdAt: true } }),
-      this.prisma.article.findMany({ take: limit, orderBy: { createdAt: 'desc' }, select: { id: true, title: true, slug: true, status: true, createdAt: true } }),
       this.prisma.consultationBooking.findMany({ take: limit, orderBy: { createdAt: 'desc' }, include: { user: { select: { id: true, phone: true, firstName: true, lastName: true } }, service: { select: { id: true, name: true } } } }),
     ]);
-    return { recentUsers, recentArticles, recentBookings };
+    return { recentUsers, recentBookings };
   }
 
   async getAdminUsers() {

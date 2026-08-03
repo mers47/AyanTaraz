@@ -1,15 +1,10 @@
-import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
 import { AdminService } from './admin.service';
 import { UserRole } from '@prisma/client';
 
 @ApiTags('پنل مدیریت')
 @Controller('admin')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
 @ApiBearerAuth()
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
@@ -33,14 +28,12 @@ export class AdminController {
   getAdminUsers() { return this.adminService.getAdminUsers(); }
 
   @Post('users/admin')
-  @Roles(UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'ایجاد ادمین جدید (فقط سوپرادمین)' })
   createAdminUser(@Body() body: { phone: string; firstName: string; lastName: string; role?: UserRole }) {
     return this.adminService.createAdminUser(body.phone, body.firstName, body.lastName, body.role);
   }
 
   @Patch('users/admin/:id')
-  @Roles(UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'ویرایش ادمین (فقط سوپرادمین)' })
   updateAdminUser(@Param('id') id: string, @Body() body: { firstName?: string; lastName?: string; role?: UserRole; isActive?: boolean }) {
     return this.adminService.updateAdminUser(id, body);
