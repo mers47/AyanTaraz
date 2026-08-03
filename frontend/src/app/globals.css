@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
+@property --angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+
 :root {
   --brand-black: #0a0a0a;
   --brand-black-soft: #111111;
@@ -23,7 +25,6 @@
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 20px;
-  --radius-2xl: 24px;
   --ease-out-expo: cubic-bezier(0.16,1,0.3,1);
   --ease-spring: cubic-bezier(0.34,1.56,0.64,1);
   --duration-fast: 150ms;
@@ -62,7 +63,6 @@ html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;-webkit-font-smoothing
 body{font-family:'Vazirmatn','Inter',system-ui,-apple-system,sans-serif;background:var(--brand-black);color:var(--text-primary);line-height:1.7;overflow-x:hidden;min-height:100vh}
 ::selection{background:rgba(198,169,98,0.3);color:#fff}
 :focus-visible{outline:2px solid var(--brand-gold);outline-offset:2px;border-radius:4px}
-
 a{color:inherit;text-decoration:none}
 img,svg,video{display:block;max-width:100%}
 
@@ -80,13 +80,13 @@ img,svg,video{display:block;max-width:100%}
 @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
 @keyframes pulse-gold{0%,100%{box-shadow:0 0 0 0 var(--brand-gold-glow)}50%{box-shadow:0 0 0 12px transparent}}
 @keyframes slideDown{from{transform:translateY(-8px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes spin-border{to{--angle:360deg}}
+@keyframes wave-bar{0%,100%{height:12px}50%{height:28px}}
 
 .animate-in{animation:fadeInUp var(--duration-slow) var(--ease-out-expo) both}
 .stagger-1{animation-delay:80ms}
 .stagger-2{animation-delay:160ms}
 .stagger-3{animation-delay:240ms}
-.stagger-4{animation-delay:320ms}
-.stagger-5{animation-delay:400ms}
 
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-family:'Vazirmatn',sans-serif;font-weight:600;font-size:0.9375rem;padding:12px 28px;border-radius:var(--radius-md);border:none;cursor:pointer;transition:all var(--duration-normal) var(--ease-out-expo);position:relative;overflow:hidden;white-space:nowrap}
 .btn:active{transform:scale(0.97)}
@@ -105,6 +105,9 @@ img,svg,video{display:block;max-width:100%}
 
 .card{background:var(--surface-card);border:1px solid var(--border-subtle);border-radius:var(--radius-lg);padding:28px;transition:all var(--duration-normal) var(--ease-out-expo)}
 .card-hover:hover{border-color:rgba(198,169,98,0.3);box-shadow:0 8px 32px rgba(0,0,0,0.5),0 0 0 1px rgba(198,169,98,0.2);transform:translateY(-2px)}
+
+.service-card{border:1px solid transparent;background:linear-gradient(var(--surface-card),var(--surface-card)) padding-box,conic-gradient(from var(--angle),var(--brand-gold),transparent 35%,transparent 65%,var(--brand-gold-light)) border-box;animation:spin-border 8s linear infinite}
+.service-card:hover{animation:spin-border 3s linear infinite;border:1px solid var(--brand-gold)}
 
 .badge{display:inline-flex;align-items:center;padding:4px 12px;border-radius:100px;font-size:0.8125rem;font-weight:600;font-family:'Vazirmatn',sans-serif}
 .badge-gold{background:rgba(198,169,98,0.12);color:var(--brand-gold);border:1px solid rgba(198,169,98,0.2)}
@@ -136,3 +139,10 @@ img,svg,video{display:block;max-width:100%}
 @media(min-width:641px){.hide-mobile{display:block}}
 .hide-desktop{display:block}
 @media(min-width:641px){.hide-desktop{display:none}}
+
+.typing-wave{display:flex;align-items:flex-end;gap:3px;height:28px}
+.typing-wave .bar{width:4px;border-radius:2px;background:var(--brand-gold);animation:wave-bar 1.2s ease-in-out infinite}
+.typing-wave .bar:nth-child(1){animation-delay:0s}
+.typing-wave .bar:nth-child(2){animation-delay:0.15s}
+.typing-wave .bar:nth-child(3){animation-delay:0.3s}
+.typing-wave .bar:nth-child(4){animation-delay:0.45s}
