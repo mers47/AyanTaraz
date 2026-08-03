@@ -1,723 +1,241 @@
-import { PrismaClient, UserRole, ContentStatus, TaxRuleStatus, TaxRuleVersionStatus, TaxResultSeverity } from '@prisma/client';
-import * as bcrypt from 'bcrypt';
+import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('Seeding database...');
+  console.log('🌱 شروع بارگذاری داده‌های اولیه...');
 
-  // Create admin user
-  const adminUser = await prisma.user.upsert({
-    where: { phone: '+989120000000' },
-    update: {},
-    create: {
-      phone: '+989120000000',
-      phoneVerified: true,
-      firstName: 'Admin',
-      lastName: 'User',
-      role: UserRole.SUPER_ADMIN,
-      isActive: true,
-    },
-  });
+  // دسته‌بندی‌ها
+  await Promise.all([
+    prisma.category.create({ data: { name: 'مالیات مستقیم', slug: 'direct-tax', description: 'مقالات و محتوای مرتبط با مالیات‌های مستقیم', sortOrder: 1 } }),
+    prisma.category.create({ data: { name: 'مالیات بر ارزش افزوده', slug: 'vat', description: 'مقالات مرتبط با مالیات بر ارزش افزوده', sortOrder: 2 } }),
+    prisma.category.create({ data: { name: 'مشاوره مالیاتی', slug: 'tax-consultation', description: 'راهنماها و مشاوره‌های مالیاتی', sortOrder: 3 } }),
+    prisma.category.create({ data: { name: 'قوانین و مقررات', slug: 'regulations', description: 'قوانین و مقررات مالیاتی کشور', sortOrder: 4 } }),
+  ]);
 
-  console.log('Created admin user:', adminUser.id);
+  // منابع رسمی
+  await Promise.all([
+    prisma.taxSource.create({ data: { name: 'قانون مالیات‌های مستقیم', officialName: 'سازمان امور مالیاتی کشور', url: 'https://www.intamedia.ir', description: 'قانون مالیات‌های مستقیم مصوب مجلس شورای اسلامی' } }),
+    prisma.taxSource.create({ data: { name: 'قانون مالیات بر ارزش افزوده', officialName: 'سازمان امور مالیاتی کشور', url: 'https://www.intamedia.ir', description: 'قانون مالیات بر ارزش افزوده مصوب ۱۴۰۰' } }),
+  ]);
 
-  // Create categories
-  const taxCategory = await prisma.category.upsert({
-    where: { slug: 'tax' },
-    update: {},
-    create: {
-      name: 'Tax',
-      slug: 'tax',
-      description: 'Tax-related articles',
-      isActive: true,
+  // موضوعات مالیاتی
+  await Promise.all([
+    prisma.taxTopic.create({ data: { name: 'مالیات بر درآمد اشخاص حقیقی', slug: 'personal-income-tax', description: 'قوانین و مقررات مالیات بر درآمد اشخاص حقیقی', sortOrder: 1 } }),
+    prisma.taxTopic.create({ data: { name: 'مالیات بر درآمد اشخاص حقوقی', slug: 'corporate-tax', description: 'قوانین مالیات بر درآمد شرکت‌ها و اشخاص حقوقی', sortOrder: 2 } }),
+    prisma.taxTopic.create({ data: { name: 'مالیات بر ارزش افزوده', slug: 'vat-rules', description: 'قوانین و مقررات مالیات بر ارزش افزوده', sortOrder: 3 } }),
+    prisma.taxTopic.create({ data: { name: 'معافیت‌های مالیاتی', slug: 'tax-exemptions', description: 'انواع معافیت‌های مالیاتی و شرایط برخورداری', sortOrder: 4 } }),
+    prisma.taxTopic.create({ data: { name: 'تکالیف مالیاتی', slug: 'tax-obligations', description: 'تکالیف قانونی مودیان مالیاتی', sortOrder: 5 } }),
+  ]);
+
+  // سوالات دستیار مالیاتی
+  const q1 = await prisma.taxQuestion.create({
+    data: {
+      question: 'شما جزو کدام دسته از مودیان مالیاتی هستید؟',
+      description: 'لطفاً نوع فعالیت خود را مشخص کنید',
       sortOrder: 1,
+      options: {
+        create: [
+          { label: 'شخص حقیقی (حقوق‌بگیر)', value: 'salary_employee', sortOrder: 1 },
+          { label: 'شخص حقیقی (کسب‌وکار شخصی)', value: 'self_employed', sortOrder: 2 },
+          { label: 'شخص حقوقی (شرکت)', value: 'corporation', sortOrder: 3 },
+          { label: 'مشمول ارزش افزوده', value: 'vat_person', sortOrder: 4 },
+        ],
+      },
     },
   });
 
-  const accountingCategory = await prisma.category.upsert({
-    where: { slug: 'accounting' },
-    update: {},
-    create: {
-      name: 'Accounting',
-      slug: 'accounting',
-      description: 'Accounting and financial articles',
-      isActive: true,
+  const q2 = await prisma.taxQuestion.create({
+    data: {
+      question: 'درآمد سالانه شما (به تومان) چقدر است؟',
+      description: 'مبنای محاسبه معافیت مالیاتی',
       sortOrder: 2,
+      options: {
+        create: [
+          { label: 'کمتر از ۱۰۰ میلیون تومان', value: 'income_under_100m', sortOrder: 1 },
+          { label: 'بین ۱۰۰ تا ۵۰۰ میلیون تومان', value: 'income_100m_500m', sortOrder: 2 },
+          { label: 'بین ۵۰۰ میلیون تا ۱ میلیارد تومان', value: 'income_500m_1b', sortOrder: 3 },
+          { label: 'بیشتر از ۱ میلیارد تومان', value: 'income_over_1b', sortOrder: 4 },
+        ],
+      },
     },
   });
 
-  const businessCategory = await prisma.category.upsert({
-    where: { slug: 'business' },
-    update: {},
-    create: {
-      name: 'Business',
-      slug: 'business',
-      description: 'Business and entrepreneurship articles',
-      isActive: true,
+  const q3 = await prisma.taxQuestion.create({
+    data: {
+      question: 'آیا از معافیت خاصی برخوردار هستید؟',
+      description: 'برخی مشاغل و مناطق از معافیت مالیاتی برخوردارند',
       sortOrder: 3,
-    },
-  });
-
-  console.log('Created categories');
-
-  // Create tags
-  const taxTag = await prisma.tag.upsert({
-    where: { slug: 'tax' },
-    update: {},
-    create: {
-      name: 'Tax',
-      slug: 'tax',
-    },
-  });
-
-  const accountingTag = await prisma.tag.upsert({
-    where: { slug: 'accounting' },
-    update: {},
-    create: {
-      name: 'Accounting',
-      slug: 'accounting',
-    },
-  });
-
-  const guideTag = await prisma.tag.upsert({
-    where: { slug: 'guide' },
-    update: {},
-    create: {
-      name: 'Guide',
-      slug: 'guide',
-    },
-  });
-
-  console.log('Created tags');
-
-  // Create sample articles
-  const article1 = await prisma.article.upsert({
-    where: { slug: 'tax-deductions-guide' },
-    update: {},
-    create: {
-      title: 'Complete Guide to Tax Deductions',
-      slug: 'tax-deductions-guide',
-      excerpt: 'Learn about all available tax deductions and how to claim them.',
-      content: `# Tax Deductions Guide
-
-This is a comprehensive guide to understanding tax deductions available to individuals and businesses.
-
-## Introduction
-
-Tax deductions can significantly reduce your taxable income. Understanding what deductions you qualify for is essential for effective tax planning.
-
-## Common Deductions
-
-- **Standard Deduction**: Available to all taxpayers
-- **Itemized Deductions**: Medical expenses, mortgage interest, charitable contributions
-- **Business Deductions**: Expenses related to your business operations
-
-## How to Claim
-
-1. Keep accurate records of all expenses
-2. Determine whether to take standard or itemized deductions
-3. File the appropriate forms with your tax return
-
-## Important Notes
-
-- Deduction limits may apply
-- Some deductions phase out at higher income levels
-- State and local deductions may differ
-
-## Need Help?
-
-Consider consulting with a tax professional for personalized advice based on your specific situation.`,
-      status: ContentStatus.PUBLISHED,
-      featuredImage: '/images/tax-guide.jpg',
-      publishedAt: new Date(),
-      categoryId: taxCategory.id,
-      authorId: adminUser.id,
-      metaTitle: 'Complete Guide to Tax Deductions | Ayan Taraz',
-      metaDescription: 'Learn about all available tax deductions and how to claim them with this comprehensive guide.',
-      canonicalUrl: '/articles/tax-deductions-guide',
-      tags: {
-        connect: [{ id: taxTag.id }, { id: guideTag.id }],
+      options: {
+        create: [
+          { label: 'خیر، معافیت خاصی ندارم', value: 'no_exemption', sortOrder: 1 },
+          { label: 'فعالیت در مناطق آزاد تجاری', value: 'free_zone', sortOrder: 2 },
+          { label: 'فعالیت در مناطق محروم', value: 'deprived_area', sortOrder: 3 },
+          { label: 'مشمول ماده ۱۳۲ (واحدهای تولیدی جدید)', value: 'article_132', sortOrder: 4 },
+          { label: 'معافیت دانش‌بنیان', value: 'knowledge_based', sortOrder: 5 },
+        ],
       },
     },
   });
 
-  const article2 = await prisma.article.upsert({
-    where: { slug: 'small-business-accounting' },
-    update: {},
-    create: {
-      title: 'Small Business Accounting Basics',
-      slug: 'small-business-accounting',
-      excerpt: 'Essential accounting principles for small business owners.',
-      content: `# Small Business Accounting Basics
-
-Proper accounting is the foundation of a successful small business. This guide covers the essentials.
-
-## Why Accounting Matters
-
-- Track income and expenses
-- Prepare for tax obligations
-- Make informed business decisions
-- Secure financing when needed
-
-## Key Concepts
-
-### Cash vs. Accrual Accounting
-
-**Cash Basis**: Record income when received, expenses when paid
-**Accrual Basis**: Record income when earned, expenses when incurred
-
-### Chart of Accounts
-
-- Assets: What your business owns
-- Liabilities: What your business owes
-- Equity: Owner investment and retained earnings
-- Revenue: Income from sales
-- Expenses: Costs of doing business
-
-## Getting Started
-
-1. Choose an accounting method
-2. Set up your chart of accounts
-3. Implement a system for tracking transactions
-4. Regularly reconcile accounts
-5. Generate financial statements
-
-## Tools and Software
-
-Consider using accounting software to automate many of these processes and reduce errors.`,
-      status: ContentStatus.PUBLISHED,
-      publishedAt: new Date(),
-      categoryId: accountingCategory.id,
-      authorId: adminUser.id,
-      metaTitle: 'Small Business Accounting Basics | Ayan Taraz',
-      metaDescription: 'Essential accounting principles for small business owners to manage their finances effectively.',
-      canonicalUrl: '/articles/small-business-accounting',
-      tags: {
-        connect: [{ id: accountingTag.id }, { id: businessTag.id }],
-      },
-    },
-  });
-
-  console.log('Created sample articles');
-
-  // Create tax topics
-  const incomeTaxTopic = await prisma.taxTopic.upsert({
-    where: { slug: 'income-tax' },
-    update: {},
-    create: {
-      name: 'Income Tax',
-      slug: 'income-tax',
-      description: 'Personal and business income tax rules and regulations',
-      sortOrder: 1,
-      isActive: true,
-    },
-  });
-
-  const vatTopic = await prisma.taxTopic.upsert({
-    where: { slug: 'vat' },
-    update: {},
-    create: {
-      name: 'Value Added Tax (VAT)',
-      slug: 'vat',
-      description: 'VAT rules, rates, and compliance requirements',
-      sortOrder: 2,
-      isActive: true,
-    },
-  });
-
-  console.log('Created tax topics');
-
-  // Create tax sources
-  const taxAuthoritySource = await prisma.taxSource.upsert({
-    where: { name: 'National Tax Authority' },
-    update: {},
-    create: {
-      name: 'National Tax Authority',
-      officialName: 'Iran National Tax Administration',
-      url: 'https://www.tax.gov.ir',
-      description: 'Official tax authority of Iran',
-      isActive: true,
-    },
-  });
-
-  console.log('Created tax sources');
-
-  // Create tax rules
-  const incomeTaxRule = await prisma.taxRule.upsert({
-    where: { slug: 'personal-income-tax-2024' },
-    update: {},
-    create: {
-      topicId: incomeTaxTopic.id,
-      name: 'Personal Income Tax Rates 2024',
-      slug: 'personal-income-tax-2024',
-      description: 'Progressive tax rates for personal income in 2024',
-      status: TaxRuleStatus.PUBLISHED,
-    },
-  });
-
-  // Create tax rule version
-  await prisma.taxRuleVersion.upsert({
-    where: { ruleId_version: { ruleId: incomeTaxRule.id, version: 1 } },
-    update: {},
-    create: {
-      ruleId: incomeTaxRule.id,
-      version: 1,
-      content: `Personal Income Tax Rates for 2024:
-
-- 0 - 50,000,000 IRR: 0%
-- 50,000,001 - 150,000,000 IRR: 10%
-- 150,000,001 - 300,000,000 IRR: 15%
-- 300,000,001 - 500,000,000 IRR: 20%
-- 500,000,001 - 1,000,000,000 IRR: 25%
-- Over 1,000,000,000 IRR: 35%
-
-Note: These rates apply to annual taxable income after deductions.`,
-      sourceId: taxAuthoritySource.id,
-      effectiveFrom: new Date('2024-01-01'),
-      effectiveTo: new Date('2024-12-31'),
-      status: TaxRuleVersionStatus.PUBLISHED,
-      publishedById: adminUser.id,
-      publishedAt: new Date(),
-    },
-  });
-
-  console.log('Created tax rules');
-
-  // Create consultation services
-  const taxConsultationService = await prisma.consultationService.upsert({
-    where: { slug: 'tax-consultation' },
-    update: {},
-    create: {
-      name: 'Tax Consultation',
-      slug: 'tax-consultation',
-      description: 'One-on-one consultation with our tax experts to address your specific tax questions and concerns.',
-      duration: 60,
-      price: 5000000, // 5,000,000 IRR
-      isActive: true,
-      sortOrder: 1,
-    },
-  });
-
-  const accountingConsultationService = await prisma.consultationService.upsert({
-    where: { slug: 'accounting-consultation' },
-    update: {},
-    create: {
-      name: 'Accounting Consultation',
-      slug: 'accounting-consultation',
-      description: 'Professional accounting advice for individuals and small businesses.',
-      duration: 45,
-      price: 3000000, // 3,000,000 IRR
-      isActive: true,
-      sortOrder: 2,
-    },
-  });
-
-  console.log('Created consultation services');
-
-  // Create availability for services (Monday to Friday, 9 AM to 5 PM)
-  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-  const dayNumbers = [1, 2, 3, 4, 5]; // Monday = 1, Sunday = 0
-
-  for (let i = 0; i < days.length; i++) {
-    await prisma.consultationAvailability.upsert({
-      where: {
-        serviceId_dayOfWeek_startTime: {
-          serviceId: taxConsultationService.id,
-          dayOfWeek: dayNumbers[i],
-          startTime: '09:00',
-        },
-      },
-      update: {},
-      create: {
-        serviceId: taxConsultationService.id,
-        dayOfWeek: dayNumbers[i],
-        startTime: '09:00',
-        endTime: '17:00',
-        isActive: true,
-      },
-    });
-
-    await prisma.consultationAvailability.upsert({
-      where: {
-        serviceId_dayOfWeek_startTime: {
-          serviceId: accountingConsultationService.id,
-          dayOfWeek: dayNumbers[i],
-          startTime: '09:00',
-        },
-      },
-      update: {},
-      create: {
-        serviceId: accountingConsultationService.id,
-        dayOfWeek: dayNumbers[i],
-        startTime: '09:00',
-        endTime: '17:00',
-        isActive: true,
-      },
-    });
-  }
-
-  console.log('Created consultation availability');
-
-  // Create sample slots for the next 7 days
-  const today = new Date();
-  for (let i = 0; i < 7; i++) {
-    const date = new Date(today);
-    date.setDate(today.getDate() + i);
-
-    // Only create slots for weekdays
-    if (date.getDay() !== 0 && date.getDay() !== 6) {
-      // Create slots every 2 hours from 9 AM to 5 PM
-      for (let hour = 9; hour <= 17; hour += 2) {
-        const startTime = new Date(date);
-        startTime.setHours(hour, 0, 0, 0);
-
-        const endTime = new Date(date);
-        endTime.setHours(hour + 1, 0, 0, 0);
-
-        // Get availability for this day and service
-        const availabilities = await prisma.consultationAvailability.findMany({
-          where: {
-            dayOfWeek: date.getDay(),
-            startTime: { lte: `${hour}:00` },
-            endTime: { gte: `${hour + 1}:00` },
-          },
-        });
-
-        for (const avail of availabilities) {
-          await prisma.consultationSlot.upsert({
-            where: { id: `${avail.id}-${date.toISOString().split('T')[0]}-${hour}` },
-            update: {},
-            create: {
-              availabilityId: avail.id,
-              date,
-              startTime,
-              endTime,
-              maxBookings: 1,
-              isActive: true,
-            },
-          });
-        }
-      }
-    }
-  }
-
-  console.log('Created consultation slots');
-
-  // Create tax assistant questions
-  const q1 = await prisma.taxQuestion.upsert({
-    where: { id: 'q1' },
-    update: {},
-    create: {
-      id: 'q1',
-      question: 'What type of taxpayer are you?',
-      description: 'Select the category that best describes your tax situation',
-      sortOrder: 1,
-      isActive: true,
-    },
-  });
-
-  const q2 = await prisma.taxQuestion.upsert({
-    where: { id: 'q2' },
-    update: {},
-    create: {
-      id: 'q2',
-      question: 'What is your approximate annual income?',
-      description: 'Select the range that includes your total annual income',
-      sortOrder: 2,
-      isActive: true,
-    },
-  });
-
-  const q3 = await prisma.taxQuestion.upsert({
-    where: { id: 'q3' },
-    update: {},
-    create: {
-      id: 'q3',
-      question: 'Do you have any tax deductions to claim?',
-      description: 'Consider standard deductions, itemized deductions, or business expenses',
-      sortOrder: 3,
-      isActive: true,
-    },
-  });
-
-  console.log('Created tax assistant questions');
-
-  // Create tax assistant options
-  const q1Option1 = await prisma.taxQuestionOption.upsert({
-    where: { id: 'q1_opt1' },
-    update: {},
-    create: {
-      id: 'q1_opt1',
-      questionId: q1.id,
-      label: 'Individual',
-      value: 'individual',
-      sortOrder: 1,
-      isActive: true,
-    },
-  });
-
-  const q1Option2 = await prisma.taxQuestionOption.upsert({
-    where: { id: 'q1_opt2' },
-    update: {},
-    create: {
-      id: 'q1_opt2',
-      questionId: q1.id,
-      label: 'Small Business Owner',
-      value: 'small_business',
-      sortOrder: 2,
-      isActive: true,
-    },
-  });
-
-  const q1Option3 = await prisma.taxQuestionOption.upsert({
-    where: { id: 'q1_opt3' },
-    update: {},
-    create: {
-      id: 'q1_opt3',
-      questionId: q1.id,
-      label: 'Corporation',
-      value: 'corporation',
-      sortOrder: 3,
-      isActive: true,
-    },
-  });
-
-  const q2Option1 = await prisma.taxQuestionOption.upsert({
-    where: { id: 'q2_opt1' },
-    update: {},
-    create: {
-      id: 'q2_opt1',
-      questionId: q2.id,
-      label: 'Less than 50,000,000 IRR',
-      value: 'under_50m',
-      sortOrder: 1,
-      isActive: true,
-    },
-  });
-
-  const q2Option2 = await prisma.taxQuestionOption.upsert({
-    where: { id: 'q2_opt2' },
-    update: {},
-    create: {
-      id: 'q2_opt2',
-      questionId: q2.id,
-      label: '50,000,000 - 150,000,000 IRR',
-      value: '50m_150m',
-      sortOrder: 2,
-      isActive: true,
-    },
-  });
-
-  const q2Option3 = await prisma.taxQuestionOption.upsert({
-    where: { id: 'q2_opt3' },
-    update: {},
-    create: {
-      id: 'q2_opt3',
-      questionId: q2.id,
-      label: '150,000,000 - 500,000,000 IRR',
-      value: '150m_500m',
-      sortOrder: 3,
-      isActive: true,
-    },
-  });
-
-  const q2Option4 = await prisma.taxQuestionOption.upsert({
-    where: { id: 'q2_opt4' },
-    update: {},
-    create: {
-      id: 'q2_opt4',
-      questionId: q2.id,
-      label: 'Over 500,000,000 IRR',
-      value: 'over_500m',
+  const q4 = await prisma.taxQuestion.create({
+    data: {
+      question: 'آیا اظهارنامه مالیاتی خود را به موقع ارسال کرده‌اید؟',
+      description: 'تأخیر در ارسال اظهارنامه مشمول جریمه می‌شود',
       sortOrder: 4,
-      isActive: true,
+      options: {
+        create: [
+          { label: 'بله، به موقع ارسال شده', value: 'filed_ontime', sortOrder: 1 },
+          { label: 'خیر، هنوز ارسال نکرده‌ام', value: 'not_filed', sortOrder: 2 },
+          { label: 'با تأخیر ارسال شده', value: 'filed_late', sortOrder: 3 },
+        ],
+      },
     },
   });
 
-  const q3Option1 = await prisma.taxQuestionOption.upsert({
-    where: { id: 'q3_opt1' },
-    update: {},
-    create: {
-      id: 'q3_opt1',
-      questionId: q3.id,
-      label: 'Yes, I have significant deductions',
-      value: 'yes_deductions',
-      sortOrder: 1,
-      isActive: true,
+  const q5 = await prisma.taxQuestion.create({
+    data: {
+      question: 'آیا مشمول مالیات بر ارزش افزوده هستید؟',
+      description: 'شرکت‌ها و کسب‌وکارهای بالای حد نصاب',
+      sortOrder: 5,
+      options: {
+        create: [
+          { label: 'بله، ثبت‌نام کرده‌ام', value: 'vat_registered', sortOrder: 1 },
+          { label: 'خیر، مشمول نیستم', value: 'vat_not_subject', sortOrder: 2 },
+          { label: 'نمی‌دانم / مطمئن نیستم', value: 'vat_unsure', sortOrder: 3 },
+        ],
+      },
     },
   });
 
-  const q3Option2 = await prisma.taxQuestionOption.upsert({
-    where: { id: 'q3_opt2' },
-    update: {},
-    create: {
-      id: 'q3_opt2',
-      questionId: q3.id,
-      label: 'No, I will take the standard deduction',
-      value: 'standard_deduction',
-      sortOrder: 2,
-      isActive: true,
-    },
+  // Flows - درخت تصمیم
+  const getOpt = async (qId: string, val: string) =>
+    (await prisma.taxQuestionOption.findFirst({ where: { questionId: qId, value: val } }))!.id;
+
+  await prisma.taxQuestionFlow.createMany({
+    data: [
+      { fromQuestionId: q1.id, toQuestionId: q2.id, optionId: await getOpt(q1.id, 'salary_employee') },
+      { fromQuestionId: q1.id, toQuestionId: q2.id, optionId: await getOpt(q1.id, 'self_employed') },
+      { fromQuestionId: q1.id, toQuestionId: q2.id, optionId: await getOpt(q1.id, 'corporation') },
+      { fromQuestionId: q1.id, toQuestionId: q5.id, optionId: await getOpt(q1.id, 'vat_person') },
+      { fromQuestionId: q2.id, toQuestionId: q3.id, optionId: await getOpt(q2.id, 'income_under_100m') },
+      { fromQuestionId: q2.id, toQuestionId: q3.id, optionId: await getOpt(q2.id, 'income_100m_500m') },
+      { fromQuestionId: q2.id, toQuestionId: q3.id, optionId: await getOpt(q2.id, 'income_500m_1b') },
+      { fromQuestionId: q2.id, toQuestionId: q3.id, optionId: await getOpt(q2.id, 'income_over_1b') },
+      { fromQuestionId: q3.id, toQuestionId: q4.id, optionId: await getOpt(q3.id, 'no_exemption') },
+      { fromQuestionId: q3.id, toQuestionId: q4.id, optionId: await getOpt(q3.id, 'free_zone') },
+      { fromQuestionId: q3.id, toQuestionId: q4.id, optionId: await getOpt(q3.id, 'deprived_area') },
+      { fromQuestionId: q3.id, toQuestionId: q4.id, optionId: await getOpt(q3.id, 'article_132') },
+      { fromQuestionId: q3.id, toQuestionId: q4.id, optionId: await getOpt(q3.id, 'knowledge_based') },
+      { fromQuestionId: q5.id, toQuestionId: q4.id, optionId: await getOpt(q5.id, 'vat_registered') },
+      { fromQuestionId: q5.id, toQuestionId: q4.id, optionId: await getOpt(q5.id, 'vat_not_subject') },
+      { fromQuestionId: q5.id, toQuestionId: q4.id, optionId: await getOpt(q5.id, 'vat_unsure') },
+    ],
   });
 
-  console.log('Created tax assistant options');
+  // نتایج
+  await prisma.taxAssistantResult.createMany({
+    data: [
+      {
+        name: 'low_income_guidance', title: 'راهنمایی مالیاتی - درآمد پایین',
+        description: `با توجه به پاسخ‌های شما، درآمد سالانه شما زیر سقف معافیت مالیاتی قرار دارد.
 
-  // Create tax assistant flows
-  await prisma.taxQuestionFlow.upsert({
-    where: { id: 'flow_q1_to_q2' },
-    update: {},
-    create: {
-      id: 'flow_q1_to_q2',
-      fromQuestionId: q1.id,
-      toQuestionId: q2.id,
-      sortOrder: 1,
-    },
+اقدامات پیشنهادی:
+۱. ثبت‌نام در سامانه مودیان (my.tax.gov.ir)
+۲. تکمیل اظهارنامه مالیاتی حتی در صورت معافیت
+۳. نگهداری اسناد و مدارک درآمدی به مدت ۵ سال
+
+نکته مهم: حتی اگر مالیات شما صفر باشد، ارائه اظهارنامه الزامی است.`,
+        ruleIds: [], action: 'REGISTER_TAXPAYER', severity: 'INFO',
+      },
+      {
+        name: 'self_employed_tax_guide', title: 'راهنمای مالیاتی - مشاغل شخصی',
+        description: `با توجه به اطلاعات شما به عنوان صاحب کسب‌وکار شخصی:
+
+اقدامات مورد نیاز:
+۱. نگهداری دفاتر قانونی (دفتر روزنامه و کل)
+۲. محاسبه درآمد مشمول مالیات
+۳. تکمیل اظهارنامه عملکرد تا پایان خردادماه
+۴. پرداخت مالیات در ۴ قسط مساوی
+
+نرخ‌های مالیاتی:
+- تا ۵۰۰ میلیون: ۱۵٪
+- ۵۰۰ میلیون تا ۱ میلیارد: ۲۰٪
+- بالای ۱ میلیارد: ۲۵٪`,
+        ruleIds: [], action: 'FILE_TAX_RETURN', severity: 'INFO',
+      },
+      {
+        name: 'corporate_tax_guide', title: 'راهنمای مالیاتی - اشخاص حقوقی',
+        description: `به عنوان یک شخص حقوقی (شرکت):
+
+تکالیف قانونی:
+۱. نرخ مالیات: ۲۵٪ از درآمد مشمول مالیات
+۲. تسلیم اظهارنامه حداکثر تا ۴ ماه پس از پایان سال مالی
+۳. ارائه صورت‌های مالی حسابرسی شده
+۴. پرداخت علی‌الحساب مالیات به صورت ماهانه
+
+نکات مهم:
+- نگهداری اسناد و دفاتر قانونی الزامی است
+- عدم ارائه به موقع اظهارنامه مشمول جریمه ۳۰٪ می‌شود`,
+        ruleIds: [], action: 'CONSULT_ACCOUNTANT', severity: 'WARNING',
+      },
+      {
+        name: 'vat_guidance', title: 'راهنمای مالیات بر ارزش افزوده',
+        description: `راهنمای مالیات بر ارزش افزوده:
+
+۱. نرخ مالیات بر ارزش افزوده: ۱۰٪ (۹٪ مالیات + ۱٪ عوارض)
+۲. مهلت تسلیم اظهارنامه: ۱۵ روز پس از پایان هر دوره
+۳. صورتحساب الکترونیکی الزامی است
+
+کالاهای معاف:
+- محصولات کشاورزی فرآوری نشده
+- دارو و تجهیزات پزشکی
+- کالاهای اساسی
+
+جرایم:
+- عدم ثبت‌نام: ۷۵٪ مالیات متعلق
+- عدم صدور صورتحساب: ۵۰٪`,
+        ruleIds: [], action: 'REGISTER_VAT', severity: 'WARNING',
+      },
+      {
+        name: 'need_consultation', title: 'نیاز به مشاوره تخصصی',
+        description: `با توجه به پیچیدگی وضعیت مالیاتی شما، توصیه می‌شود از مشاوره تخصصی بهره ببرید.
+
+مواردی که نیاز به بررسی بیشتر دارند:
+- معافیت‌های خاص و شرایط برخورداری
+- محاسبه دقیق درآمد مشمول مالیات
+- استفاده از معافیت‌های قانونی ماده ۱۳۲
+
+برای رزرو وقت مشاوره می‌توانید از بخش "مشاوره" در سایت استفاده کنید.`,
+        ruleIds: [], action: 'BOOK_CONSULTATION', severity: 'NEEDS_REVIEW',
+      },
+    ],
   });
 
-  await prisma.taxQuestionFlow.upsert({
-    where: { id: 'flow_q2_to_q3' },
-    update: {},
-    create: {
-      id: 'flow_q2_to_q3',
-      fromQuestionId: q2.id,
-      toQuestionId: q3.id,
-      sortOrder: 1,
-    },
+  // سرویس مشاوره
+  const service1 = await prisma.consultationService.create({
+    data: { name: 'مشاوره مالیاتی مقدماتی', slug: 'basic-tax-consultation', description: 'مشاوره ۳۰ دقیقه‌ای', duration: 30, price: 500000, sortOrder: 1 },
+  });
+  await prisma.consultationService.create({
+    data: { name: 'مشاوره مالیاتی تخصصی', slug: 'expert-tax-consultation', description: 'مشاوره ۶۰ دقیقه‌ای', duration: 60, price: 1000000, sortOrder: 2 },
   });
 
-  console.log('Created tax assistant flows');
+  for (let day = 0; day <= 4; day++) {
+    await prisma.consultationAvailability.create({ data: { serviceId: service1.id, dayOfWeek: day, startTime: '09:00', endTime: '17:00' } });
+  }
 
-  // Create tax assistant results
-  const result1 = await prisma.taxAssistantResult.upsert({
-    where: { name: 'LOW_TAX_BRACKET' },
-    update: {},
-    create: {
-      name: 'LOW_TAX_BRACKET',
-      title: 'You are in a Low Tax Bracket',
-      description: `Based on your income, you fall into one of the lower tax brackets. Your effective tax rate will be relatively low. You may benefit from standard deductions and should consider tax-advantaged savings accounts if available.`,
-      ruleIds: [incomeTaxRule.id],
-      action: 'REVIEW_DEDUCTIONS',
-      severity: TaxResultSeverity.INFO,
-      isActive: true,
-    },
+  // تنظیمات
+  await prisma.adminSetting.createMany({
+    data: [
+      { key: 'site_name', value: 'آیان تراز', description: 'نام سایت' },
+      { key: 'site_description', value: 'خدمات تخصصی حسابداری و مشاوره مالیاتی', description: 'توضیحات سایت' },
+      { key: 'max_otp_attempts', value: '3', description: 'حداکثر تلاش OTP' },
+      { key: 'otp_expiry_minutes', value: '5', description: 'اعتبار کد تأیید' },
+      { key: 'session_expiry_hours', value: '24', description: 'اعتبار نشست' },
+    ],
   });
 
-  const result2 = await prisma.taxAssistantResult.upsert({
-    where: { name: 'MEDIUM_TAX_BRACKET' },
-    update: {},
-    create: {
-      name: 'MEDIUM_TAX_BRACKET',
-      title: 'You are in a Medium Tax Bracket',
-      description: `Your income places you in a medium tax bracket. You should carefully consider itemizing deductions if you have significant expenses. Tax planning can help reduce your liability.`,
-      ruleIds: [incomeTaxRule.id],
-      action: 'CONSIDER_ITEMIZING',
-      severity: TaxResultSeverity.INFO,
-      isActive: true,
-    },
-  });
-
-  const result3 = await prisma.taxAssistantResult.upsert({
-    where: { name: 'HIGH_TAX_BRACKET' },
-    update: {},
-    create: {
-      name: 'HIGH_TAX_BRACKET',
-      title: 'You are in a High Tax Bracket',
-      description: `With your income level, you are in one of the highest tax brackets. Aggressive tax planning is essential. Consider consulting with a tax professional to explore all available deductions, credits, and tax-advantaged investment strategies.`,
-      ruleIds: [incomeTaxRule.id],
-      action: 'CONSULT_PROFESSIONAL',
-      severity: TaxResultSeverity.WARNING,
-      isActive: true,
-    },
-  });
-
-  console.log('Created tax assistant results');
-
-  // Create SEO configurations
-  await prisma.sEOConfig.upsert({
-    where: { path: '/' },
-    update: {},
-    create: {
-      path: '/',
-      title: 'Ayan Taraz - Professional Accounting & Tax Advisory Services',
-      description: 'Expert accounting and tax advisory services for individuals and businesses. Get professional advice on tax planning, compliance, and financial management.',
-      canonical: '/',
-      ogTitle: 'Ayan Taraz - Professional Accounting & Tax Advisory',
-      ogDescription: 'Expert accounting and tax advisory services for individuals and businesses.',
-      ogUrl: '/',
-      twitterCard: 'summary_large_image',
-      schemaMarkup: JSON.stringify({
-        '@context': 'https://schema.org',
-        '@type': 'Organization',
-        name: 'Ayan Taraz',
-        url: 'https://ayantaraz.ir',
-        description: 'Professional Accounting & Tax Advisory Services',
-        logo: 'https://ayantaraz.ir/logo.png',
-        contactPoint: {
-          '@type': 'ContactPoint',
-          telephone: '+98-21-12345678',
-          contactType: 'Customer Service',
-        },
-      }),
-      indexable: true,
-      followLinks: true,
-    },
-  });
-
-  await prisma.sEOConfig.upsert({
-    where: { path: '/articles' },
-    update: {},
-    create: {
-      path: '/articles',
-      title: 'Articles - Ayan Taraz',
-      description: 'Read our expert articles on accounting, tax, and financial management topics.',
-      canonical: '/articles',
-      ogTitle: 'Articles - Ayan Taraz',
-      ogDescription: 'Expert articles on accounting, tax, and financial management.',
-      indexable: true,
-      followLinks: true,
-    },
-  });
-
-  await prisma.sEOConfig.upsert({
-    where: { path: '/tax-assistant' },
-    update: {},
-    create: {
-      path: '/tax-assistant',
-      title: 'Tax Assistant - Ayan Taraz',
-      description: 'Use our interactive tax assistant to get personalized tax advice based on your situation.',
-      canonical: '/tax-assistant',
-      ogTitle: 'Tax Assistant - Ayan Taraz',
-      ogDescription: 'Interactive tax assistant for personalized advice.',
-      indexable: true,
-      followLinks: true,
-    },
-  });
-
-  console.log('Created SEO configurations');
-
-  // Create redirects
-  await prisma.redirect.upsert({
-    where: { fromPath: '/old-article' },
-    update: {},
-    create: {
-      fromPath: '/old-article',
-      toPath: '/articles/tax-deductions-guide',
-      statusCode: 301,
-      isActive: true,
-    },
-  });
-
-  console.log('Created redirects');
-
-  console.log('Seeding completed!');
+  console.log('✅ داده‌های اولیه با موفقیت بارگذاری شد.');
 }
 
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+main().catch((e) => { console.error('❌ خطا:', e); process.exit(1); }).finally(() => prisma.$disconnect());
