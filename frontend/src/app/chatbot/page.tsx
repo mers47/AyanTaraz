@@ -1,115 +1,152 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { taxAssistantApi } from '@/lib/api';
-import type { TaxAssistantQuestion, TaxAssistantResult, TaxAssistantSession } from '@/types';
+import type { TaxAssistantQuestion, TaxAssistantSession } from '@/types';
 
-const severityLabels: Record<string, string> = {
-  INFO: 'اطلاع‌رسانی', WARNING: 'هشدار', CRITICAL: 'حیاتی', NEEDS_REVIEW: 'نیاز به بررسی',
-};
-
-const severityColors: Record<string, string> = {
-  INFO: 'bg-blue-500/20 text-blue-400 border-blue-500',
-  WARNING: 'bg-yellow-500/20 text-yellow-400 border-yellow-500',
-  CRITICAL: 'bg-red-500/20 text-red-400 border-red-500',
-  NEEDS_REVIEW: 'bg-purple-500/20 text-purple-400 border-purple-500',
-};
-
-const actionLabels: Record<string, string> = {
-  REGISTER_TAXPAYER: 'ثبت‌نام در سامانه مودیان',
-  FILE_TAX_RETURN: 'تکمیل اظهارنامه مالیاتی',
-  CONSULT_ACCOUNTANT: 'مشاوره با حسابدار',
-  REGISTER_VAT: 'ثبت‌نام ارزش افزوده',
-  BOOK_CONSULTATION: 'رزرو وقت مشاوره',
-};
+interface Message { from: 'bot' | 'user'; text: string; options?: TaxAssistantQuestion['options']; result?: any }
 
 export default function ChatbotPage() {
   const [session, setSession] = useState<TaxAssistantSession | null>(null);
-  const [currentQuestion, setCurrentQuestion] = useState<TaxAssistantQuestion | null>(null);
-  const [result, setResult] = useState<TaxAssistantResult | null>(null);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [completed, setCompleted] = useState(false);
+  const [awaitingAnswer, setAwaitingAnswer] = useState(false);
+  const [currentQId, setCurrentQId] = useState<string | null>(null);
+  const chatEnd = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { initSession(); }, []);
+  useEffect(() => { chatEnd.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
-  const initSession = async () => {
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await taxAssistantApi.startSession();
+        setSession(res.data);
+        setMessages([{ from: 'bot', text: res.data.question.question, options: res.data.question.options }]);
+        setCurrentQId(res.data.question.id);
+      } catch { setMessages([{ from: 'bot', text: 'متأسفانه ارتباط با سرور برقرار نشد. لطفاً دوباره تلاش کنید.' }]);
+      } finally { setIsLoading(false); }
+    })();
+  }, []);
+
+  const handleAnswer = async (oId: string, oVal: string, oLabel: string) => {
+    if (!session || !currentQId || awaitingAnswer) return;
+    setAwaitingAnswer(true);
+    setMessages(prev => [...prev, { from: 'user', text: oLabel }]);
+
     try {
-      setIsLoading(true); setError(null);
-      const res = await taxAssistantApi.startSession();
-      setSession(res.data); setCurrentQuestion(res.data.question);
-    } catch (err: any) { setError(err.response?.data?.message || 'خطا در شروع دستیار مالیاتی'); }
-    finally { setIsLoading(false); }
+      const res = await taxAssistantApi.answerQuestion(session.sessionId, currentQId, oId, oVal);
+      if (res.data.completed && res.data.result) {
+        setMessages(prev => [...prev, { from: 'bot', text: '', result: res.data.result }]);
+      } else if (res.data.question) {
+        setMessages(prev => [...prev, { from: 'bot', text: res.data.question.question, options: res.data.question.options }]);
+        setCurrentQId(res.data.question.id);
+      }
+    } catch {
+      setMessages(prev => [...prev, { from: 'bot', text: 'خطا در پردازش پاسخ. لطفاً دوباره تلاش کنید.' }]);
+    } finally { setAwaitingAnswer(false); }
   };
 
-  const handleAnswer = async (qId: string, oId: string, oVal: string) => {
-    if (!session) return; setError(null); setIsLoading(true);
-    try {
-      const newAns = { ...answers, [qId]: oVal }; setAnswers(newAns);
-      const res = await taxAssistantApi.answerQuestion(session.sessionId, qId, oId, oVal);
-      if (res.data.completed) { setResult(res.data.result); setCompleted(true); }
-      else if (res.data.question) { setCurrentQuestion(res.data.question); }
-    } catch (err: any) { setError(err.response?.data?.message || 'خطا'); }
-    finally { setIsLoading(false); }
+  const restart = () => { setMessages([]); setSession(null); setCurrentQId(null); setIsLoading(true);
+    (async () => {
+      try { const r = await taxAssistantApi.startSession(); setSession(r.data); setMessages([{ from: 'bot', text: r.data.question.question, options: r.data.question.options }]); setCurrentQId(r.data.question.id); }
+      catch { setMessages([{ from: 'bot', text: 'خطا در ارتباط' }]); }
+      finally { setIsLoading(false); }
+    })();
   };
 
-  const handleRestart = () => { setResult(null); setCompleted(false); setAnswers({}); setCurrentQuestion(null); initSession(); };
+  const severityStyles: Record<string,{bg:string;border:string;icon:string;label:string}> = {
+    INFO: { bg: 'rgba(59,130,246,0.1)', border: '#3b82f6', icon: 'ℹ️', label: 'اطلاع‌رسانی' },
+    WARNING: { bg: 'rgba(234,179,8,0.1)', border: '#eab308', icon: '⚠️', label: 'هشدار' },
+    CRITICAL: { bg: 'rgba(239,68,68,0.1)', border: '#ef4444', icon: '🚨', label: 'حیاتی' },
+    NEEDS_REVIEW: { bg: 'rgba(168,85,247,0.1)', border: '#a855f7', icon: '📋', label: 'نیاز به بررسی' },
+  };
 
-  if (isLoading && !currentQuestion) return (<div className="min-h-screen bg-black flex items-center justify-center" dir="rtl"><div className="text-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gold-500 mx-auto mb-4" /><p className="text-gray-400">در حال راه‌اندازی...</p></div></div>);
-
-  if (error) return (<div className="min-h-screen bg-black flex items-center justify-center p-4" dir="rtl"><div className="max-w-md w-full"><div className="bg-gray-900 rounded-xl p-6 text-center"><span className="text-3xl">⚠️</span><h2 className="text-xl font-bold mb-2 text-red-400">خطا</h2><p className="text-gray-400 mb-6">{error}</p><button onClick={handleRestart} className="btn-primary px-6 py-3 rounded-lg">🔄 تلاش مجدد</button></div></div></div>);
-
-  if (completed && result) return (
-    <div className="min-h-screen bg-black p-4" dir="rtl">
-      <div className="container max-w-3xl mx-auto">
-        <div className="mb-6"><Link href="/" className="text-gold-400 hover:text-gold-300">← بازگشت</Link></div>
-        <div className="bg-gray-900 rounded-xl p-8 border border-gray-800 text-center">
-          <span className="text-3xl">✅</span>
-          <h1 className="text-2xl font-bold mb-3 text-white mt-4">{result.title}</h1>
-          <span className={`inline-flex px-4 py-1 rounded-full text-sm border mb-6 ${severityColors[result.severity]}`}>{severityLabels[result.severity]}</span>
-          <div className="bg-gray-800 rounded-lg p-6 mb-6 text-right"><pre className="text-gray-300 whitespace-pre-wrap font-sans text-sm">{result.description}</pre></div>
-          {result.action && <div className="mb-6"><button className="btn-primary px-6 py-3 rounded-lg">{actionLabels[result.action] || result.action}</button></div>}
-          <button onClick={handleRestart} className="btn-outline px-6 py-3 rounded-lg">🔄 شروع دوباره</button>
-        </div>
+  if (isLoading) return (
+    <div style={{minHeight:'100vh',background:'var(--brand-black)',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:16}}>
+      <div style={{width:48,height:48,borderRadius:'50%',background:'linear-gradient(135deg,var(--brand-gold),var(--brand-gold-light))',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 0 30px rgba(198,169,98,0.3)'}}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="#0a0a0a"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
       </div>
+      <p style={{color:'var(--text-secondary)',fontSize:'0.9375rem'}}>در حال راه‌اندازی دستیار...</p>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-black p-4" dir="rtl">
-      <div className="container max-w-3xl mx-auto">
-        <div className="mb-6 flex items-center justify-between">
-          <Link href="/" className="text-gold-400 hover:text-gold-300">← بازگشت</Link>
-          <button onClick={handleRestart} className="text-gray-400 hover:text-white text-sm">شروع دوباره</button>
+    <div style={{minHeight:'100vh',background:'var(--brand-black)',display:'flex',flexDirection:'column'}}>
+      {/* Header */}
+      <header style={{padding:'14px 20px',borderBottom:'1px solid var(--border-subtle)',display:'flex',alignItems:'center',justifyContent:'space-between',background:'rgba(10,10,10,0.9)',backdropFilter:'blur(12px)',position:'sticky',top:0,zIndex:50}}>
+        <Link href="/" style={{display:'flex',alignItems:'center',gap:8,color:'var(--text-secondary)',fontSize:'0.875rem'}}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6"/></svg>
+          بازگشت
+        </Link>
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <div style={{width:36,height:36,borderRadius:'50%',background:'linear-gradient(135deg,var(--brand-gold),var(--brand-gold-light))',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 0 16px rgba(198,169,98,0.25)'}}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="#0a0a0a"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          </div>
+          <div><div style={{fontWeight:700,fontSize:'0.9375rem'}}>دستیار آیان تراز</div><div style={{fontSize:'0.75rem',color:'var(--text-muted)'}}>پاسخگوی سوالات مالیاتی</div></div>
         </div>
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-white mb-2">دستیار مالیاتی</h1>
-          <p className="text-gray-400 text-sm">به سوالات زیر پاسخ دهید</p>
-          <div className="mt-4 w-full bg-gray-800 rounded-full h-2"><div className="bg-gradient-to-r from-gold-600 to-gold-400 h-2 rounded-full transition-all" style={{ width: `${Math.min((Object.keys(answers).length + 1) * 20, 100)}%` }} /></div>
-          <p className="text-gray-500 text-xs mt-1">سوال {Object.keys(answers).length + 1}</p>
-        </div>
-        {currentQuestion && (
-          <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
-            <h2 className="text-xl font-semibold text-white mb-2">{currentQuestion.question}</h2>
-            {currentQuestion.description && <p className="text-gray-400 mb-6 text-sm">{currentQuestion.description}</p>}
-            <div className="space-y-3">
-              {currentQuestion.options.map((o) => (
-                <button key={o.id} onClick={() => handleAnswer(currentQuestion.id, o.id, o.value)} disabled={isLoading}
-                  className={`w-full p-4 rounded-lg border-2 text-right transition-all ${isLoading ? 'opacity-50 cursor-not-allowed' : 'border-gray-700 hover:border-gold-500 hover:bg-gold-500/10 cursor-pointer'} ${answers[currentQuestion.id] === o.value ? 'border-gold-500 bg-gold-500/10' : ''}`}>
-                  <div className="flex items-center gap-3">
-                    <div className={`w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${answers[currentQuestion.id] === o.value ? 'border-gold-500 bg-gold-500' : 'border-gray-600'}`}>
-                      {answers[currentQuestion.id] === o.value && <div className="w-2 h-2 rounded-full bg-black" />}
-                    </div>
-                    <span className="text-white">{o.label}</span>
+        <button onClick={restart} style={{background:'none',border:'none',color:'var(--text-muted)',cursor:'pointer',fontSize:'0.8125rem',fontFamily:'Vazirmatn',padding:'6px 12px',borderRadius:8}}>شروع مجدد</button>
+      </header>
+
+      {/* Chat */}
+      <div style={{flex:1,overflowY:'auto',padding:'16px 20px 120px',display:'flex',flexDirection:'column',gap:16}}>
+        {messages.map((m, i) => (
+          <div key={i} style={{display:'flex',gap:10,justifyContent:m.from==='user'?'flex-end':'flex-start',alignItems:'flex-start'}}>
+            {m.from==='bot' && (
+              <div style={{width:32,height:32,borderRadius:'50%',background:'linear-gradient(135deg,var(--brand-gold),var(--brand-gold-light))',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 0 12px rgba(198,169,98,0.2)'}}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="#0a0a0a"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+              </div>
+            )}
+            <div style={{maxWidth:m.from==='user'?'80%':'100%'}}>
+              {m.result ? (
+                <div style={{background:'var(--surface-card)',border:'1px solid var(--border-subtle)',borderRadius:'var(--radius-lg)',padding:24,maxWidth:500,animation:'fadeInUp 300ms var(--ease-out-expo)'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
+                    <span style={{fontSize:'1.5rem'}}>✅</span>
+                    <span style={{fontWeight:700,fontSize:'1.0625rem'}}>{m.result.title}</span>
                   </div>
-                </button>
-              ))}
+                  {(()=>{const s=severityStyles[m.result.severity]||severityStyles.INFO;return(<span className="badge" style={{background:s.bg,color:s.border,border:`1px solid ${s.border}`,marginBottom:16}}>{s.icon} {s.label}</span>)})()}
+                  <div style={{background:'rgba(255,255,255,0.03)',borderRadius:'var(--radius-sm)',padding:16,whiteSpace:'pre-wrap',fontSize:'0.875rem',color:'var(--text-secondary)',lineHeight:1.8,marginBottom:16}}>{m.result.description}</div>
+                  <div style={{display:'flex',gap:8}}>
+                    <button onClick={restart} className="btn btn-outline" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>🔄 شروع دوباره</button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div style={{background:m.from==='user'?'linear-gradient(135deg,var(--brand-gold),var(--brand-gold-dark))':'var(--surface-card)',color:m.from==='user'?'var(--text-inverse)':'var(--text-primary)',padding:'12px 16px',borderRadius:m.from==='user'?'var(--radius-lg) 4px var(--radius-lg) var(--radius-lg)':'4px var(--radius-lg) var(--radius-lg) var(--radius-lg)',fontSize:'0.9375rem',lineHeight:1.7,animation:'fadeInUp 200ms var(--ease-out-expo)',border:m.from==='bot'?'1px solid var(--border-subtle)':'none'}}>{m.text}</div>
+                  {m.options && (
+                    <div style={{display:'flex',flexDirection:'column',gap:8,marginTop:12}}>
+                      {m.options.map(o => (
+                        <button key={o.id} onClick={()=>handleAnswer(o.id,o.value,o.label)} disabled={awaitingAnswer}
+                          style={{textAlign:'right',padding:'14px 18px',background:'var(--surface-card)',border:`1.5px solid ${awaitingAnswer?'var(--border-subtle)':'var(--border-subtle)'}`,borderRadius:'var(--radius-md)',color:'var(--text-primary)',fontFamily:'Vazirmatn',fontSize:'0.9375rem',cursor:awaitingAnswer?'default':'pointer',transition:'all 200ms var(--ease-out-expo)',opacity:awaitingAnswer?0.5:1}}
+                          onMouseEnter={e=>{if(!awaitingAnswer){e.currentTarget.style.borderColor='var(--brand-gold)';e.currentTarget.style.background='rgba(198,169,98,0.06)'}}}
+                          onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--border-subtle)';e.currentTarget.style.background='var(--surface-card)'}}>
+                          {o.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-            {isLoading && <div className="mt-6 text-center"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gold-500 mx-auto" /><p className="text-gray-400 text-sm mt-2">در حال پردازش...</p></div>}
+          </div>
+        ))}
+        {awaitingAnswer && (
+          <div style={{display:'flex',gap:10,alignItems:'center'}}>
+            <div style={{width:32,height:32,borderRadius:'50%',background:'linear-gradient(135deg,var(--brand-gold),var(--brand-gold-light))',display:'flex',alignItems:'center',justifyContent:'center'}}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#0a0a0a"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            </div>
+            <div style={{display:'flex',gap:6}}>
+              {[0,1,2].map(i=><div key={i} style={{width:6,height:6,borderRadius:'50%',background:'var(--brand-gold)',animation:`pulse-gold 1.4s infinite`,animationDelay:`${i*200}ms`}}/>)}
+            </div>
           </div>
         )}
+        <div ref={chatEnd} />
+      </div>
+
+      {/* Footer */}
+      <div style={{padding:'12px 20px',borderTop:'1px solid var(--border-subtle)',textAlign:'center',background:'var(--brand-black-soft)'}}>
+        <span style={{fontSize:'0.75rem',color:'var(--text-muted)'}}>پاسخ‌ها بر اساس قوانین مالیاتی ایران و بدون استفاده از هوش مصنوعی تولید می‌شوند.</span>
       </div>
     </div>
   );
