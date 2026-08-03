@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { OTPService } from './otp.service';
+import { SmsService } from './sms.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
@@ -15,20 +16,12 @@ import { RolesGuard } from './guards/roles.guard';
       inject: [ConfigService],
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),
-        signOptions: {
-          expiresIn: configService.get<string>('JWT_EXPIRES_IN', '1d'),
-        },
+        signOptions: { expiresIn: configService.get<string>('JWT_EXPIRES_IN', '1d') },
       }),
     }),
   ],
   controllers: [AuthController],
-  providers: [
-    AuthService,
-    OTPService,
-    JwtStrategy,
-    JwtAuthGuard,
-    RolesGuard,
-  ],
-  exports: [AuthService, OTPService, JwtAuthGuard, RolesGuard],
+  providers: [AuthService, OTPService, SmsService, JwtStrategy, JwtAuthGuard, RolesGuard],
+  exports: [AuthService, OTPService, SmsService, JwtAuthGuard, RolesGuard],
 })
 export class AuthModule {}
