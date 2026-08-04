@@ -12,7 +12,7 @@ export default function ChatbotPage(){
   const[load,setLoad]=useState(true);
   const[wait,setWait]=useState(false);
   const[qid,setQid]=useState<string|null>(null);
-  const[end]=useRef<HTMLDivElement>(null);
+  const end=useRef<HTMLDivElement>(null);
   const[toast,setToast]=useState('');
 
   useEffect(()=>{end.current?.scrollIntoView({behavior:'smooth'})},[msgs]);

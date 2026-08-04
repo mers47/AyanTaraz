@@ -74,11 +74,11 @@ async function main() {
     {name:'penalty',title:'جرایم',description:'عدم اظهارنامه:۳۰٪|بخشودگی تا۱۰۰٪',action:'CONSULT_ACCOUNTANT',severity:'WARNING'},
   ]});
 
-  const sv1=await P.consultationService.create({data:{name:'مشاوره رایگان ۳۰ دقیقه',slug:'c30',duration:30,price:0,sortOrder:1}});
-  await P.consultationService.create({data:{name:'مشاوره تخصصی ۶۰ دقیقه',slug:'c60',duration:60,price:1500000,sortOrder:2}});
-  await P.consultationService.create({data:{name:'تنظیم اظهارنامه',slug:'tax-filing',duration:45,price:2500000,sortOrder:3}});
-  await P.consultationService.create({data:{name:'اعتراض برگ تشخیص',slug:'tax-appeal',duration:60,price:3000000,sortOrder:4}});
-  await P.consultationService.create({data:{name:'ثبت‌نام مودیان',slug:'tax-reg',duration:30,price:500000,sortOrder:5}});
+  const sv1=await P.consultationService.create({data:{name:'مشاوره رایگان ۳۰ دقیقه',slug:'c30',description:'مشاوره اولیه مالیاتی و حسابداری',duration:30,price:0,sortOrder:1}});
+  await P.consultationService.create({data:{name:'مشاوره تخصصی ۶۰ دقیقه',slug:'c60',description:'بررسی تخصصی پرونده مالیاتی و حسابداری',duration:60,price:1500000,sortOrder:2}});
+  await P.consultationService.create({data:{name:'تنظیم اظهارنامه',slug:'tax-filing',description:'آماده‌سازی و تنظیم اظهارنامه مالیاتی',duration:45,price:2500000,sortOrder:3}});
+  await P.consultationService.create({data:{name:'اعتراض برگ تشخیص',slug:'tax-appeal',description:'مشاوره و پیگیری اعتراض به برگ تشخیص',duration:60,price:3000000,sortOrder:4}});
+  await P.consultationService.create({data:{name:'ثبت‌نام مودیان',slug:'tax-reg',description:'راهنمایی ثبت‌نام و تکمیل اطلاعات مودیان',duration:30,price:500000,sortOrder:5}});
   for(let d=0;d<5;d++)await P.consultationAvailability.create({data:{serviceId:sv1.id,dayOfWeek:d,startTime:'09:00',endTime:'17:00'}});
 
   await P.adminSetting.createMany({data:[{key:'vat_1405',value:'12'},{key:'corp_tax',value:'25'},{key:'sal_exempt',value:'400000000'},{key:'biz_exempt',value:'20000000000'}]});
