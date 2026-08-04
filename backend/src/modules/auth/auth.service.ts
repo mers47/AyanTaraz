@@ -8,6 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { PrismaService } from '../../prisma/prisma.service';
 import { OTPService } from './otp.service';
 import { SmsService } from './sms.service';
+import { OTPType } from '@prisma/client';
 
 export interface JwtPayload { sub: string; phone: string; role: string; iat?: number; exp?: number; }
 export interface SafeUser { id: string; phone: string; phoneVerified: boolean; firstName: string | null; lastName: string | null; avatar: string | null; role: string; isActive: boolean; createdAt: Date; updatedAt: Date; }
@@ -29,10 +30,10 @@ export class AuthService {
    * ارسال کد تأیید از طریق پیامک
    * پیامک: "کد ورود به آیان تراز: XXXXXX" با template=1
    */
-  async sendOTP(phone: string, type = 'PHONE_VERIFICATION') {
-    if (type === 'PHONE_VERIFICATION') await this.prisma.user.upsert({ where: { phone }, create: { phone, phoneVerified: false }, update: {} });
+  async sendOTP(phone: string, type: OTPType = OTPType.PHONE_VERIFICATION) {
+    if (type === OTPType.PHONE_VERIFICATION) await this.prisma.user.upsert({ where: { phone }, create: { phone, phoneVerified: false }, update: {} });
     const { code } = await this.otpService.generateOTP(phone, type);
-    await this.smsService.sendOTPWithFallback(phone, code, 1);
+    await this.smsService.sendWithFallback(phone, code, 1);
     return { message: 'کد تأیید ارسال شد' };
   }
 

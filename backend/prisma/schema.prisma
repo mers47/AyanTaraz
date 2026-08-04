@@ -26,6 +26,12 @@ model User {
   otps          OTP[]
   sessions      Session[]
   consultations ConsultationBooking[]
+  articles      Article[]
+  videos        Video[]
+  miniBooks     MiniBook[]
+  mediaUploads  Media[]
+  reviewedTaxRuleVersions  TaxRuleVersion[] @relation("ReviewedTaxRuleVersions")
+  publishedTaxRuleVersions TaxRuleVersion[] @relation("PublishedTaxRuleVersions")
   adminActions  AdminAction[]         @relation("AdminUser")
 
   @@index([phone])
@@ -308,10 +314,10 @@ model TaxRuleVersion {
   status        TaxRuleVersionStatus @default(DRAFT)
   reviewNotes   String?
   reviewedById  String?
-  reviewedBy    User?    @relation(fields: [reviewedById], references: [id])
+  reviewedBy    User?    @relation("ReviewedTaxRuleVersions", fields: [reviewedById], references: [id])
   reviewedAt    DateTime?
   publishedById String?
-  publishedBy   User?    @relation(fields: [publishedById], references: [id])
+  publishedBy   User?    @relation("PublishedTaxRuleVersions", fields: [publishedById], references: [id])
   publishedAt   DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

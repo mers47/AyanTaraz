@@ -48,7 +48,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://backend:4000}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
         NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL:-https://ayantaraz.com}
     container_name: ayan-frontend
     restart: unless-stopped

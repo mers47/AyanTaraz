@@ -1,4 +1,5 @@
-import { Injectable, Inject, BadRequestException, TooManyRequestsException } from '@nestjs/common';
+import { Injectable, Inject, BadRequestException, HttpException, HttpStatus } from '@nestjs/common';
+import { OTPType } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 import { randomInt, createHash } from 'crypto';
@@ -21,13 +22,13 @@ export class OTPService {
    * Ban: ۱۰ دقیقه پس از هر درخواست
    * اعتبار کد: ۵ دقیقه
    */
-  async generateOTP(phone: string, type = 'PHONE_VERIFICATION'): Promise<{ code: string; otpId: string }> {
+  async generateOTP(phone: string, type: OTPType = OTPType.PHONE_VERIFICATION): Promise<{ code: string; otpId: string }> {
     const banKey = `${this.BAN_PREFIX}${phone}:${type}`;
     const banned = await this.redis.get(banKey);
     if (banned) {
       const ttl = await this.redis.ttl(banKey);
       const mins = Math.ceil(ttl / 60);
-      throw new TooManyRequestsException(`لطفاً ${mins === 0 ? 'چند لحظه' : mins + ' دقیقه'} دیگر تلاش کنید`);
+      throw new HttpException(`لطفاً ${mins === 0 ? 'چند لحظه' : mins + ' دقیقه'} دیگر تلاش کنید`, HttpStatus.TOO_MANY_REQUESTS);
     }
 
     const code = `${randomInt(100000, 999999)}`;
@@ -45,7 +46,7 @@ export class OTPService {
     return { code, otpId: id };
   }
 
-  async verifyOTP(phone: string, code: string, type = 'PHONE_VERIFICATION'): Promise<{ otpId: string }> {
+  async verifyOTP(phone: string, code: string, type: OTPType = OTPType.PHONE_VERIFICATION): Promise<{ otpId: string }> {
     const keys = await this.redis.keys(`${this.OTP_PREFIX}*`);
     const inputHash = createHash('sha256').update(code).digest('hex');
     let matched: string | null = null;

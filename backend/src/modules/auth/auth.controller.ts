@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Request, Response, HttpCode, HttpStatus, Ip, Header } from '@nestjs/common';
+import { Controller, Post, Body, Request, Response, HttpCode, HttpStatus, Ip, Headers } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { Public } from '../../common/decorators/public.decorator';
 import { AuthService } from './auth.service';
@@ -19,7 +19,7 @@ export class AuthController {
     @Body() b: { phone: string; code: string },
     @Response({ passthrough: true }) res: any,
     @Ip() ip: string,
-    @Header('user-agent') ua: string,
+    @Headers('user-agent') ua: string,
   ) { return this.auth.login(b.phone, b.code, res, ip, ua); }
 
   @Post('refresh')
