@@ -2,7 +2,7 @@ import axios from 'axios';
 const A=process.env.NEXT_PUBLIC_API_URL||'';
 const apiBase=A?`${A}/api`:'/api';
 const api=axios.create({baseURL:apiBase,timeout:30000,withCredentials:true,headers:{'Content-Type':'application/json'}});
-api.interceptors.response.use(r=>r,async e=>{const o=e.config;if(e.response?.status===401&&!o._retry){o._retry=true;try{await axios.post(`${apiBase}/auth/refresh`,{},{withCredentials:true});return api(o)}catch(x){if(typeof window!=='undefined')window.location.href='/login';return Promise.reject(x)}}return Promise.reject(e)});
+api.interceptors.response.use(r=>r,async e=>{const o=e.config;if(e.response?.status===401&&!o._retry){o._retry=true;try{await axios.post(`${apiBase}/auth/refresh`,{},{withCredentials:true});return api(o)}catch(x){if(typeof window!=='undefined')window.location.href='/admin';return Promise.reject(x)}}return Promise.reject(e)});
 export const authApi={sendOTP:(p:string)=>api.post('/auth/send-otp',{phone:p}),login:(p:string,c:string)=>api.post('/auth/login',{phone:p,code:c}),refresh:()=>api.post('/auth/refresh'),logout:()=>api.post('/auth/logout')};
 export const taxAssistantApi={startSession:(q?:string)=>api.post('/tax-assistant/start',{questionId:q}),answerQuestion:(s:string,q:string,o:string,v:string)=>api.post('/tax-assistant/answer',{sessionId:s,questionId:q,optionId:o,optionValue:v})};
 export const adminApi={getDashboardStats:()=>api.get('/admin/dashboard'),getRecentActivity:(l?:number)=>api.get('/admin/recent-activity',{params:{limit:l}}),getUsers:(p?:number,l?:number,s?:string)=>api.get('/admin/users',{params:{page:p,limit:l,search:s}}),getAuditLogs:(pr?:any)=>api.get('/admin/audit-logs',{params:pr})};

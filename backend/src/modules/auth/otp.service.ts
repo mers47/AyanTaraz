@@ -15,16 +15,16 @@ export class OTPService {
   ) {}
 
   private readonly OTP_PREFIX = 'otp:';
+  private readonly OTP_LOOKUP_PREFIX = 'otp_lookup:';
   private readonly BAN_PREFIX = 'otp_ban:';
+  private readonly IP_BAN_PREFIX = 'otp_ip_ban:';
 
-  /**
-   * تولید کد ۶ رقمی امن با crypto.randomInt
-   * Ban: ۱۰ دقیقه پس از هر درخواست
-   * اعتبار کد: ۵ دقیقه
-   */
-  async generateOTP(phone: string, type: OTPType = OTPType.PHONE_VERIFICATION): Promise<{ code: string; otpId: string }> {
+  async generateOTP(phone: string, type: OTPType = OTPType.PHONE_VERIFICATION, ip?: string, ua?: string): Promise<{ code: string; otpId: string }> {
     const banKey = `${this.BAN_PREFIX}${phone}:${type}`;
-    const banned = await this.redis.get(banKey);
+    const ipKey = `${this.IP_BAN_PREFIX}${ip || 'unknown'}`;
+    const [banned, ipCount] = await Promise.all([this.redis.get(banKey), this.redis.incr(ipKey)]);
+    if (ipCount === 1) await this.redis.expire(ipKey, 600);
+    if (ipCount > 20) throw new HttpException('تعداد درخواست‌ها بیش از حد مجاز است', HttpStatus.TOO_MANY_REQUESTS);
     if (banned) {
       const ttl = await this.redis.ttl(banKey);
       const mins = Math.ceil(ttl / 60);
@@ -35,39 +35,43 @@ export class OTPService {
     const hashed = createHash('sha256').update(code).digest('hex');
     const id = uuidv4();
     const ttl = 300;
+    const lookupKey = `${this.OTP_LOOKUP_PREFIX}${phone}:${type}`;
 
+    const previousId = await this.redis.get(lookupKey);
+    if (previousId) await this.redis.del(`${this.OTP_PREFIX}${previousId}`);
     await this.redis.setex(`${this.OTP_PREFIX}${id}`, ttl, JSON.stringify({ phone, type, hash: hashed, attempts: 0 }));
+    await this.redis.setex(lookupKey, ttl, id);
     await this.redis.setex(banKey, 600, '1');
 
+    await this.prisma.oTP.updateMany({ where: { phone, type, used: false }, data: { used: true } });
     await this.prisma.oTP.create({
-      data: { id, phone, code: hashed, type, expiresAt: new Date(Date.now() + ttl * 1000) },
+      data: { id, phone, code: hashed, type, expiresAt: new Date(Date.now() + ttl * 1000), ipAddress: ip, attemptCount: 0 },
     });
 
     return { code, otpId: id };
   }
 
   async verifyOTP(phone: string, code: string, type: OTPType = OTPType.PHONE_VERIFICATION): Promise<{ otpId: string }> {
-    const keys = await this.redis.keys(`${this.OTP_PREFIX}*`);
-    const inputHash = createHash('sha256').update(code).digest('hex');
-    let matched: string | null = null;
+    const lookupKey = `${this.OTP_LOOKUP_PREFIX}${phone}:${type}`;
+    const id = await this.redis.get(lookupKey);
+    if (!id) throw new BadRequestException('کد تأیید نامعتبر یا منقضی شده است');
+    const otpKey = `${this.OTP_PREFIX}${id}`;
+    const raw = await this.redis.get(otpKey);
+    if (!raw) throw new BadRequestException('کد تأیید نامعتبر یا منقضی شده است');
 
-    for (const k of keys) {
-      const raw = await this.redis.get(k);
-      if (!raw) continue;
-      try {
-        const d = JSON.parse(raw);
-        if (d.phone === phone && d.type === type) {
-          if (d.hash === inputHash && d.attempts < 5) { matched = k; break; }
-          if (d.hash !== inputHash) { d.attempts++; const t = await this.redis.ttl(k); await this.redis.setex(k, t > 0 ? t : 300, JSON.stringify(d)); }
-        }
-      } catch {}
+    const d = JSON.parse(raw);
+    const inputHash = createHash('sha256').update(code).digest('hex');
+    if (d.phone !== phone || d.type !== type || d.attempts >= 5 || d.hash !== inputHash) {
+      d.attempts = (d.attempts || 0) + 1;
+      const ttl = await this.redis.ttl(otpKey);
+      if (ttl > 0 && d.attempts < 5) await this.redis.setex(otpKey, ttl, JSON.stringify(d));
+      else await this.redis.del(otpKey, lookupKey);
+      await this.prisma.oTP.updateMany({ where: { id }, data: { attemptCount: d.attempts, used: d.attempts >= 5 } });
+      throw new BadRequestException('کد تأیید نامعتبر یا منقضی شده است');
     }
 
-    if (!matched) throw new BadRequestException('کد تأیید نامعتبر یا منقضی شده است');
-
-    await this.redis.del(matched);
-    await this.redis.del(`${this.BAN_PREFIX}${phone}:${type}`);
-
-    return { otpId: matched.replace(this.OTP_PREFIX, '') };
+    await this.redis.del(otpKey, lookupKey, `${this.BAN_PREFIX}${phone}:${type}`);
+    await this.prisma.oTP.update({ where: { id }, data: { used: true, attemptCount: d.attempts } });
+    return { otpId: id };
   }
 }
