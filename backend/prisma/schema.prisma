@@ -66,7 +66,6 @@ model OTP {
   ipAddress    String?
   attemptCount Int      @default(0)
 
-  @@unique([phone, type, used])
   @@index([phone])
   @@index([expiresAt])
   @@index([used])

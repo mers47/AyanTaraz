@@ -30,9 +30,9 @@ export class AuthService {
    * ارسال کد تأیید از طریق پیامک
    * پیامک: "کد ورود به آیان تراز: XXXXXX" با template=1
    */
-  async sendOTP(phone: string, type: OTPType = OTPType.PHONE_VERIFICATION) {
+  async sendOTP(phone: string, type: OTPType = OTPType.PHONE_VERIFICATION, ip?: string, ua?: string) {
     if (type === OTPType.PHONE_VERIFICATION) await this.prisma.user.upsert({ where: { phone }, create: { phone, phoneVerified: false }, update: {} });
-    const { code } = await this.otpService.generateOTP(phone, type);
+    const { code } = await this.otpService.generateOTP(phone, type, ip, ua);
     await this.smsService.sendWithFallback(phone, code, 1);
     return { message: 'کد تأیید ارسال شد' };
   }
@@ -66,14 +66,22 @@ export class AuthService {
     return this.createSession(user, res, req.ip, req.headers['user-agent'] || '');
   }
 
-  async logout(res: Response) {
-    res.clearCookie('access_token', { path: '/', httpOnly: true, secure: true, sameSite: 'lax' });
-    res.clearCookie('refresh_token', { path: '/', httpOnly: true, secure: true, sameSite: 'lax' });
+  async logout(req: Request, res: Response) {
+    const accessToken = req.cookies?.access_token || req.headers.authorization?.replace(/^Bearer\s+/i, '');
+    const refreshToken = req.cookies?.refresh_token;
+    if (accessToken) {
+      await this.redis.del(`${this.SESSION}${accessToken}`);
+      await this.prisma.session.deleteMany({ where: { token: accessToken } });
+    }
+    if (refreshToken) await this.redis.del(`${this.SESSION}refresh:${refreshToken}`);
+    const prod = this.configService.get('NODE_ENV') === 'production';
+    res.clearCookie('access_token', { path: '/', httpOnly: true, secure: prod, sameSite: 'lax' });
+    res.clearCookie('refresh_token', { path: '/', httpOnly: true, secure: prod, sameSite: 'lax' });
     return { message: 'خروج موفق' };
   }
 
   private async createSession(user: any, res: Response, ip?: string, ua?: string) {
-    const fp = createHash('sha256').update(`${ip || ''}|${ua || ''}`).digest('hex').substring(0, 32);
+    const fp = this.fingerprintParts(ip, ua);
     const accExp = this.configService.get<number>('JWT_EXPIRES_IN', 86400);
     const refExp = 2592000;
 
@@ -93,7 +101,23 @@ export class AuthService {
   }
 
   fingerprint(req: Request): string {
-    return createHash('sha256').update(`${req.ip || ''}|${req.headers['user-agent'] || ''}|${req.headers['accept-language'] || ''}`).digest('hex').substring(0, 32);
+    return this.fingerprintParts(req.ip, req.headers['user-agent'] || '');
+  }
+
+  private fingerprintParts(ip?: string, ua?: string | string[]): string {
+    return createHash('sha256').update(`${ip || ''}|${Array.isArray(ua) ? ua.join(',') : ua || ''}`).digest('hex').substring(0, 32);
+  }
+
+  async validateAccessToken(token: string, payload: JwtPayload) {
+    const cached = await this.redis.get(`${this.SESSION}${token}`);
+    if (!cached) throw new UnauthorizedException('نشست منقضی شده');
+    const session = await this.prisma.session.findUnique({ where: { token }, include: { user: true } });
+    if (!session || session.expiresAt.getTime() < Date.now() || !session.user.isActive) {
+      await this.redis.del(`${this.SESSION}${token}`);
+      throw new UnauthorizedException('نشست نامعتبر است');
+    }
+    if (session.user.id !== payload.sub || session.user.phone !== payload.phone) throw new UnauthorizedException('نشست نامعتبر است');
+    return this.safe(session.user);
   }
 
   safe(u: any): SafeUser {
