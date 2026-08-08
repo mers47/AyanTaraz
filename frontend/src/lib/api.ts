@@ -12,6 +12,8 @@ createTaxQuestionOption:(d:any)=>api.post('/admin/tax-question-options',d),updat
 getTaxQuestionFlows:()=>api.get('/admin/tax-question-flows'),createTaxQuestionFlow:(d:any)=>api.post('/admin/tax-question-flows',d),deleteTaxQuestionFlow:(id:string)=>api.delete(`/admin/tax-question-flows/${id}`),
 getTaxAssistantResults:()=>api.get('/admin/tax-assistant-results'),createTaxAssistantResult:(d:any)=>api.post('/admin/tax-assistant-results',d),updateTaxAssistantResult:(id:string,d:any)=>api.patch(`/admin/tax-assistant-results/${id}`,d),deleteTaxAssistantResult:(id:string)=>api.delete(`/admin/tax-assistant-results/${id}`),
 // Articles
-getArticles:(p?:number,l?:number,s?:string)=>api.get('/admin/articles',{params:{page:p,limit:l,search:s}}),getArticle:(id:string)=>api.get(`/admin/articles/${id}`),createArticle:(d:any)=>api.post('/admin/articles',d),updateArticle:(id:string,d:any)=>api.patch(`/admin/articles/${id}`,d),deleteArticle:(id:string)=>api.delete(`/admin/articles/${id}`),getCategories:()=>api.get('/admin/categories')};
+getArticles:(p?:number,l?:number,s?:string)=>api.get('/admin/articles',{params:{page:p,limit:l,search:s}}),getArticle:(id:string)=>api.get(`/admin/articles/${id}`),createArticle:(d:any)=>api.post('/admin/articles',d),updateArticle:(id:string,d:any)=>api.patch(`/admin/articles/${id}`,d),deleteArticle:(id:string)=>api.delete(`/admin/articles/${id}`),getCategories:()=>api.get('/admin/categories'),
+// Videos
+getVideos:(p?:number,l?:number,s?:string)=>api.get('/admin/videos',{params:{page:p,limit:l,search:s}}),createVideo:(d:any)=>api.post('/admin/videos',d),updateVideo:(id:string,d:any)=>api.patch(`/admin/videos/${id}`,d),deleteVideo:(id:string)=>api.delete(`/admin/videos/${id}`)};
 export const contentApi={getAll:()=>api.get('/content'),get:(k:string)=>api.get(`/content/${k}`),save:(k:string,d:any)=>api.put(`/content/${k}`,d),autoFill:()=>api.post('/content/autofill')};
 export default api;

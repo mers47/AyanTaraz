@@ -47,4 +47,11 @@ export class AdminController {
   @Patch('articles/:id') async uaA(@Param('id') id: string, @Body() b: { title?: string; excerpt?: string; content?: string; featuredImage?: string; status?: string; metaTitle?: string; metaDescription?: string; categoryId?: string }) { return this.svc.updateArticle(id, b); }
   @Delete('articles/:id') async da(@Param('id') id: string) { return this.svc.deleteArticle(id); }
   @Get('categories') async gc() { return this.svc.getCategories(); }
+
+  // ==================== Videos Management ====================
+
+  @Get('videos') async gv(@Query('page') p?: number, @Query('limit') l?: number, @Query('search') s?: string) { return this.svc.getVideos(p ? +p : 1, l ? +l : 20, s); }
+  @Post('videos') async cvA(@Body() b: { title: string; slug?: string; description?: string; url: string; thumbnail?: string; duration?: number; status?: string; categoryId?: string }, @Request() req: any) { return this.svc.createVideo({ ...b, authorId: req.user?.id || '00000000-0000-0000-0000-000000000000' }); }
+  @Patch('videos/:id') async uvA(@Param('id') id: string, @Body() b: { title?: string; description?: string; url?: string; thumbnail?: string; duration?: number; status?: string; categoryId?: string }) { return this.svc.updateVideo(id, b); }
+  @Delete('videos/:id') async dv(@Param('id') id: string) { return this.svc.deleteVideo(id); }
 }

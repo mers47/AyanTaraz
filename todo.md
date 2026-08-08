@@ -10,9 +10,9 @@
 - [x] Commit
 
 ### A2: Articles Management (tab + backend CRUD)
-- [ ] Backend: article CRUD endpoints (list, create, update, delete)
-- [ ] Frontend: admin page new tab for article management
-- [ ] Commit
+- [x] Backend: article CRUD endpoints (list, create, update, delete)
+- [x] Frontend: admin page new tab for article management
+- [x] Commit
 
 ### A3: Videos Management (tab + backend CRUD)
 - [ ] Backend: video CRUD endpoints
