@@ -5,9 +5,9 @@
 ## Tasks (Group A — Admin Panel, in order):
 
 ### A1: Chatbot Q&A Management (tab + backend CRUD)
-- [ ] Backend: admin endpoints for TaxQuestion, TaxQuestionOption, TaxQuestionFlow, TaxAssistantResult CRUD
-- [ ] Frontend: admin page new tab for chatbot management
-- [ ] Commit
+- [x] Backend: admin endpoints for TaxQuestion, TaxQuestionOption, TaxQuestionFlow, TaxAssistantResult CRUD
+- [x] Frontend: admin page new tab for chatbot management
+- [x] Commit
 
 ### A2: Articles Management (tab + backend CRUD)
 - [ ] Backend: article CRUD endpoints (list, create, update, delete)
