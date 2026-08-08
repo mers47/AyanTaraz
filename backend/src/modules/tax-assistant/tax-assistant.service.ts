@@ -34,6 +34,29 @@ export class TaxAssistantService {
     return { question: done ? null : await this.getQ(nid!), result, completed: done };
   }
 
+  async getSession(sessionId: string) {
+    const raw = await this.redis.get(`${this.PREFIX}${sessionId}`);
+    if (!raw) throw new NotFoundException('Session expired or not found');
+    const s: Session = JSON.parse(raw);
+    const currentQuestion = s.result ? null : await this.getQ(s.currentQuestionId);
+    const answerCount = Object.keys(s.answers).length;
+    return {
+      sessionId: s.id,
+      currentQuestion,
+      answers: s.answers,
+      answerCount,
+      result: s.result,
+      completed: s.result !== null,
+      createdAt: s.createdAt,
+      updatedAt: s.updatedAt,
+    };
+  }
+
+  async deleteSession(sessionId: string) {
+    const deleted = await this.redis.del(`${this.PREFIX}${sessionId}`);
+    return { sessionId, deleted: deleted > 0 };
+  }
+
   private async getQ(qid: string) {
     const q = await this.prisma.taxQuestion.findUnique({ where: { id: qid, isActive: true }, include: { options: { where: { isActive: true }, orderBy: { sortOrder: 'asc' } } } });
     if (!q) return null;

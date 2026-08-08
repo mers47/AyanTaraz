@@ -1,16 +1,600 @@
-'use client';import{useState,useEffect,useRef,useCallback}from'react';import Link from'next/link';import{adminApi,contentApi}from'@/lib/api';import LoginModal from'@/components/LoginModal';import type{DashboardStats,RecentActivity,UserRow,AuditLog,PaginatedResponse}from'@/types';type Tab='dashboard'|'users'|'content'|'chatbot'|'articles'|'videos'|'minibooks'|'consultation'|'audit';interface CS{title:string;hero:string;subtitle:string;description:string}
-export default function AdminPage(){const[tb,st]=useState<Tab>('dashboard');const[stats,ss]=useState<DashboardStats|null>(null);const[act,sa]=useState<RecentActivity|null>(null);const[users,su]=useState<PaginatedResponse<UserRow>|null>(null);const[logs,sl]=useState<PaginatedResponse<AuditLog>|null>(null);const[ld,sl2]=useState(true);const[up,sp]=useState(1);const[ap,sp2]=useState(1);const[q,sq]=useState('');const[to,sto]=useState('');const[ac,sc]=useState<Record<string,CS>>({});const[ek,se]=useState<string|null>(null);const[ed,sd]=useState<CS>({title:'',hero:'',subtitle:'',description:''});const tmr=useRef<any>(null);const sh=(m:string)=>{sto(m);setTimeout(()=>sto(''),2500)};const[nl,snl]=useState(false);const chkErr=(x:any)=>{if(x?.response?.status===401)snl(true)};const[tq,stq]=useState<any[]>([]);const[tqr,stqr]=useState<any[]>([]);const[eq,seq]=useState<any|null>(null);const[nq,snq]=useState({question:'',description:'',sortOrder:0,isActive:true});const[eo,seo]=useState<any|null>(null);const[no,sno]=useState({questionId:'',label:'',value:'',sortOrder:0});const[nr,snr]=useState({name:'',title:'',description:'',action:'',severity:'INFO',isActive:true});const[er,ser]=useState<any|null>(null);const[arts,sarts]=useState<any[]>([]);const[ea,sea]=useState<any|null>(null);const[na,sna]=useState({title:'',slug:'',excerpt:'',content:'',featuredImage:'',status:'DRAFT',categoryId:''});const[cats,scats]=useState<any[]>([]);const[vids,svids]=useState<any[]>([]);const[ev,sev]=useState<any|null>(null);const[nv,snv]=useState({title:'',slug:'',description:'',url:'',thumbnail:'',duration:0,status:'DRAFT',categoryId:''});const[mbs,smbs]=useState<any[]>([]);const[emb,semb]=useState<any|null>(null);const[nmb,snmb]=useState({title:'',slug:'',description:'',fileUrl:'',coverImage:'',pageCount:0,status:'DRAFT',categoryId:''});const[csvs,scsvs]=useState<any[]>([]);const[ecv,secv]=useState<any|null>(null);const[ncv,sncv]=useState({name:'',slug:'',description:'',duration:30,price:0,isActive:true,sortOrder:0});const db=useCallback((k:string,d:CS)=>{if(tmr.current)clearTimeout(tmr.current);tmr.current=setTimeout(async()=>{await contentApi.save(k,d);sc(p=>({...p,[k]:d}));sh('ذخیره خودکار ✅')},800)},[]);useEffect(()=>{if(tb==='dashboard')ldD();else if(tb==='users')ldU();else if(tb==='content')ldC();else if(tb==='chatbot')ldQ();else if(tb==='articles')ldA();else if(tb==='videos')ldV();else if(tb==='minibooks')ldMB();else if(tb==='consultation')ldCS();else if(tb==='audit')ldL()},[tb]);const ldCS=async()=>{sl2(true);try{const r=await adminApi.getConsultationServices();scsvs(r.data||[])}catch{}finally{sl2(false)}};const ldMB=async()=>{sl2(true);try{const r=await adminApi.getMiniBooks(1,50);smbs(r.data?.data||[])}catch{}finally{sl2(false)}};const ldV=async()=>{sl2(true);try{const r=await adminApi.getVideos(1,50);svids(r.data?.data||[])}catch{}finally{sl2(false)}};const ldA=async()=>{sl2(true);try{const[r,cs]=await Promise.all([adminApi.getArticles(1,50),adminApi.getCategories()]);sarts(r.data?.data||[]);scats(cs.data||[])}catch{}finally{sl2(false)}};const ldQ=async()=>{sl2(true);try{const[qs,rs]=await Promise.all([adminApi.getTaxQuestions(),adminApi.getTaxAssistantResults()]);stq(qs.data||[]);stqr(rs.data||[])}catch{}finally{sl2(false)}};const ldD=async()=>{sl2(true);try{const[s,a]=await Promise.all([adminApi.getDashboardStats(),adminApi.getRecentActivity(5)]);ss(s.data);sa(a.data)}catch(x:any){chkErr(x)}finally{sl2(false)}};const ldU=async(p=1)=>{sl2(true);try{const r=await adminApi.getUsers(p,15,q);su(r.data);sp(p)}catch{}finally{sl2(false)}};const ldC=async()=>{sl2(true);try{const r=await contentApi.getAll();if(r.data&&typeof r.data==='object'){const m:any={};for(const[k,v]of Object.entries(r.data)){const key=k.replace('content_','');m[key]=v}sc(m)}sl2(false)}catch{sl2(false)}};const ldL=async(p=1)=>{sl2(true);try{const r=await adminApi.getAuditLogs({page:p,limit:15});sl(r.data);sp2(p)}catch{}finally{sl2(false)}};const af=async()=>{sl2(true);try{const r=await contentApi.autoFill();sh(r.data.message||'✅');ldC()}catch{sh('❌')}finally{sl2(false)}};const sv=async()=>{if(!ek)return;await contentApi.save(ek,ed);sc(p=>({...p,[ek]:ed}));se(null);sh('ذخیره شد ✅')};const tabs:any[]=[{id:'dashboard',l:'داشبورد',i:'📊'},{id:'users',l:'کاربران',i:'👥'},{id:'content',l:'ویرایش محتوا',i:'✏️'},{id:'audit',l:'گزارش‌ها',i:'📋'}];if(ld&&!stats&&!users&&!logs&&Object.keys(ac).length===0)return<div style={C}><div style={SP}/></div>;return<div style={C2}>{nl&&<LoginModal title="ورود به پنل مدیریت" onClose={()=>snl(false)} onSuccess={()=>{snl(false);ldD()}}/>}<style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style><header style={HD}><div style={HD2}><div style={{display:'flex',alignItems:'center',gap:12}}><Link href="/" style={HLA}>آیان تراز</Link><span style={{color:'var(--border-default)'}}>|</span>پنل مدیریت</div><Link href="/" style={HL2}>خروج</Link></div></header><div className="container" style={{paddingTop:28,paddingBottom:60}}>{to&&<div className="toast">{to}</div>}<div style={TBAR}>{tabs.map(t=><button key={t.id} onClick={()=>st(t.id)} style={tb===t.id?TBA:TBB}>{t.i} {t.l}</button>)}</div>{tb==='dashboard'&&stats&&<Dash stats={stats} act={act}/>}{tb==='content'&&<CT ac={ac} af={af} ek={ek} se={se} ed={ed} sd={sd} db={db} sv={sv}/>}{tb==='users'&&<UT users={users} q={q} sq={sq} ldU={ldU} up={up}/>}{tb==='consultation'&&<CS csvs={csvs} ecv={ecv} secv={secv} ncv={ncv} sncv={sncv} sh={sh} ldCS={()=>ldCS()} IS={IS} IS2={IS2} EB={EB}/>}{tb==='minibooks'&&<MB mbs={mbs} emb={emb} semb={semb} nmb={nmb} snmb={snmb} cats={cats} sh={sh} ldMB={()=>ldMB()} IS={IS} IS2={IS2} EB={EB}/>}{tb==='videos'&&<VI vids={vids} ev={ev} sev={sev} nv={nv} snv={snv} cats={cats} sh={sh} ldV={()=>ldV()} IS={IS} IS2={IS2} EB={EB}/>}{tb==='articles'&&<AR arts={arts} ea={ea} sea={sea} na={na} sna={sna} cats={cats} sh={sh} ldA={()=>ldA()} IS={IS} IS2={IS2} EB={EB}/>}{tb==='chatbot'&&<CB tq={tq} stq={stq} tqr={tqr} stqr={stqr} eq={eq} seq={seq} nq={nq} snq={snq} eo={eo} seo={seo} no={no} sno={sno} nr={nr} snr={snr} er={er} ser={ser} sh={sh} ldQ={()=>ldQ()} IS={IS} EB={EB} LB={LB} IS2={IS2}/>}{tb==='audit'&&<AT logs={logs} ldL={ldL} ap={ap}/>}</div></div>}
-function Dash({stats,act}:any){return<div style={{display:'flex',flexDirection:'column',gap:28}}><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(170px,1fr))',gap:14}}>{[{l:'کاربران',v:stats.totalUsers,c:'#3b82f6'},{l:'قوانین',v:stats.totalTaxRules,c:'var(--brand-gold)'},{l:'رزروها',v:stats.totalBookings,c:'#a855f7'},{l:'منتظر',v:stats.pendingBookings,c:'#eab308'},{l:'تأیید',v:stats.confirmedBookings,c:'#22c55e'},{l:'سوالات',v:stats.totalQuestions,c:'#06b6d4'},{l:'مقالات',v:stats.content?.articles?.total??0,c:'#f97316'},{l:'ویدیوها',v:stats.content?.videos?.total??0,c:'#ec4899'},{l:'مینی‌بوک‌ها',v:stats.content?.minibooks?.total??0,c:'#14b8a6'},{l:'دسته‌ها',v:stats.content?.categories?.active??0,c:'#8b5cf6'}].map((c,i)=><div key={i} className="card" style={{borderLeft:`3px solid ${c.c}`}}><div style={{fontSize:'0.8125rem',color:'var(--text-muted)',marginBottom:8}}>{c.l}</div><div style={{fontSize:'1.75rem',fontWeight:800,color:c.c}}>{c.v??'-'}</div></div>)}</div>{stats.content&&<div className="card" style={{padding:'1.5rem'}}><h3 style={{fontWeight:700,marginBottom:20}}>محتوای منتشرشده</h3><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:16}}>{[{l:'مقالات منتشر',v:stats.content.articles?.published??0,c:'#22c55e'},{l:'مقالات پیش‌نویس',v:stats.content.articles?.draft??0,c:'#94a3b8'},{l:'مقالات در بازبینی',v:stats.content.articles?.review??0,c:'#eab308'},{l:'ویدیوهای منتشر',v:stats.content.videos?.published??0,c:'#22c55e'},{l:'ویدیوهای پیش‌نویس',v:stats.content.videos?.draft??0,c:'#94a3b8'},{l:'مینی‌بوک منتشر',v:stats.content.minibooks?.published??0,c:'#22c55e'},{l:'مینی‌بوک پیش‌نویس',v:stats.content.minibooks?.draft??0,c:'#94a3b8'},{l:'دسته‌های فعال',v:stats.content.categories?.active??0,c:'#8b5cf6'}].map((c,i)=><div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 16px',background:'var(--brand-black-card)',borderRadius:'var(--radius-md)'}}><span style={{fontSize:'0.875rem',color:'var(--text-secondary)'}}>{c.l}</span><span style={{fontSize:'1.25rem',fontWeight:800,color:c.c}}>{c.v}</span></div>)}</div></div>}<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(320px,1fr))',gap:20}}><div className="card"><h3 style={{fontWeight:700,marginBottom:16}}>کاربران جدید</h3>{act?.recentUsers?.map((u:any)=><div key={u.id} style={KR}><div><div style={{fontWeight:600}}>{u.firstName||u.lastName?`${u.firstName||''} ${u.lastName||''}`:'بدون نام'}</div><div style={{fontSize:'0.8125rem',color:'var(--text-muted)'}} dir="ltr">{u.phone}</div></div><div style={{fontSize:'0.75rem',color:'var(--text-muted)'}}>{new Date(u.createdAt).toLocaleDateString('fa-IR')}</div></div>)}</div><div className="card"><h3 style={{fontWeight:700,marginBottom:16}}>رزروها</h3>{act?.recentBookings?.map((b:any)=><div key={b.id} style={KR}><div><div style={{fontWeight:600}}>{b.service?.name||'مشاوره'}</div><div style={{fontSize:'0.8125rem',color:'var(--text-muted)'}}>{b.user?.firstName} {b.user?.lastName}</div></div><span className={`badge ${b.status==='CONFIRMED'?'badge-success':b.status==='PENDING'?'badge-warning':'badge-error'}`}>{b.status==='CONFIRMED'?'تأیید':b.status==='PENDING'?'منتظر':b.status}</span></div>)}</div></div></div>}
-function CT({ac,af,ek,se,ed,sd,db,sv}:any){return<div style={{maxWidth:900}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}><h3 style={{fontWeight:700,fontSize:'1.125rem'}}>ویرایش متن‌های سایت</h3><button onClick={af} className="btn btn-primary" style={{fontSize:'0.875rem',padding:'10px 20px'}}>🪄 جای‌گذاری خودکار قوانین ۱۴۰۵</button></div><div style={{display:'flex',flexDirection:'column',gap:14}}>{Object.entries(ac).length===0&&<div className="card" style={{textAlign:'center',padding:40}}><p style={{color:'var(--text-muted)',marginBottom:16}}>هنوز محتوایی ذخیره نشده</p><button onClick={af} className="btn btn-primary">🪄 جای‌گذاری خودکار قوانین ۱۴۰۵</button></div>}{Object.entries(ac).map(([k,v]:any)=><div key={k} className="glass-card" style={{display:'flex',flexDirection:'column',gap:12}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><div><span style={{fontSize:'0.75rem',color:'var(--text-muted)'}}>{k}</span><span style={{fontWeight:700,fontSize:'0.9rem',marginRight:8}}>{v?.title||''}</span></div>{ek!==k&&<button onClick={()=>{se(k);sd(v||{title:'',hero:'',subtitle:'',description:''})}} style={EB}>✏️ ویرایش</button>}</div>{ek===k?<><input value={ed.title} onChange={e=>{const d={...ed,title:e.target.value};sd(d);db(k,d)}} style={IS} placeholder="عنوان"/><input value={ed.hero} onChange={e=>{const d={...ed,hero:e.target.value};sd(d);db(k,d)}} style={IS} placeholder="متن اصلی"/><input value={ed.subtitle} onChange={e=>{const d={...ed,subtitle:e.target.value};sd(d);db(k,d)}} style={IS} placeholder="زیرعنوان"/><textarea value={ed.description} onChange={e=>{const d={...ed,description:e.target.value};sd(d);db(k,d)}} rows={5} style={{...IS,resize:'vertical',minHeight:100}} placeholder="توضیحات"/><div style={{display:'flex',gap:8}}><button onClick={sv} className="btn btn-primary" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>💾 ذخیره</button><button onClick={()=>se(null)} className="btn btn-ghost" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>انصراف</button></div><div style={PVS}><span style={{fontSize:'0.75rem',color:'var(--brand-gold)',fontWeight:600}}>🔍 پیش‌نمایش</span><div style={{marginTop:8,padding:12,background:'var(--surface-card)',borderRadius:6}}><div style={{fontSize:'0.75rem',color:'var(--brand-gold)'}}>{ed.title}</div><div style={{fontWeight:700,fontSize:'1rem',margin:'4px 0'}}>{ed.hero||'—'}</div><div style={{fontSize:'0.8125rem',color:'var(--text-muted)'}}>{ed.subtitle||'—'}</div><div style={{whiteSpace:'pre-wrap',fontSize:'0.8125rem',color:'var(--text-secondary)',lineHeight:1.7,borderTop:'1px solid var(--border-subtle)',paddingTop:8}}>{ed.description||'—'}</div></div></div></>:<><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:8}}><div><span style={LB}>Hero</span><div style={{fontSize:'0.9375rem',color:'var(--text-secondary)'}}>{v?.hero||'—'}</div></div><div><span style={LB}>زیرعنوان</span><div style={{fontSize:'0.875rem',color:'var(--text-muted)'}}>{v?.subtitle||'—'}</div></div></div><div><span style={LB}>توضیحات</span><div style={{whiteSpace:'pre-wrap',fontSize:'0.875rem',color:'var(--text-secondary)',lineHeight:1.8,maxHeight:80,overflow:'hidden'}}>{v?.description?.substring(0,200)||'—'}{(v?.description?.length||0)>200?'...':''}</div></div></>}</div>)}</div></div>}
-function UT({users,q,sq,ldU,up}:any){return<div><div style={{display:'flex',gap:10,marginBottom:20}}><input value={q} onChange={e=>sq(e.target.value)} onKeyDown={e=>e.key==='Enter'&&ldU(1)} placeholder="جستجو..." style={{...IS,flex:1}}/><button onClick={()=>ldU(1)} className="btn btn-primary" style={{fontSize:'0.8125rem',padding:'10px 18px'}}>جستجو</button></div><div className="card" style={{padding:0,overflow:'hidden'}}><div style={{overflowX:'auto'}}><table style={TB}><thead><tr style={TR}>{(['نام','شماره','نقش','وضعیت','تأیید','تاریخ']as string[]).map(x=><th key={x} style={TH}>{x}</th>)}</tr></thead><tbody>{users?.data?.map((u:any)=><tr key={u.id} style={TR}>{([]as any[]).concat(u.firstName||u.lastName?`${u.firstName||''} ${u.lastName||''}`:'---',u.phone,<span className={`badge ${u.role==='SUPER_ADMIN'?'badge-error':u.role==='ADMIN'?'badge-gold':'badge-success'}`}>{u.role==='SUPER_ADMIN'?'سوپر':u.role==='ADMIN'?'ادمین':'کاربر'}</span>,<span style={{fontSize:'0.8125rem',color:u.isActive?'#22c55e':'#ef4444'}}>{u.isActive?'فعال':'غیرفعال'}</span>,u.phoneVerified?'✅':'⏳',new Date(u.createdAt).toLocaleDateString('fa-IR')).map((c:any,j:number)=><td key={j} style={TD}>{c}</td>)}</tr>)}</tbody></table></div>{users&&users.total>15&&<div style={PG}><span>صفحه {up} از {Math.ceil(users.total/15)}</span><div style={PGB}><B onClick={()=>ldU(up-1)} disabled={up<=1}>قبلی</B><B onClick={()=>ldU(up+1)} disabled={up*15>=users.total}>بعدی</B></div></div>}</div></div>}
-function AT({logs,ldL,ap}:any){return<div className="card" style={{padding:0,overflow:'hidden'}}><div style={{overflowX:'auto'}}><table style={TB}><thead><tr style={TR}>{(['کاربر','عملیات','نوع','تاریخ']as string[]).map(x=><th key={x} style={TH}>{x}</th>)}</tr></thead><tbody>{logs?.data?.map((l:any)=><tr key={l.id} style={TR}>{([]as any[]).concat(l.user?.firstName+' '+l.user?.lastName,<span className="badge badge-gold">{l.action}</span>,l.entityType,new Date(l.createdAt).toLocaleString('fa-IR')).map((c:any,j:number)=><td key={j} style={TD}>{c}</td>)}</tr>)}</tbody></table></div>{logs&&logs.total>15&&<div style={PG}><span>صفحه {ap} از {Math.ceil(logs.total/15)}</span><div style={PGB}><B onClick={()=>ldL(ap-1)} disabled={ap<=1}>قبلی</B><B onClick={()=>ldL(ap+1)} disabled={ap*15>=logs.total}>بعدی</B></div></div>}</div>}
-function B({onClick,disabled,children}:any){return<button onClick={onClick} disabled={disabled} style={{padding:'6px 12px',background:'var(--surface-card)',border:'1px solid var(--border-subtle)',borderRadius:6,color:'var(--text-secondary)',cursor:disabled?'default':'pointer',fontFamily:'Vazirmatn',fontSize:'0.8125rem',opacity:disabled?.5:1}}>{children}</button>}
+'use client';
 
+import { useState, useEffect, useRef, useCallback } from 'react';
+import Link from 'next/link';
+import { adminApi, contentApi } from '@/lib/api';
+import LoginModal from '@/components/LoginModal';
+import type { DashboardStats, RecentActivity, UserRow, AuditLog, PaginatedResponse } from '@/types';
 
+type Tab = 'dashboard' | 'users' | 'content' | 'chatbot' | 'articles' | 'videos' | 'minibooks' | 'consultation' | 'audit';
 
+interface CS {
+  title: string;
+  hero: string;
+  subtitle: string;
+  description: string;
+}
 
+export default function AdminPage() {
+  const [tb, st] = useState<Tab>('dashboard');
+  const [stats, ss] = useState<DashboardStats | null>(null);
+  const [act, sa] = useState<RecentActivity | null>(null);
+  const [users, su] = useState<PaginatedResponse<UserRow> | null>(null);
+  const [logs, sl] = useState<PaginatedResponse<AuditLog> | null>(null);
+  const [ld, sl2] = useState(true);
+  const [authFailed, setAuthFailed] = useState(false);
+  const [up, sp] = useState(1);
+  const [ap, sp2] = useState(1);
+  const [q, sq] = useState('');
+  const [to, sto] = useState('');
+  const [ac, sc] = useState<Record<string, CS>>({});
+  const [ek, se] = useState<string | null>(null);
+  const [ed, sd] = useState<CS>({ title: '', hero: '', subtitle: '', description: '' });
+  const tmr = useRef<any>(null);
 
-function CS({csvs,ecv,secv,ncv,sncv,sh,ldCS,IS,IS2,EB}:any){
+  const sh = (m: string) => {
+    sto(m);
+    setTimeout(() => sto(''), 2500);
+  };
+
+  // ---- Content management state (from main: chatbot / articles / videos / minibooks / consultation) ----
+  const [nl, snl] = useState(false);
+  const chkErr = (x: any) => { if (x?.response?.status === 401 || x?.response?.status === 403) snl(true); };
+  const [tq, stq] = useState<any[]>([]);
+  const [tqr, stqr] = useState<any[]>([]);
+  const [eq, seq] = useState<any | null>(null);
+  const [nq, snq] = useState({ question: '', description: '', sortOrder: 0, isActive: true });
+  const [eo, seo] = useState<any | null>(null);
+  const [no, sno] = useState({ questionId: '', label: '', value: '', sortOrder: 0 });
+  const [nr, snr] = useState({ name: '', title: '', description: '', action: '', severity: 'INFO', isActive: true });
+  const [er, ser] = useState<any | null>(null);
+  const [arts, sarts] = useState<any[]>([]);
+  const [ea, sea] = useState<any | null>(null);
+  const [na, sna] = useState({ title: '', slug: '', excerpt: '', content: '', featuredImage: '', status: 'DRAFT', categoryId: '' });
+  const [cats, scats] = useState<any[]>([]);
+  const [vids, svids] = useState<any[]>([]);
+  const [ev, sev] = useState<any | null>(null);
+  const [nv, snv] = useState({ title: '', slug: '', description: '', url: '', thumbnail: '', duration: 0, status: 'DRAFT', categoryId: '' });
+  const [mbs, smbs] = useState<any[]>([]);
+  const [emb, semb] = useState<any | null>(null);
+  const [nmb, snmb] = useState({ title: '', slug: '', description: '', fileUrl: '', coverImage: '', pageCount: 0, status: 'DRAFT', categoryId: '' });
+  const [csvs, scsvs] = useState<any[]>([]);
+  const [ecv, secv] = useState<any | null>(null);
+  const [ncv, sncv] = useState({ name: '', slug: '', description: '', duration: 30, price: 0, isActive: true, sortOrder: 0 });
+
+  const db = useCallback((k: string, d: CS) => {
+    if (tmr.current) clearTimeout(tmr.current);
+    tmr.current = setTimeout(async () => {
+      try {
+        await contentApi.save(k, d);
+        sc((p) => ({ ...p, [k]: d }));
+        sh('ذخیره خودکار ✅');
+      } catch {
+        sh('ذخیره خودکار ناموفق ❌');
+      }
+    }, 800);
+  }, []);
+
+  const ldD = useCallback(async () => {
+    sl2(true);
+    setAuthFailed(false);
+    try {
+      const [s, a] = await Promise.all([adminApi.getDashboardStats(), adminApi.getRecentActivity(5)]);
+      ss(s.data);
+      sa(a.data);
+    } catch (e: any) {
+      if (e?.response?.status === 401 || e?.response?.status === 403) setAuthFailed(true);
+    } finally {
+      sl2(false);
+    }
+  }, []);
+
+  const ldCS = useCallback(async () => {
+    sl2(true); setAuthFailed(false);
+    try { const r = await adminApi.getConsultationServices(); scsvs(r.data || []); }
+    catch (e: any) { if (e?.response?.status === 401 || e?.response?.status === 403) setAuthFailed(true); }
+    finally { sl2(false); }
+  }, []);
+
+  const ldMB = useCallback(async () => {
+    sl2(true); setAuthFailed(false);
+    try { const r = await adminApi.getMiniBooks(1, 50); smbs(r.data?.data || []); }
+    catch (e: any) { if (e?.response?.status === 401 || e?.response?.status === 403) setAuthFailed(true); }
+    finally { sl2(false); }
+  }, []);
+
+  const ldV = useCallback(async () => {
+    sl2(true); setAuthFailed(false);
+    try { const r = await adminApi.getVideos(1, 50); svids(r.data?.data || []); }
+    catch (e: any) { if (e?.response?.status === 401 || e?.response?.status === 403) setAuthFailed(true); }
+    finally { sl2(false); }
+  }, []);
+
+  const ldA = useCallback(async () => {
+    sl2(true); setAuthFailed(false);
+    try { const [r, cs] = await Promise.all([adminApi.getArticles(1, 50), adminApi.getCategories()]); sarts(r.data?.data || []); scats(cs.data || []); }
+    catch (e: any) { if (e?.response?.status === 401 || e?.response?.status === 403) setAuthFailed(true); }
+    finally { sl2(false); }
+  }, []);
+
+  const ldQ = useCallback(async () => {
+    sl2(true); setAuthFailed(false);
+    try { const [qs, rs] = await Promise.all([adminApi.getTaxQuestions(), adminApi.getTaxAssistantResults()]); stq(qs.data || []); stqr(rs.data || []); }
+    catch (e: any) { if (e?.response?.status === 401 || e?.response?.status === 403) setAuthFailed(true); }
+    finally { sl2(false); }
+  }, []);
+
+  const ldU = useCallback(async (p = 1) => {
+    sl2(true);
+    setAuthFailed(false);
+    try {
+      const r = await adminApi.getUsers(p, 15, q);
+      su(r.data);
+      sp(p);
+    } catch (e: any) {
+      if (e?.response?.status === 401 || e?.response?.status === 403) setAuthFailed(true);
+    } finally {
+      sl2(false);
+    }
+  }, [q]);
+
+  const ldC = useCallback(async () => {
+    sl2(true);
+    setAuthFailed(false);
+    try {
+      const r = await contentApi.getAll();
+      if (r.data && typeof r.data === 'object') {
+        const m: any = {};
+        for (const [k, v] of Object.entries(r.data)) {
+          const key = k.replace('content_', '');
+          m[key] = v;
+        }
+        sc(m);
+      }
+    } catch (e: any) {
+      if (e?.response?.status === 401 || e?.response?.status === 403) setAuthFailed(true);
+    } finally {
+      sl2(false);
+    }
+  }, []);
+
+  const ldL = useCallback(async (p = 1) => {
+    sl2(true);
+    setAuthFailed(false);
+    try {
+      const r = await adminApi.getAuditLogs({ page: p, limit: 15 });
+      sl(r.data);
+      sp2(p);
+    } catch (e: any) {
+      if (e?.response?.status === 401 || e?.response?.status === 403) setAuthFailed(true);
+    } finally {
+      sl2(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (tb === 'dashboard') ldD();
+    else if (tb === 'users') ldU();
+    else if (tb === 'content') ldC();
+    else if (tb === 'chatbot') ldQ();
+    else if (tb === 'articles') ldA();
+    else if (tb === 'videos') ldV();
+    else if (tb === 'minibooks') ldMB();
+    else if (tb === 'consultation') ldCS();
+    else if (tb === 'audit') ldL();
+  }, [tb, ldD, ldU, ldC, ldQ, ldA, ldV, ldMB, ldCS, ldL]);
+
+  const af = async () => {
+    sl2(true);
+    try {
+      const r = await contentApi.autoFill();
+      sh(r.data.message || '✅');
+      ldC();
+    } catch {
+      sh('❌ خطا در جای‌گذاری خودکار');
+    } finally {
+      sl2(false);
+    }
+  };
+
+  const sv = async () => {
+    if (!ek) return;
+    try {
+      await contentApi.save(ek, ed);
+      sc((p) => ({ ...p, [ek]: ed }));
+      se(null);
+      sh('ذخیره شد ✅');
+    } catch {
+      sh('ذخیره ناموفق ❌');
+    }
+  };
+
+  const tabs: any[] = [
+    { id: 'dashboard', l: 'داشبورد', i: '📊' },
+    { id: 'users', l: 'کاربران', i: '👥' },
+    { id: 'content', l: 'ویرایش محتوا', i: '✏️' },
+    { id: 'chatbot', l: 'چتبات', i: '🤖' },
+    { id: 'articles', l: 'مقالات', i: '📝' },
+    { id: 'videos', l: 'ویدیوها', i: '🎬' },
+    { id: 'minibooks', l: 'مینی‌بوک‌ها', i: '📚' },
+    { id: 'consultation', l: 'مشاوره', i: '📅' },
+    { id: 'audit', l: 'گزارش‌ها', i: '📋' },
+  ];
+
+  // ---- Loading gate: only show full-screen spinner on the very first load ----
+  if (ld && !authFailed && !stats && !users && !logs && Object.keys(ac).length === 0) {
+    return (
+      <div style={C}>
+        <div style={SP} />
+      </div>
+    );
+  }
+
+  // ---- Auth failed: show login prompt instead of infinite spinner ----
+  if (authFailed) {
+    return (
+      <div style={C}>
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+        <div className="glass-card" style={{ maxWidth: 440, width: '92%', padding: 40, textAlign: 'center' }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/logo-dark.webp" alt="آین تراز" style={{ width: 110, margin: '0 auto 20px', display: 'block' }} />
+          <h2 style={{ fontSize: '1.3rem', fontWeight: 800, marginBottom: 8 }}>دسترسی محدود</h2>
+          <p style={{ color: 'var(--text-muted)', marginBottom: 24, lineHeight: 1.7, fontSize: '0.9rem' }}>
+            برای ورود به پنل مدیریت ابتدا باید با حساب کاربری مدیر وارد شوید.
+          </p>
+          <Link href="/?expired=1" className="btn btn-primary" style={{ width: '100%' }}>
+            بازگشت به صفحه ورود
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={C2}>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      {nl && (
+        <LoginModal
+          title="ورود به پنل مدیریت"
+          onClose={() => snl(false)}
+          onSuccess={() => { snl(false); ldD(); }}
+        />
+      )}
+      <header style={HD}>
+        <div className="container" style={HD2}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/logo-dark.webp" alt="آین تراز" style={{ height: 34, width: 'auto', filter: 'drop-shadow(0 2px 8px rgba(198,169,98,.25))' }} />
+            <span style={{ color: 'var(--border-default)' }}>|</span>
+            <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: 600 }}>پنل مدیریت</span>
+          </div>
+          <Link href="/" style={HL2}>خروج</Link>
+        </div>
+      </header>
+      <div className="container" style={{ paddingTop: 28, paddingBottom: 60 }}>
+        {to && <div className="toast">{to}</div>}
+        <div style={TBAR}>
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => st(t.id as Tab)}
+              style={tb === t.id ? TBA : TBB}
+            >
+              <span style={{ marginLeft: 6 }}>{t.i}</span> {t.l}
+            </button>
+          ))}
+        </div>
+
+        {tb === 'dashboard' && <Dash stats={stats} act={act} loading={ld} />}
+        {tb === 'content' && <CT ac={ac} af={af} ek={ek} se={se} ed={ed} sd={sd} db={db} sv={sv} loading={ld} />}
+        {tb === 'users' && <UT users={users} q={q} sq={sq} ldU={ldU} up={up} loading={ld} />}
+        {tb === 'chatbot' && <CB tq={tq} stq={stq} tqr={tqr} stqr={stqr} eq={eq} seq={seq} nq={nq} snq={snq} eo={eo} seo={seo} no={no} sno={sno} nr={nr} snr={snr} er={er} ser={ser} sh={sh} ldQ={() => ldQ()} IS={IS} EB={EB} LB={LB} IS2={IS2} />}
+        {tb === 'articles' && <AR arts={arts} ea={ea} sea={sea} na={na} sna={sna} cats={cats} sh={sh} ldA={() => ldA()} IS={IS} IS2={IS2} EB={EB} />}
+        {tb === 'videos' && <VI vids={vids} ev={ev} sev={sev} nv={nv} snv={snv} cats={cats} sh={sh} ldV={() => ldV()} IS={IS} IS2={IS2} EB={EB} />}
+        {tb === 'minibooks' && <MB mbs={mbs} emb={emb} semb={semb} nmb={nmb} snmb={snmb} cats={cats} sh={sh} ldMB={() => ldMB()} IS={IS} IS2={IS2} EB={EB} />}
+        {tb === 'consultation' && <CSComp csvs={csvs} ecv={ecv} secv={secv} ncv={ncv} sncv={sncv} sh={sh} ldCS={() => ldCS()} IS={IS} IS2={IS2} EB={EB} />}
+        {tb === 'audit' && <AT logs={logs} ldL={ldL} ap={ap} loading={ld} />}
+      </div>
+    </div>
+  );
+}
+
+function Empty({ label }: { label: string }) {
+  return (
+    <div className="card" style={{ textAlign: 'center', padding: 40 }}>
+      <div style={{ fontSize: '2.2rem', marginBottom: 12, opacity: 0.5 }}>📭</div>
+      <p style={{ color: 'var(--text-muted)' }}>{label}</p>
+    </div>
+  );
+}
+
+function Dash({ stats, act, loading }: any) {
+  if (loading && !stats) return <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>در حال بارگذاری…</div>;
+  if (!stats) return <Empty label="اطلاعات داشبورد در دسترس نیست" />;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(170px,1fr))', gap: 14 }}>
+        {[
+          { l: 'کاربران', v: stats.totalUsers, c: '#3b82f6' },
+          { l: 'قوانین', v: stats.totalTaxRules, c: 'var(--brand-gold)' },
+          { l: 'رزروها', v: stats.totalBookings, c: '#a855f7' },
+          { l: 'منتظر', v: stats.pendingBookings, c: '#eab308' },
+          { l: 'تأیید', v: stats.confirmedBookings, c: '#22c55e' },
+          { l: 'سوالات', v: stats.totalQuestions, c: '#06b6d4' },
+          { l: 'مقالات', v: stats.content?.articles?.total ?? 0, c: '#f97316' },
+          { l: 'ویدیوها', v: stats.content?.videos?.total ?? 0, c: '#ec4899' },
+          { l: 'مینی‌بوک‌ها', v: stats.content?.minibooks?.total ?? 0, c: '#14b8a6' },
+          { l: 'دسته‌ها', v: stats.content?.categories?.active ?? 0, c: '#8b5cf6' },
+        ].map((c, i) => (
+          <div key={i} className="card" style={{ borderLeft: `3px solid ${c.c}` }}>
+            <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: 8 }}>{c.l}</div>
+            <div style={{ fontSize: '1.75rem', fontWeight: 800, color: c.c }}>{c.v ?? '-'}</div>
+          </div>
+        ))}
+      </div>
+      {stats.content && (
+        <div className="card" style={{ padding: '1.5rem' }}>
+          <h3 style={{ fontWeight: 700, marginBottom: 20 }}>محتوای منتشر شده</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(180px,1fr))', gap: 16 }}>
+            {[
+              { l: 'مقالات منتشر', v: stats.content.articles?.published ?? 0, c: '#22c55e' },
+              { l: 'مقالات پیش‌نویس', v: stats.content.articles?.draft ?? 0, c: '#94a3b8' },
+              { l: 'مقالات در بازبینی', v: stats.content.articles?.review ?? 0, c: '#eab308' },
+              { l: 'ویدیوهای منتشر', v: stats.content.videos?.published ?? 0, c: '#22c55e' },
+              { l: 'ویدیوهای پیش‌نویس', v: stats.content.videos?.draft ?? 0, c: '#94a3b8' },
+              { l: 'مینی‌بوک منتشر', v: stats.content.minibooks?.published ?? 0, c: '#22c55e' },
+              { l: 'مینی‌بوک پیش‌نویس', v: stats.content.minibooks?.draft ?? 0, c: '#94a3b8' },
+              { l: 'دسته‌های فعال', v: stats.content.categories?.active ?? 0, c: '#8b5cf6' },
+            ].map((c, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--brand-black-card)', borderRadius: 'var(--radius-md)' }}>
+                <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{c.l}</span>
+                <span style={{ fontSize: '1.25rem', fontWeight: 800, color: c.c }}>{c.v}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))', gap: 20 }}>
+        <div className="card">
+          <h3 style={{ fontWeight: 700, marginBottom: 16 }}>کاربران جدید</h3>
+          {act?.recentUsers?.length ? (
+            act.recentUsers.map((u: any) => (
+              <div key={u.id} style={KR}>
+                <div>
+                  <div style={{ fontWeight: 600 }}>{u.firstName || u.lastName ? `${u.firstName || ''} ${u.lastName || ''}` : 'بدون نام'}</div>
+                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }} dir="ltr">{u.phone}</div>
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{new Date(u.createdAt).toLocaleDateString('fa-IR')}</div>
+              </div>
+            ))
+          ) : (
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>کاربری ثبت نشده است.</p>
+          )}
+        </div>
+        <div className="card">
+          <h3 style={{ fontWeight: 700, marginBottom: 16 }}>رزروها</h3>
+          {act?.recentBookings?.length ? (
+            act.recentBookings.map((b: any) => (
+              <div key={b.id} style={KR}>
+                <div>
+                  <div style={{ fontWeight: 600 }}>{b.service?.name || 'مشاوره'}</div>
+                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{b.user?.firstName} {b.user?.lastName}</div>
+                </div>
+                <span className={`badge ${b.status === 'CONFIRMED' ? 'badge-success' : b.status === 'PENDING' ? 'badge-warning' : 'badge-error'}`}>
+                  {b.status === 'CONFIRMED' ? 'تأیید' : b.status === 'PENDING' ? 'منتظر' : b.status}
+                </span>
+              </div>
+            ))
+          ) : (
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>رزروی ثبت نشده است.</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CT({ ac, af, ek, se, ed, sd, db, sv, loading }: any) {
+  return (
+    <div style={{ maxWidth: 900 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+        <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>ویرایش متون سایت</h3>
+        <button onClick={af} className="btn btn-primary" style={{ fontSize: '0.875rem', padding: '10px 20px' }} disabled={loading}>
+          🪄 جای‌گذاری خودکار قوانین ۱۴۰۵
+        </button>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {Object.entries(ac).length === 0 && !loading && (
+          <div className="card" style={{ textAlign: 'center', padding: 40 }}>
+            <p style={{ color: 'var(--text-muted)', marginBottom: 16 }}>هنوز محتوایی ذخیره نشده</p>
+            <button onClick={af} className="btn btn-primary">🪄 جای‌گذاری خودکار قوانین ۱۴۰۵</button>
+          </div>
+        )}
+        {Object.entries(ac).map(([k, v]: any) => (
+          <div key={k} className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{k}</span>
+                <span style={{ fontWeight: 700, fontSize: '0.9rem', marginRight: 8 }}>{v?.title || ''}</span>
+              </div>
+              {ek !== k && (
+                <button onClick={() => { se(k); sd(v || { title: '', hero: '', subtitle: '', description: '' }); }} style={EB}>✏️ ویرایش</button>
+              )}
+            </div>
+            {ek === k ? (
+              <>
+                <input value={ed.title} onChange={(e) => { const d = { ...ed, title: e.target.value }; sd(d); db(k, d); }} style={IS} placeholder="عنوان" />
+                <input value={ed.hero} onChange={(e) => { const d = { ...ed, hero: e.target.value }; sd(d); db(k, d); }} style={IS} placeholder="متن اصلی" />
+                <input value={ed.subtitle} onChange={(e) => { const d = { ...ed, subtitle: e.target.value }; sd(d); db(k, d); }} style={IS} placeholder="زیرعنوان" />
+                <textarea value={ed.description} onChange={(e) => { const d = { ...ed, description: e.target.value }; sd(d); db(k, d); }} rows={5} style={{ ...IS, resize: 'vertical', minHeight: 100 }} placeholder="توضیحات" />
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={sv} className="btn btn-primary" style={{ fontSize: '0.8125rem', padding: '8px 16px' }}>💾 ذخیره</button>
+                  <button onClick={() => se(null)} className="btn btn-ghost" style={{ fontSize: '0.8125rem', padding: '8px 16px' }}>انصراف</button>
+                </div>
+                <div style={PVS}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--brand-gold)', fontWeight: 600 }}>🔍 پیش‌نمایش</span>
+                  <div style={{ marginTop: 8, padding: 12, background: 'var(--surface-card)', borderRadius: 6 }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--brand-gold)' }}>{ed.title}</div>
+                    <div style={{ fontWeight: 700, fontSize: '1rem', margin: '4px 0' }}>{ed.hero || '—'}</div>
+                    <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{ed.subtitle || '—'}</div>
+                    <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.7, borderTop: '1px solid var(--border-subtle)', paddingTop: 8 }}>{ed.description || '—'}</div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 8 }}>
+                  <div>
+                    <span style={LB}>Hero</span>
+                    <div style={{ fontSize: '0.9375rem', color: 'var(--text-secondary)' }}>{v?.hero || '—'}</div>
+                  </div>
+                  <div>
+                    <span style={LB}>زیرعنوان</span>
+                    <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{v?.subtitle || '—'}</div>
+                  </div>
+                </div>
+                <div>
+                  <span style={LB}>توضیحات</span>
+                  <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.8, maxHeight: 80, overflow: 'hidden' }}>
+                    {v?.description?.substring(0, 200) || '—'}{(v?.description?.length || 0) > 200 ? '...' : ''}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function UT({ users, q, sq, ldU, up, loading }: any) {
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+        <input value={q} onChange={(e) => sq(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && ldU(1)} placeholder="جستجو..." style={{ ...IS, flex: 1 }} />
+        <button onClick={() => ldU(1)} className="btn btn-primary" style={{ fontSize: '0.8125rem', padding: '10px 18px' }}>جستجو</button>
+      </div>
+      {loading && !users ? (
+        <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>در حال بارگذاری…</div>
+      ) : !users || !users.data?.length ? (
+        <Empty label="کاربری یافت نشد" />
+      ) : (
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={TB}>
+              <thead>
+                <tr style={TR}>
+                  {(['نام', 'شماره', 'نقش', 'وضعیت', 'تأیید', 'تاریخ'] as string[]).map((x) => (
+                    <th key={x} style={TH}>{x}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {users.data.map((u: any) => (
+                  <tr key={u.id} style={TR}>
+                    {(
+                      [
+                        u.firstName || u.lastName ? `${u.firstName || ''} ${u.lastName || ''}` : '---',
+                        <span dir="ltr">{u.phone}</span>,
+                        <span className={`badge ${u.role === 'SUPER_ADMIN' ? 'badge-error' : u.role === 'ADMIN' ? 'badge-gold' : 'badge-success'}`}>
+                          {u.role === 'SUPER_ADMIN' ? 'سوپر' : u.role === 'ADMIN' ? 'ادمین' : 'کاربر'}
+                        </span>,
+                        <span style={{ fontSize: '0.8125rem', color: u.isActive ? '#22c55e' : '#ef4444' }}>{u.isActive ? 'فعال' : 'غیرفعال'}</span>,
+                        u.phoneVerified ? '✅' : '⏳',
+                        new Date(u.createdAt).toLocaleDateString('fa-IR'),
+                      ] as any[]
+                    ).map((c: any, j: number) => (
+                      <td key={j} style={TD}>{c}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {users.total > 15 && (
+            <div style={PG}>
+              <span>صفحه {up} از {Math.ceil(users.total / 15)}</span>
+              <div style={PGB}>
+                <B onClick={() => ldU(up - 1)} disabled={up <= 1}>قبلی</B>
+                <B onClick={() => ldU(up + 1)} disabled={up * 15 >= users.total}>بعدی</B>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AT({ logs, ldL, ap, loading }: any) {
+  if (loading && !logs) return <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>در حال بارگذاری…</div>;
+  if (!logs || !logs.data?.length) return <Empty label="گزارشی ثبت نشده است" />;
+  return (
+    <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={TB}>
+          <thead>
+            <tr style={TR}>
+              {(['کاربر', 'عملیات', 'نوع', 'تاریخ'] as string[]).map((x) => (
+                <th key={x} style={TH}>{x}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {logs.data.map((l: any) => (
+              <tr key={l.id} style={TR}>
+                {(
+                  [
+                    l.user ? `${l.user.firstName || ''} ${l.user.lastName || ''}` : '—',
+                    <span className="badge badge-gold">{l.action}</span>,
+                    l.entityType,
+                    new Date(l.createdAt).toLocaleString('fa-IR'),
+                  ] as any[]
+                ).map((c: any, j: number) => (
+                  <td key={j} style={TD}>{c}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {logs.total > 15 && (
+        <div style={PG}>
+          <span>صفحه {ap} از {Math.ceil(logs.total / 15)}</span>
+          <div style={PGB}>
+            <B onClick={() => ldL(ap - 1)} disabled={ap <= 1}>قبلی</B>
+            <B onClick={() => ldL(ap + 1)} disabled={ap * 15 >= logs.total}>بعدی</B>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function B({ onClick, disabled, children }: any) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        padding: '6px 12px',
+        background: 'var(--surface-card)',
+        border: '1px solid var(--border-subtle)',
+        borderRadius: 6,
+        color: 'var(--text-secondary)',
+        cursor: disabled ? 'default' : 'pointer',
+        fontFamily: 'Vazirmatn',
+        fontSize: '0.8125rem',
+        opacity: disabled ? 0.5 : 1,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function CSComp({csvs,ecv,secv,ncv,sncv,sh,ldCS,IS,IS2,EB}:any){
 const sv=async()=>{if(!ncv.name.trim()||!ncv.description.trim()){sh('\u0646\u0627\u0645 \u0648 \u062a\u0648\u0636\u06cc\u062d \u0631\u0627 \u067e\u0631 \u06a9\u0646\u06cc\u062f');return}try{if(ecv){await adminApi.updateConsultationService(ecv.id,{name:ncv.name,description:ncv.description,duration:ncv.duration,price:ncv.price||undefined,isActive:ncv.isActive,sortOrder:ncv.sortOrder});sh('\u0648\u06cc\u0631\u0627\u06cc\u0634 \u0634\u062f \u2705')}else{await adminApi.createConsultationService({name:ncv.name,slug:ncv.slug,description:ncv.description,duration:ncv.duration,price:ncv.price||undefined,isActive:ncv.isActive,sortOrder:ncv.sortOrder});sh('\u0627\u0641\u0632\u0648\u062f\u0647 \u0634\u062f \u2705')}secv(null);sncv({name:'',slug:'',description:'',duration:30,price:0,isActive:true,sortOrder:0});ldCS()}catch{sh('\u062e\u0637\u0627 \u274c')}};
 const dl=async(id:string)=>{if(!confirm('\u062d\u0630\u0641 \u0634\u0648\u062f\u061f'))return;try{await adminApi.deleteConsultationService(id);sh('\u062d\u0630\u0641 \u0634\u062f \u2705');ldCS()}catch{sh('\u062e\u0637\u0627 \u274c')}};
 const fmtP=(p?:number|null)=>{if(!p||p===0)return'\u0631\u0627\u06cc\u06af\u0627\u0646';return new Intl.NumberFormat('fa-IR').format(p)+' \u062a\u0648\u0645\u0627\u0646'};
@@ -299,4 +883,25 @@ return<div style={{display:'flex',flexDirection:'column',gap:24,maxWidth:920}}>
 </div>
 </div>}
 
-const C:React.CSSProperties={minHeight:'100vh',background:'var(--brand-black)',display:'flex',alignItems:'center',justifyContent:'center'};const C2:React.CSSProperties={...C,display:'block'};const SP:React.CSSProperties={width:40,height:40,border:'3px solid var(--border-subtle)',borderTopColor:'var(--brand-gold)',borderRadius:'50%',animation:'spin .8s linear infinite'};const HD:React.CSSProperties={borderBottom:'1px solid var(--border-subtle)',background:'var(--brand-black-soft)',padding:'0 20px'};const HD2:React.CSSProperties={display:'flex',alignItems:'center',justifyContent:'space-between',height:60};const HLA:React.CSSProperties={fontWeight:800,color:'var(--brand-gold)'};const HL2:React.CSSProperties={color:'var(--text-muted)',fontSize:'0.8125rem'};const TBAR:React.CSSProperties={display:'flex',gap:2,marginBottom:28,borderBottom:'1px solid var(--border-subtle)',overflowX:'auto'};const TBA:React.CSSProperties={padding:'12px 24px',fontSize:'0.875rem',fontWeight:600,border:'none',background:'none',color:'var(--brand-gold)',borderBottom:'2px solid var(--brand-gold)',cursor:'pointer',fontFamily:'Vazirmatn',whiteSpace:'nowrap'};const TBB:React.CSSProperties={...TBA,color:'var(--text-muted)',borderBottom:'2px solid transparent'};const KR:React.CSSProperties={display:'flex',justifyContent:'space-between',padding:'10px 0',borderBottom:'1px solid var(--border-subtle)'};const IS:React.CSSProperties={width:'100%',padding:'10px 14px',background:'rgba(255,255,255,.04)',border:'1.5px solid var(--border-subtle)',borderRadius:8,color:'var(--text-primary)',fontFamily:'Vazirmatn',fontSize:'0.9375rem',outline:'none'};const IS2:React.CSSProperties={...IS,resize:'vertical',minHeight:80};const EB:React.CSSProperties={background:'none',border:'1px solid var(--border-subtle)',color:'var(--brand-gold)',padding:'6px 14px',borderRadius:6,cursor:'pointer',fontFamily:'Vazirmatn',fontSize:'0.8125rem'};const PVS:React.CSSProperties={padding:14,background:'rgba(198,169,98,.04)',borderRadius:8,border:'1px solid var(--border-subtle)'};const LB:React.CSSProperties={fontSize:'0.7rem',color:'var(--text-muted)',fontWeight:600};const TB:React.CSSProperties={width:'100%',borderCollapse:'collapse'};const TR={borderBottom:'1px solid var(--border-subtle)'};const TH:React.CSSProperties={textAlign:'right',padding:'12px 16px',fontSize:'0.75rem',color:'var(--text-muted)',fontWeight:600};const TD:React.CSSProperties={padding:'10px 16px',fontSize:'0.875rem'};const PG:React.CSSProperties={display:'flex',justifyContent:'space-between',padding:'12px 16px',borderTop:'1px solid var(--border-subtle)',fontSize:'0.8125rem',color:'var(--text-muted)'};const PGB:React.CSSProperties={display:'flex',gap:6};
+
+const C: React.CSSProperties = { minHeight: '100vh', background: 'var(--brand-black)', display: 'flex', alignItems: 'center', justifyContent: 'center' };
+const C2: React.CSSProperties = { ...C, display: 'block' };
+const SP: React.CSSProperties = { width: 44, height: 44, border: '3px solid var(--border-subtle)', borderTopColor: 'var(--brand-gold)', borderRadius: '50%', animation: 'spin .8s linear infinite' };
+const HD: React.CSSProperties = { borderBottom: '1px solid var(--border-subtle)', background: 'var(--brand-black-soft)', padding: '0 20px', position: 'sticky', top: 0, zIndex: 50, backdropFilter: 'blur(12px)' };
+const HD2: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 60 };
+const HL2: React.CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8125rem' };
+const TBAR: React.CSSProperties = { display: 'flex', gap: 2, marginBottom: 28, borderBottom: '1px solid var(--border-subtle)', overflowX: 'auto' };
+const TBA: React.CSSProperties = { padding: '12px 24px', fontSize: '0.875rem', fontWeight: 600, border: 'none', background: 'none', color: 'var(--brand-gold)', borderBottom: '2px solid var(--brand-gold)', cursor: 'pointer', fontFamily: 'Vazirmatn', whiteSpace: 'nowrap' };
+const TBB: React.CSSProperties = { ...TBA, color: 'var(--text-muted)', borderBottom: '2px solid transparent' };
+const KR: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--border-subtle)' };
+const IS: React.CSSProperties = { width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,.04)', border: '1.5px solid var(--border-subtle)', borderRadius: 8, color: 'var(--text-primary)', fontFamily: 'Vazirmatn', fontSize: '0.9375rem', outline: 'none' };
+const IS2: React.CSSProperties = { ...IS, resize: 'vertical', minHeight: 80 };
+const EB: React.CSSProperties = { background: 'none', border: '1px solid var(--border-subtle)', color: 'var(--brand-gold)', padding: '6px 14px', borderRadius: 6, cursor: 'pointer', fontFamily: 'Vazirmatn', fontSize: '0.8125rem' };
+const PVS: React.CSSProperties = { padding: 14, background: 'rgba(198,169,98,.04)', borderRadius: 8, border: '1px solid var(--border-subtle)' };
+const LB: React.CSSProperties = { fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 };
+const TB: React.CSSProperties = { width: '100%', borderCollapse: 'collapse' };
+const TR = { borderBottom: '1px solid var(--border-subtle)' };
+const TH: React.CSSProperties = { textAlign: 'right', padding: '12px 16px', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 };
+const TD: React.CSSProperties = { padding: '10px 16px', fontSize: '0.875rem' };
+const PG: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', padding: '12px 16px', borderTop: '1px solid var(--border-subtle)', fontSize: '0.8125rem', color: 'var(--text-muted)' };
+const PGB: React.CSSProperties = { display: 'flex', gap: 6 };

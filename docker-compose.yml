@@ -48,8 +48,13 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
-        NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL:-http://202.133.91.13}
+        # IMPORTANT: must stay EMPTY for production behind Nginx.
+        # The browser calls the API via the relative "/api" path which Nginx
+        # proxies to the backend. Setting this to http://backend:4000 breaks
+        # browser requests (the browser cannot resolve the internal hostname),
+        # which is what caused the admin panel infinite-refresh loop.
+        NEXT_PUBLIC_API_URL: ""
+        NEXT_PUBLIC_BASE_URL: ${NEXT_PUBLIC_BASE_URL:-http://localhost}
     container_name: ayan-frontend
     restart: unless-stopped
     env_file: .env
