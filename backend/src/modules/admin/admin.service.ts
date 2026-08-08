@@ -312,4 +312,28 @@ export class AdminService {
     await this.prisma.miniBook.delete({ where: { id } });
     return { success: true };
   }
+
+  // ==================== Consultation Services Management ====================
+
+  async getConsultationServices() {
+    return this.prisma.consultationService.findMany({ orderBy: { sortOrder: 'asc' } });
+  }
+
+  async createConsultationService(data: { name: string; slug?: string; description: string; duration: number; price?: number; isActive?: boolean; sortOrder?: number }) {
+    let slug = data.slug || data.name.trim().replace(/\s+/g, '-').toLowerCase();
+    const existing = await this.prisma.consultationService.findUnique({ where: { slug } });
+    if (existing) { slug = `${slug}-${Date.now()}`; }
+    return this.prisma.consultationService.create({
+      data: { name: data.name, slug, description: data.description, duration: data.duration, price: data.price ?? null, isActive: data.isActive ?? true, sortOrder: data.sortOrder ?? 0 },
+    });
+  }
+
+  async updateConsultationService(id: string, data: { name?: string; description?: string; duration?: number; price?: number; isActive?: boolean; sortOrder?: number }) {
+    return this.prisma.consultationService.update({ where: { id }, data });
+  }
+
+  async deleteConsultationService(id: string) {
+    await this.prisma.consultationService.delete({ where: { id } });
+    return { success: true };
+  }
 }

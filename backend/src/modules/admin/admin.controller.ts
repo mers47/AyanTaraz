@@ -61,4 +61,11 @@ export class AdminController {
   @Post('minibooks') async cmb(@Body() b: { title: string; slug?: string; description?: string; fileUrl: string; coverImage?: string; pageCount?: number; status?: string; categoryId?: string }, @Request() req: any) { return this.svc.createMiniBook({ ...b, authorId: req.user?.id || '00000000-0000-0000-0000-000000000000' }); }
   @Patch('minibooks/:id') async umb(@Param('id') id: string, @Body() b: { title?: string; description?: string; fileUrl?: string; coverImage?: string; pageCount?: number; status?: string; categoryId?: string }) { return this.svc.updateMiniBook(id, b); }
   @Delete('minibooks/:id') async dmb(@Param('id') id: string) { return this.svc.deleteMiniBook(id); }
+
+  // ==================== Consultation Services Management ====================
+
+  @Get('consultation-services') async gcs() { return this.svc.getConsultationServices(); }
+  @Post('consultation-services') async ccs(@Body() b: { name: string; slug?: string; description: string; duration: number; price?: number; isActive?: boolean; sortOrder?: number }) { return this.svc.createConsultationService(b); }
+  @Patch('consultation-services/:id') async ucs(@Param('id') id: string, @Body() b: { name?: string; description?: string; duration?: number; price?: number; isActive?: boolean; sortOrder?: number }) { return this.svc.updateConsultationService(id, b); }
+  @Delete('consultation-services/:id') async dcs(@Param('id') id: string) { return this.svc.deleteConsultationService(id); }
 }
