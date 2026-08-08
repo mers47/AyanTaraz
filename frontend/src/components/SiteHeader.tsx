@@ -13,6 +13,7 @@ const NAV: NavItem[] = [
   { label: 'خانه', href: '/' },
   { label: 'خدمات', href: '/#services' },
   { label: 'قوانین مالیاتی', href: '/tax-laws' },
+  { label: 'ماشین حساب مالیاتی', href: '/tax-calculator' },
   { label: 'دستیار مالیاتی', href: '/chatbot' },
   { label: 'رزرو مشاوره', href: '/consultation' },
 ];

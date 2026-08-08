@@ -101,12 +101,12 @@ export default async function MiniBookDetailPage({ params }: { params: Promise<{
             {book.category && (
               <div className="badge badge-gold" style={{ marginBottom: 12 }}>{book.category.name}</div>
             )}
-            <h1 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: 12, lineHeight: 1.6 }}>{book.title}</h1>
+            <h1 className="detail-title" style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: 12, lineHeight: 1.6 }}>{book.title}</h1>
             {book.pageCount && (
               <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: 16 }}>📄 {book.pageCount} صفحه</div>
             )}
             {book.description && (
-              <p style={{ color: 'var(--text-secondary)', lineHeight: 1.9, fontSize: '0.9375rem', marginBottom: 24 }}>{book.description}</p>
+              <p className="detail-body" style={{ color: 'var(--text-secondary)', lineHeight: 1.9, fontSize: '0.9375rem', marginBottom: 24 }}>{book.description}</p>
             )}
             {book.fileUrl && (
               <a href={book.fileUrl} target="_blank" rel="noopener noreferrer" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>

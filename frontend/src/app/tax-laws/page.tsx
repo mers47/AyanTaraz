@@ -189,7 +189,7 @@ export default function TaxLawsPage() {
                 بازگشت به فهرست
               </button>
 
-              <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-xl)', padding: 32, marginBottom: 20 }}>
+              <div className="tl-detail-card" style={{ background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-xl)', padding: 32, marginBottom: 20 }}>
                 {selectedRule.topic && (
                   <span className="badge badge-gold" style={{ marginBottom: 16 }}>
                     {selectedRule.topic.name}
@@ -252,7 +252,7 @@ export default function TaxLawsPage() {
                   قانونی برای این موضوع یافت نشد.
                 </div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
+                <div className="tl-rule-list" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
                   {activeRules.map((rule) => (
                     <button
                       key={rule.id}
@@ -289,16 +289,22 @@ export default function TaxLawsPage() {
         </div>
       </div>
 
-      {/* Mobile responsive: stack sidebar on top */}
+      {/* Mobile responsive: stack sidebar on top + smaller rule cards */}
       <style>{`
         @media(max-width:880px){
-          .container[style*="grid-template-columns"]{
+          .container[style*="grid-template-columns"],
+          .container[style*="gridTemplateColumns"]{
             grid-template-columns: 1fr !important;
           }
           aside[style*="sticky"]{
             position: relative !important;
             top: 0 !important;
           }
+        }
+        @media(max-width:640px){
+          .tl-rule-list{grid-template-columns:1fr !important}
+          .tl-detail-card{padding:20px !important}
+          .tl-detail-card h1{font-size:1.3rem !important}
         }
       `}</style>
     </div>

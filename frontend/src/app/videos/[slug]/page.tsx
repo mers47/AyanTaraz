@@ -98,10 +98,10 @@ export default async function VideoDetailPage({ params }: { params: Promise<{ sl
         {video.category && (
           <div className="badge badge-gold" style={{ marginBottom: 16 }}>{video.category.name}</div>
         )}
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: 24, lineHeight: 1.6 }}>{video.title}</h1>
+        <h1 className="detail-title" style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: 24, lineHeight: 1.6 }}>{video.title}</h1>
         <VideoPlayer url={video.url} title={video.title} poster={video.thumbnail} />
         {video.description && (
-          <p style={{ marginTop: 24, color: 'var(--text-secondary)', lineHeight: 1.9, fontSize: '0.9375rem' }}>{video.description}</p>
+          <p className="detail-body" style={{ marginTop: 24, color: 'var(--text-secondary)', lineHeight: 1.9, fontSize: '0.9375rem' }}>{video.description}</p>
         )}
       </div>
     </div>

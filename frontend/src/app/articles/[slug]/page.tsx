@@ -95,18 +95,19 @@ export default async function ArticleDetailPage({ params }: { params: Promise<{ 
         </div>
       </header>
       <div className="container section" style={{ maxWidth: 800, margin: '0 auto' }}>
-        <article className="card" style={{ padding: '2.5rem' }}>
+        <article className="card" style={{ padding: '2.5rem', overflow: 'hidden' }}>
+          {/* detail responsive: padding/title scale on mobile via globals.css detail-* classes */}
           {article.category && (
             <div className="badge badge-gold" style={{ marginBottom: 16 }}>{article.category.name}</div>
           )}
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: 12, lineHeight: 1.6 }}>{article.title}</h1>
+          <h1 className="detail-title" style={{ fontSize: '1.75rem', fontWeight: 800, marginBottom: 12, lineHeight: 1.6 }}>{article.title}</h1>
           {article.excerpt && (
             <p style={{ fontSize: '1.0625rem', color: 'var(--text-muted)', lineHeight: 1.9, marginBottom: 24, borderRight: '3px solid var(--brand-gold)', paddingRight: 16 }}>{article.excerpt}</p>
           )}
           {article.featuredImage && (
             <img src={article.featuredImage} alt={article.title} style={{ width: '100%', borderRadius: 'var(--radius-md)', marginBottom: 24 }} />
           )}
-          <div style={{ whiteSpace: 'pre-wrap', lineHeight: 2.1, fontSize: '0.9375rem', color: 'var(--text-secondary)' }}>
+          <div className="detail-body" style={{ whiteSpace: 'pre-wrap', lineHeight: 2.1, fontSize: '0.9375rem', color: 'var(--text-secondary)' }}>
             {article.content}
           </div>
         </article>
