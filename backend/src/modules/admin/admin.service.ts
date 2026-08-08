@@ -267,4 +267,49 @@ export class AdminService {
     await this.prisma.video.delete({ where: { id } });
     return { success: true };
   }
+
+  // ==================== MiniBooks Management ====================
+
+  async getMiniBooks(page = 1, limit = 20, search?: string) {
+    const skip = (page - 1) * limit;
+    const where: any = {};
+    if (search) { where.OR = [{ title: { contains: search } }, { slug: { contains: search } }]; }
+    const [data, total] = await Promise.all([
+      this.prisma.miniBook.findMany({ where, skip, take: limit, orderBy: { createdAt: 'desc' }, include: { category: { select: { id: true, name: true } }, author: { select: { id: true, firstName: true, lastName: true } } } }),
+      this.prisma.miniBook.count({ where }),
+    ]);
+    return { data, total, page, limit };
+  }
+
+  async createMiniBook(data: { title: string; slug?: string; description?: string; fileUrl: string; coverImage?: string; pageCount?: number; status?: string; categoryId?: string; authorId: string }) {
+    let categoryId = data.categoryId;
+    if (!categoryId) {
+      let cat = await this.prisma.category.findFirst();
+      if (!cat) { cat = await this.prisma.category.create({ data: { name: 'عمومی', slug: 'general' } }); }
+      categoryId = cat.id;
+    }
+    let slug = data.slug || data.title.trim().replace(/\s+/g, '-').toLowerCase();
+    const existing = await this.prisma.miniBook.findUnique({ where: { slug } });
+    if (existing) { slug = `${slug}-${Date.now()}`; }
+    return this.prisma.miniBook.create({
+      data: {
+        title: data.title, slug, description: data.description || null, fileUrl: data.fileUrl,
+        coverImage: data.coverImage || null, pageCount: data.pageCount || null,
+        status: (data.status as any) || 'DRAFT', categoryId, authorId: data.authorId,
+        publishedAt: data.status === 'PUBLISHED' ? new Date() : null,
+      },
+      include: { category: { select: { name: true } } },
+    });
+  }
+
+  async updateMiniBook(id: string, data: { title?: string; description?: string; fileUrl?: string; coverImage?: string; pageCount?: number; status?: string; categoryId?: string }) {
+    const updateData: any = { ...data };
+    if (data.status) { updateData.status = data.status as any; if (data.status === 'PUBLISHED') { updateData.publishedAt = new Date(); } }
+    return this.prisma.miniBook.update({ where: { id }, data: updateData, include: { category: { select: { name: true } } } });
+  }
+
+  async deleteMiniBook(id: string) {
+    await this.prisma.miniBook.delete({ where: { id } });
+    return { success: true };
+  }
 }

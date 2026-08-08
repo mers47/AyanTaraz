@@ -15,9 +15,9 @@
 - [x] Commit
 
 ### A3: Videos Management (tab + backend CRUD)
-- [ ] Backend: video CRUD endpoints
-- [ ] Frontend: admin page new tab for video management
-- [ ] Commit
+- [x] Backend: video CRUD endpoints
+- [x] Frontend: admin page new tab for video management
+- [x] Commit
 
 ### A4: MiniBooks Management (tab + backend CRUD)
 - [ ] Backend: minibook CRUD endpoints

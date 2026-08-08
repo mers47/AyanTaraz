@@ -14,6 +14,8 @@ getTaxAssistantResults:()=>api.get('/admin/tax-assistant-results'),createTaxAssi
 // Articles
 getArticles:(p?:number,l?:number,s?:string)=>api.get('/admin/articles',{params:{page:p,limit:l,search:s}}),getArticle:(id:string)=>api.get(`/admin/articles/${id}`),createArticle:(d:any)=>api.post('/admin/articles',d),updateArticle:(id:string,d:any)=>api.patch(`/admin/articles/${id}`,d),deleteArticle:(id:string)=>api.delete(`/admin/articles/${id}`),getCategories:()=>api.get('/admin/categories'),
 // Videos
-getVideos:(p?:number,l?:number,s?:string)=>api.get('/admin/videos',{params:{page:p,limit:l,search:s}}),createVideo:(d:any)=>api.post('/admin/videos',d),updateVideo:(id:string,d:any)=>api.patch(`/admin/videos/${id}`,d),deleteVideo:(id:string)=>api.delete(`/admin/videos/${id}`)};
+getVideos:(p?:number,l?:number,s?:string)=>api.get('/admin/videos',{params:{page:p,limit:l,search:s}}),createVideo:(d:any)=>api.post('/admin/videos',d),updateVideo:(id:string,d:any)=>api.patch(`/admin/videos/${id}`,d),deleteVideo:(id:string)=>api.delete(`/admin/videos/${id}`),
+// MiniBooks
+getMiniBooks:(p?:number,l?:number,s?:string)=>api.get('/admin/minibooks',{params:{page:p,limit:l,search:s}}),createMiniBook:(d:any)=>api.post('/admin/minibooks',d),updateMiniBook:(id:string,d:any)=>api.patch(`/admin/minibooks/${id}`,d),deleteMiniBook:(id:string)=>api.delete(`/admin/minibooks/${id}`)};
 export const contentApi={getAll:()=>api.get('/content'),get:(k:string)=>api.get(`/content/${k}`),save:(k:string,d:any)=>api.put(`/content/${k}`,d),autoFill:()=>api.post('/content/autofill')};
 export default api;
