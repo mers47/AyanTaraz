@@ -70,11 +70,13 @@ export class TaxAssistantService {
     else if ((vals.includes('sal')||vals.includes('salary')) && (vals.includes('mid')||vals.includes('hi')||vals.includes('top'))) name = 'sal';
     else if ((vals.includes('biz')||vals.includes('business')) && vals.includes('lo')) name = 'exempt';
     else if ((vals.includes('biz')||vals.includes('business')) && (vals.includes('mid')||vals.includes('hi')||vals.includes('top'))) name = 'biz';
+    else if (vals.includes('rental')) name = 'rental';
+    else if (vals.includes('incidental')) name = 'incidental';
     else if (vals.includes('corp')||vals.includes('corporation')) name = 'corp';
-    else if (vals.includes('vat_yes')||vals.includes('vat_noreg')) name = 'vat';
-    else if (vals.includes('no')||vals.includes('not_filed')||vals.includes('late')) name = 'late';
-    else if (vals.includes('knowledge')||vals.includes('kb')) name = 'kb';
-    else if (vals.includes('freezone')||vals.includes('art132')||vals.includes('a132')||vals.includes('fz')) name = 'expert';
+    else if (vals.includes('vat_yes')||vals.includes('vat_noreg')||vals.includes('vat')) name = 'vat';
+    else if (vals.includes('not_filed')||vals.includes('late')) name = 'late';
+    else if (vals.includes('kb')||vals.includes('knowledge')) name = 'kb';
+    else if (vals.includes('fz')||vals.includes('freezone')||vals.includes('a132')||vals.includes('art132')) name = 'expert';
     else if (vals.includes('agri')) name = 'exempt';
     const r = await this.prisma.taxAssistantResult.findFirst({ where: { name, isActive: true } });
     if (!r) { const fallback = await this.prisma.taxAssistantResult.findFirst({ where: { isActive: true }, orderBy: { createdAt: 'asc' } }); return fallback ? { id: fallback.id, name: fallback.name, title: fallback.title, description: fallback.description, ruleIds: fallback.ruleIds as string[], action: fallback.action, severity: fallback.severity } : null; }
