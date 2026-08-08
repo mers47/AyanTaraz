@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { AdminService } from './admin.service';
@@ -38,4 +38,13 @@ export class AdminController {
   @Post('tax-assistant-results') async ctar(@Body() b: { name: string; title: string; description: string; ruleIds?: string[]; action?: string; severity?: string; isActive?: boolean }) { return this.svc.createTaxAssistantResult(b); }
   @Patch('tax-assistant-results/:id') async utar(@Param('id') id: string, @Body() b: { name?: string; title?: string; description?: string; ruleIds?: string[]; action?: string; severity?: string; isActive?: boolean }) { return this.svc.updateTaxAssistantResult(id, b); }
   @Delete('tax-assistant-results/:id') async dtar(@Param('id') id: string) { return this.svc.deleteTaxAssistantResult(id); }
+
+  // ==================== Articles Management ====================
+
+  @Get('articles') async ga(@Query('page') p?: number, @Query('limit') l?: number, @Query('search') s?: string) { return this.svc.getArticles(p ? +p : 1, l ? +l : 20, s); }
+  @Get('articles/:id') async gai(@Param('id') id: string) { return this.svc.getArticleById(id); }
+  @Post('articles') async caA(@Body() b: { title: string; slug?: string; excerpt?: string; content: string; featuredImage?: string; status?: string; metaTitle?: string; metaDescription?: string; categoryId?: string }, @Request() req: any) { return this.svc.createArticle({ ...b, authorId: req.user?.id || '00000000-0000-0000-0000-000000000000' }); }
+  @Patch('articles/:id') async uaA(@Param('id') id: string, @Body() b: { title?: string; excerpt?: string; content?: string; featuredImage?: string; status?: string; metaTitle?: string; metaDescription?: string; categoryId?: string }) { return this.svc.updateArticle(id, b); }
+  @Delete('articles/:id') async da(@Param('id') id: string) { return this.svc.deleteArticle(id); }
+  @Get('categories') async gc() { return this.svc.getCategories(); }
 }

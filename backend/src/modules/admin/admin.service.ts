@@ -166,4 +166,60 @@ export class AdminService {
     await this.prisma.taxAssistantResult.delete({ where: { id } });
     return { success: true };
   }
+
+  // ==================== Articles Management ====================
+
+  async getArticles(page = 1, limit = 20, search?: string) {
+    const skip = (page - 1) * limit;
+    const where: any = {};
+    if (search) { where.OR = [{ title: { contains: search } }, { slug: { contains: search } }]; }
+    const [data, total] = await Promise.all([
+      this.prisma.article.findMany({ where, skip, take: limit, orderBy: { createdAt: 'desc' }, include: { category: { select: { id: true, name: true } }, author: { select: { id: true, firstName: true, lastName: true } } } }),
+      this.prisma.article.count({ where }),
+    ]);
+    return { data, total, page, limit };
+  }
+
+  async getArticleById(id: string) {
+    return this.prisma.article.findUnique({ where: { id }, include: { category: true, author: { select: { id: true, firstName: true, lastName: true } } } });
+  }
+
+  async createArticle(data: { title: string; slug?: string; excerpt?: string; content: string; featuredImage?: string; status?: string; metaTitle?: string; metaDescription?: string; categoryId?: string; authorId: string }) {
+    // Ensure a category exists (create default if needed)
+    let categoryId = data.categoryId;
+    if (!categoryId) {
+      let cat = await this.prisma.category.findFirst();
+      if (!cat) { cat = await this.prisma.category.create({ data: { name: 'عمومی', slug: 'general' } }); }
+      categoryId = cat.id;
+    }
+    let slug = data.slug || data.title.trim().replace(/\s+/g, '-').toLowerCase();
+    // Ensure slug uniqueness
+    const existing = await this.prisma.article.findUnique({ where: { slug } });
+    if (existing) { slug = `${slug}-${Date.now()}`; }
+    return this.prisma.article.create({
+      data: {
+        title: data.title, slug, excerpt: data.excerpt || null, content: data.content,
+        featuredImage: data.featuredImage || null, status: (data.status as any) || 'DRAFT',
+        metaTitle: data.metaTitle || null, metaDescription: data.metaDescription || null,
+        categoryId, authorId: data.authorId,
+        publishedAt: data.status === 'PUBLISHED' ? new Date() : null,
+      },
+      include: { category: { select: { name: true } } },
+    });
+  }
+
+  async updateArticle(id: string, data: { title?: string; excerpt?: string; content?: string; featuredImage?: string; status?: string; metaTitle?: string; metaDescription?: string; categoryId?: string }) {
+    const updateData: any = { ...data };
+    if (data.status) { updateData.status = data.status as any; if (data.status === 'PUBLISHED') { updateData.publishedAt = new Date(); } }
+    return this.prisma.article.update({ where: { id }, data: updateData, include: { category: { select: { name: true } } } });
+  }
+
+  async deleteArticle(id: string) {
+    await this.prisma.article.delete({ where: { id } });
+    return { success: true };
+  }
+
+  async getCategories() {
+    return this.prisma.category.findMany({ where: { isActive: true }, orderBy: { sortOrder: 'asc' } });
+  }
 }
