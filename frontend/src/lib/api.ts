@@ -16,6 +16,8 @@ getArticles:(p?:number,l?:number,s?:string)=>api.get('/admin/articles',{params:{
 // Videos
 getVideos:(p?:number,l?:number,s?:string)=>api.get('/admin/videos',{params:{page:p,limit:l,search:s}}),createVideo:(d:any)=>api.post('/admin/videos',d),updateVideo:(id:string,d:any)=>api.patch(`/admin/videos/${id}`,d),deleteVideo:(id:string)=>api.delete(`/admin/videos/${id}`),
 // MiniBooks
-getMiniBooks:(p?:number,l?:number,s?:string)=>api.get('/admin/minibooks',{params:{page:p,limit:l,search:s}}),createMiniBook:(d:any)=>api.post('/admin/minibooks',d),updateMiniBook:(id:string,d:any)=>api.patch(`/admin/minibooks/${id}`,d),deleteMiniBook:(id:string)=>api.delete(`/admin/minibooks/${id}`)};
+getMiniBooks:(p?:number,l?:number,s?:string)=>api.get('/admin/minibooks',{params:{page:p,limit:l,search:s}}),createMiniBook:(d:any)=>api.post('/admin/minibooks',d),updateMiniBook:(id:string,d:any)=>api.patch(`/admin/minibooks/${id}`,d),deleteMiniBook:(id:string)=>api.delete(`/admin/minibooks/${id}`),
+// Consultation Services
+getConsultationServices:()=>api.get('/admin/consultation-services'),createConsultationService:(d:any)=>api.post('/admin/consultation-services',d),updateConsultationService:(id:string,d:any)=>api.patch(`/admin/consultation-services/${id}`,d),deleteConsultationService:(id:string)=>api.delete(`/admin/consultation-services/${id}`)};
 export const contentApi={getAll:()=>api.get('/content'),get:(k:string)=>api.get(`/content/${k}`),save:(k:string,d:any)=>api.put(`/content/${k}`,d),autoFill:()=>api.post('/content/autofill')};
 export default api;

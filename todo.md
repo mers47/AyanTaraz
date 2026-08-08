@@ -20,9 +20,9 @@
 - [x] Commit
 
 ### A4: MiniBooks Management (tab + backend CRUD)
-- [ ] Backend: minibook CRUD endpoints
-- [ ] Frontend: admin page new tab for minibook management
-- [ ] Commit
+- [x] Backend: minibook CRUD endpoints
+- [x] Frontend: admin page new tab for minibook management
+- [x] Commit
 
 ### A5: Consultation Services Management (tab + backend CRUD)
 - [ ] Backend: consultation service CRUD endpoints (edit price/description)
