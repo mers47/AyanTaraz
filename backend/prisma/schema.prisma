@@ -482,25 +482,31 @@ model ConsultationSlot {
 }
 
 model ConsultationBooking {
-  id          String        @id @default(uuid())
-  slotId      String
-  slot        ConsultationSlot @relation(fields: [slotId], references: [id])
-  serviceId   String
-  service     ConsultationService @relation(fields: [serviceId], references: [id])
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
-  phone       String
-  otpCode     String?
-  otpVerified Boolean  @default(false)
-  status      BookingStatus @default(PENDING)
-  notes       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String        @id @default(uuid())
+  slotId        String
+  slot          ConsultationSlot @relation(fields: [slotId], references: [id])
+  serviceId     String
+  service       ConsultationService @relation(fields: [serviceId], references: [id])
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  phone         String
+  otpCode       String?
+  otpVerified   Boolean  @default(false)
+  status        BookingStatus @default(PENDING)
+  notes         String?
+  paymentStatus PaymentStatus @default(UNPAID)
+  receiptUrl    String?
+  receiptFileName String?
+  amount        Int?
+  paidAt        DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@index([slotId])
   @@index([userId])
   @@index([phone])
   @@index([status])
+  @@index([paymentStatus])
   @@index([createdAt])
 }
 
@@ -526,6 +532,14 @@ enum BookingStatus {
   CANCELLED
   COMPLETED
   NO_SHOW
+}
+
+enum PaymentStatus {
+  UNPAID
+  PENDING
+  PAID
+  VERIFIED
+  REJECTED
 }
 
 // ==============================

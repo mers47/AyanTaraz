@@ -3,7 +3,10 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci
+# --allow-scripts lets the @prisma/client postinstall download the query-engine
+# binary at install time so the Redis/Prisma-backed build (ioredis + Prisma)
+# does not fail with a missing engine at `npm run build` / `prisma:generate`.
+RUN npm ci --allow-scripts
 
 COPY . .
 RUN npm run build

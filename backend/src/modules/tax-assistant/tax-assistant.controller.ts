@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Request } from '@nestjs/common';
+import { Controller, Post, Get, Delete, Param, Body, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Public } from '../../common/decorators/public.decorator';
 import { TaxAssistantService } from './tax-assistant.service';
@@ -21,5 +21,19 @@ export class TaxAssistantController {
   @ApiResponse({ status: 200, description: 'نتیجه یا سوال بعدی' })
   async answerQuestion(@Body() body: { sessionId: string; questionId: string; optionId: string; optionValue: string }) {
     return this.taxAssistantService.answerQuestion(body.sessionId, body.questionId, body.optionId, body.optionValue);
+  }
+
+  @Get('session/:id')
+  @ApiOperation({ summary: 'دریافت وضعیت نشست و پاسخ‌های ثبت‌شده' })
+  @ApiResponse({ status: 200, description: 'اطلاعات نشست' })
+  async getSession(@Param('id') id: string) {
+    return this.taxAssistantService.getSession(id);
+  }
+
+  @Delete('session/:id')
+  @ApiOperation({ summary: 'حذف و بازنشانی نشست دستیار مالیاتی' })
+  @ApiResponse({ status: 200, description: 'نشست حذف شد' })
+  async deleteSession(@Param('id') id: string) {
+    return this.taxAssistantService.deleteSession(id);
   }
 }

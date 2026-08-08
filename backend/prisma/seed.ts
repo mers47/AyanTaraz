@@ -77,6 +77,44 @@ async function main() {
     { name: 'vat', title: 'VAT ۱۲٪', description: 'نرخ:۱۲٪|جرایم:۷۵٪|مهلت:۱۵روز', action: 'REGISTER_VAT', severity: 'WARNING' },
   ] });
 
+
+  // Build the decision-tree flows so the chatbot walks a real multi-question path.
+  // Flow: Q1(activity) -> Q2(income) -> Q3(exemption) -> Q4(vat) -> Q5(filing) -> Q6(help) -> done
+  {
+    const qs = await P.taxQuestion.findMany({ orderBy: { sortOrder: 'asc' } });
+    const qByOrder = Object.fromEntries(qs.map(q => [q.sortOrder, q]));
+    const optsOf = async (qId: string) => {
+      const opts = await P.taxQuestionOption.findMany({ where: { questionId: qId }, orderBy: { sortOrder: 'asc' } });
+      return Object.fromEntries(opts.map(o => [o.value, o]));
+    };
+
+    // Q1 -> Q2, Q2 -> Q3, Q3 -> Q4, Q4 -> Q5, Q5 -> Q6 (all options advance to next question)
+    const chain = [[1,2], [2,3], [3,4], [4,5], [5,6]];
+    for (const [fromOrder, toOrder] of chain) {
+      const fromQ = qByOrder[fromOrder];
+      const toQ = qByOrder[toOrder];
+      if (!fromQ || !toQ) continue;
+      const opts = await optsOf(fromQ.id);
+      for (const [val, opt] of Object.entries(opts)) {
+        await P.taxQuestionFlow.upsert({
+          where: { fromQuestionId_optionId: { fromQuestionId: fromQ.id, optionId: opt.id } },
+          create: { fromQuestionId: fromQ.id, toQuestionId: toQ.id, optionId: opt.id, sortOrder: 1 },
+          update: { toQuestionId: toQ.id },
+        });
+      }
+    }
+    // Q6 -> terminal (no flow => determine() runs after Q6 answer)
+    console.log('\xF0\x9F\x8C\xB3 Decision tree flows seeded (Q1->Q2->Q3->Q4->Q5->Q6->result)');
+  }
+
+  // Seed consultation services with 1405 prices (toman)
+  await P.consultationService.createMany({ skipDuplicates: true, data: [
+    { name: 'مشاوره مالیاتی', slug: 'tax-consult', description: 'بررسی پرونده و برنامه‌ریزی مالیاتی', duration: 45, price: 500000, sortOrder: 1 },
+    { name: 'تنظیم اظهارنامه', slug: 'tax-return', description: 'اظهارنامه عملکرد و ارزش افزوده', duration: 30, price: 800000, sortOrder: 2 },
+    { name: 'حسابرسی مالی', slug: 'audit', description: 'بررسی اسناد و گزارش تحلیلی', duration: 60, price: 1500000, sortOrder: 3 },
+    { name: 'دفترداری', slug: 'bookkeeping', description: 'ثبت اسناد و صورت‌های مالی', duration: 30, price: 600000, sortOrder: 4 },
+  ] });
+
   await P.adminSetting.createMany({ skipDuplicates: true, data: [
     { key: 'vat_1405', value: '12', description: 'داده اولیه قابل ممیزی توسط ادمین' }, { key: 'corp_tax', value: '25', description: 'داده اولیه قابل ممیزی توسط ادمین' },
   ] });
