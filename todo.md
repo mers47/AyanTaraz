@@ -5,13 +5,13 @@
 - [x] S0b: Pull latest main, create new branch feat/phase6-production-enhancements
 
 ## Step 1 — Dynamic SEO (sitemap, robots, generateMetadata)
-- [ ] S1: Create `frontend/src/app/sitemap.ts` — dynamic sitemap from public content API
-- [ ] S2: Create `frontend/src/app/robots.ts` — dynamic robots.txt + sitemap link
-- [ ] S3: Create `frontend/src/app/articles/[slug]/page.tsx` — generateMetadata + article detail page
-- [ ] S4: Create `frontend/src/app/videos/[slug]/page.tsx` — generateMetadata + video detail page
-- [ ] S5: Create `frontend/src/app/minibooks/[slug]/page.tsx` — generateMetadata + minibook detail page
-- [ ] S6: Update article/video/minibook listing pages to link to [slug] routes
-- [ ] S7: Commit SEO batch, push, verify CI
+- [x] S1: Create `frontend/src/app/sitemap.ts` — dynamic sitemap from public content API
+- [x] S2: Create `frontend/src/app/robots.ts` — dynamic robots.txt + sitemap link
+- [x] S3: Create `frontend/src/app/articles/[slug]/page.tsx` — generateMetadata + article detail page
+- [x] S4: Create `frontend/src/app/videos/[slug]/page.tsx` — generateMetadata + video detail page
+- [x] S5: Create `frontend/src/app/minibooks/[slug]/page.tsx` — generateMetadata + minibook detail page
+- [x] S6: Update article/video/minibook listing pages to link to [slug] routes
+- [x] S7: Commit SEO batch, push (1d22afd) — frontend build verified locally
 
 ## Step 2 — Rate Limiting on OTP endpoints
 - [ ] R1: Install @nestjs/throttler, add ThrottlerModule to app.module
