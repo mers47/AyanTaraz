@@ -1,0 +1,109 @@
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import VideoPlayer from '@/components/VideoPlayer';
+
+const BASE = process.env.NEXT_PUBLIC_BASE_URL || 'https://ayantaraz.ir';
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+
+interface Video {
+  id: string;
+  title: string;
+  slug: string;
+  description?: string;
+  url: string;
+  thumbnail?: string;
+  duration?: number;
+  metaTitle?: string;
+  metaDescription?: string;
+  canonicalUrl?: string;
+  publishedAt?: string;
+  updatedAt?: string;
+  category?: { name: string; slug: string };
+}
+
+async function getVideo(slug: string): Promise<Video | null> {
+  try {
+    const res = await fetch(`${API}/content/videos/${slug}`, {
+      next: { revalidate: 300 },
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const video = await getVideo(slug);
+  if (!video) {
+    return { title: 'ویدیو یافت نشد', robots: { index: false, follow: false } };
+  }
+  return {
+    title: video.metaTitle || video.title,
+    description: video.metaDescription || video.description || '',
+    alternates: { canonical: video.canonicalUrl || `${BASE}/videos/${video.slug}` },
+    openGraph: {
+      type: 'video.other',
+      locale: 'fa_IR',
+      title: video.metaTitle || video.title,
+      description: video.metaDescription || video.description || '',
+      url: `${BASE}/videos/${video.slug}`,
+      siteName: 'آین تراز',
+      images: video.thumbnail ? [{ url: video.thumbnail, width: 1200, height: 630, alt: video.title }] : undefined,
+      videos: video.url ? [{ url: video.url }] : undefined,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: video.metaTitle || video.title,
+      description: video.metaDescription || video.description || '',
+      images: video.thumbnail ? [video.thumbnail] : undefined,
+    },
+    robots: { index: true, follow: true },
+  };
+}
+
+export default async function VideoDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const video = await getVideo(slug);
+  if (!video) notFound();
+
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'VideoObject',
+    name: video.title,
+    description: video.metaDescription || video.description || '',
+    thumbnailUrl: video.thumbnail || undefined,
+    uploadDate: video.publishedAt,
+    contentUrl: video.url || `${BASE}/videos/${video.slug}`,
+    embedUrl: `${BASE}/videos/${video.slug}`,
+    publisher: { '@type': 'Organization', name: 'آین تراز' },
+  };
+
+  return (
+    <div style={{ minHeight: '100vh', background: 'var(--brand-black)' }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <header style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--brand-black-soft)', padding: '0 20px' }}>
+        <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 60 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Link href="/" style={{ fontWeight: 800, color: 'var(--brand-gold)' }}>آین تراز</Link>
+            <span style={{ color: 'var(--border-default)' }}>|</span>
+            <Link href="/videos" style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>ویدیوها</Link>
+          </div>
+          <Link href="/videos" style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>بازگشت به لیست</Link>
+        </div>
+      </header>
+      <div className="container section" style={{ maxWidth: 900, margin: '0 auto' }}>
+        {video.category && (
+          <div className="badge badge-gold" style={{ marginBottom: 16 }}>{video.category.name}</div>
+        )}
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: 24, lineHeight: 1.6 }}>{video.title}</h1>
+        <VideoPlayer url={video.url} title={video.title} poster={video.thumbnail} />
+        {video.description && (
+          <p style={{ marginTop: 24, color: 'var(--text-secondary)', lineHeight: 1.9, fontSize: '0.9375rem' }}>{video.description}</p>
+        )}
+      </div>
+    </div>
+  );
+}
