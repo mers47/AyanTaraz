@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import PageHeader from '@/components/PageHeader';
 import { notFound } from 'next/navigation';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_URL || 'https://ayantaraz.ir';
@@ -82,16 +83,7 @@ export default async function MiniBookDetailPage({ params }: { params: Promise<{
   return (
     <div style={{ minHeight: '100vh', background: 'var(--brand-black)' }}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <header style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--brand-black-soft)', padding: '0 20px' }}>
-        <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 60 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Link href="/" style={{ fontWeight: 800, color: 'var(--brand-gold)' }}>آین تراز</Link>
-            <span style={{ color: 'var(--border-default)' }}>|</span>
-            <Link href="/minibooks" style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>مینی‌بوک‌ها</Link>
-          </div>
-          <Link href="/minibooks" style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>بازگشت به لیست</Link>
-        </div>
-      </header>
+      <PageHeader title="مینی‌بوک‌ها" titleHref="/minibooks" backHref="/minibooks" backLabel="بازگشت به لیست" />
       <div className="container section" style={{ maxWidth: 800, margin: '0 auto' }}>
         <div className="card" style={{ padding: '2.5rem', display: 'flex', gap: 32, flexWrap: 'wrap', alignItems: 'flex-start' }}>
           <div style={{ width: 160, height: 220, flexShrink: 0, background: book.coverImage ? `url(${book.coverImage}) center/cover` : 'linear-gradient(135deg, var(--brand-gold-dark), var(--brand-gold))', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem', fontWeight: 800, color: 'var(--text-inverse)', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>

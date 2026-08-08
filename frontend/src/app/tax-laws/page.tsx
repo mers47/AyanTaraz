@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { taxApi } from '@/lib/api';
+import PageHeader from '@/components/PageHeader';
 
 interface Topic { id: string; name: string; slug: string; sortOrder: number; }
 interface RuleVersion { id: string; content: string; version: number; status: string; effectiveFrom: string; }
@@ -75,10 +76,13 @@ export default function TaxLawsPage() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', background: 'var(--brand-black)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 14 }}>
-        <div style={{ width: 44, height: 44, borderRadius: '50%', border: '3px solid var(--border-subtle)', borderTopColor: 'var(--brand-gold)', animation: 'spin .8s linear infinite' }} />
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>در حال بارگذاری قوانین مالیاتی...</p>
-        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      <div style={{ minHeight: '100vh', background: 'var(--brand-black)' }}>
+        <PageHeader title="قوانین مالیاتی ۱۴۰۵" />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 14, padding: '120px 20px' }}>
+          <div style={{ width: 44, height: 44, borderRadius: '50%', border: '3px solid var(--border-subtle)', borderTopColor: 'var(--brand-gold)', animation: 'spin .8s linear infinite' }} />
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>در حال بارگذاری قوانین مالیاتی...</p>
+          <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+        </div>
       </div>
     );
   }
@@ -97,19 +101,7 @@ export default function TaxLawsPage() {
       `}</style>
 
       {/* Header */}
-      <header style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--brand-black-soft)', padding: '0 20px' }}>
-        <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 64 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Link href="/" style={{ fontWeight: 800, color: 'var(--brand-gold)' }}>آین تراز</Link>
-            <span style={{ color: 'var(--border-default)' }}>|</span>
-            <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>قوانین مالیاتی ۱۴۰۵</span>
-          </div>
-          <Link href="/" style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
-            بازگشت
-          </Link>
-        </div>
-      </header>
+      <PageHeader title="قوانین مالیاتی ۱۴۰۵" />
 
       {/* Hero section */}
       <div className="container" style={{ paddingTop: 48, paddingBottom: 24, textAlign: 'center' }}>
