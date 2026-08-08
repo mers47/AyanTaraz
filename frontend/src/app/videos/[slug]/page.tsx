@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import PageHeader from '@/components/PageHeader';
 import { notFound } from 'next/navigation';
 import VideoPlayer from '@/components/VideoPlayer';
 
@@ -84,16 +85,7 @@ export default async function VideoDetailPage({ params }: { params: Promise<{ sl
   return (
     <div style={{ minHeight: '100vh', background: 'var(--brand-black)' }}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <header style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--brand-black-soft)', padding: '0 20px' }}>
-        <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 60 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Link href="/" style={{ fontWeight: 800, color: 'var(--brand-gold)' }}>آین تراز</Link>
-            <span style={{ color: 'var(--border-default)' }}>|</span>
-            <Link href="/videos" style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>ویدیوها</Link>
-          </div>
-          <Link href="/videos" style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>بازگشت به لیست</Link>
-        </div>
-      </header>
+      <PageHeader title="ویدیوها" titleHref="/videos" backHref="/videos" backLabel="بازگشت به لیست" />
       <div className="container section" style={{ maxWidth: 900, margin: '0 auto' }}>
         {video.category && (
           <div className="badge badge-gold" style={{ marginBottom: 16 }}>{video.category.name}</div>

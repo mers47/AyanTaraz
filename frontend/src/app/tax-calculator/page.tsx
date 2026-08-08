@@ -1,6 +1,7 @@
 'use client';
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
+import PageHeader from '@/components/PageHeader';
 
 type CalcKey = 'salary' | 'business' | 'vat' | 'rental';
 
@@ -170,19 +171,7 @@ export default function TaxCalculatorPage() {
       `}</style>
 
       {/* Header */}
-      <header style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--brand-black-soft)', padding: '0 20px' }}>
-        <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 64 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Link href="/" style={{ fontWeight: 800, color: 'var(--brand-gold)' }}>آین تراز</Link>
-            <span style={{ color: 'var(--border-default)' }}>|</span>
-            <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>ماشین حساب مالیاتی</span>
-          </div>
-          <Link href="/" style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
-            بازگشت
-          </Link>
-        </div>
-      </header>
+      <PageHeader title="ماشین حساب مالیاتی" backLabel="بازگشت" />
 
       {/* Hero */}
       <div className="container" style={{ paddingTop: 48, paddingBottom: 24, textAlign: 'center' }}>

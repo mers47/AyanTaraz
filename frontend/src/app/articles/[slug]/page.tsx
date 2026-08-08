@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import PageHeader from '@/components/PageHeader';
 import { notFound } from 'next/navigation';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_URL || 'https://ayantaraz.ir';
@@ -84,16 +85,7 @@ export default async function ArticleDetailPage({ params }: { params: Promise<{ 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--brand-black)' }}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <header style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--brand-black-soft)', padding: '0 20px' }}>
-        <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 60 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Link href="/" style={{ fontWeight: 800, color: 'var(--brand-gold)' }}>آین تراز</Link>
-            <span style={{ color: 'var(--border-default)' }}>|</span>
-            <Link href="/articles" style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>مقالات</Link>
-          </div>
-          <Link href="/articles" style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>بازگشت به لیست</Link>
-        </div>
-      </header>
+      <PageHeader title="مقالات" titleHref="/articles" backHref="/articles" backLabel="بازگشت به لیست" />
       <div className="container section" style={{ maxWidth: 800, margin: '0 auto' }}>
         <article className="card" style={{ padding: '2.5rem', overflow: 'hidden' }}>
           {/* detail responsive: padding/title scale on mobile via globals.css detail-* classes */}

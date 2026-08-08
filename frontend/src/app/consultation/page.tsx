@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import PageHeader from '@/components/PageHeader';
 import { consultationApi } from '@/lib/api';
 import type { ConsultationService as Svc, ConsultationBooking } from '@/types';
 
@@ -147,14 +148,7 @@ export default function ConsultationPage() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--brand-black)' }}>
       {/* Header */}
-      <header style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6" /></svg>
-          بازگشت
-        </Link>
-        <div style={{ fontWeight: 700 }}>رزرو مشاوره</div>
-        <div style={{ width: 60 }} />
-      </header>
+      <PageHeader title="رزرو مشاوره" backLabel="بازگشت" />
 
       <div style={{ padding: '32px 20px', maxWidth: 560, margin: '0 auto' }}>
         {/* Progress */}
