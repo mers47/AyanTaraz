@@ -20,4 +20,6 @@ getMiniBooks:(p?:number,l?:number,s?:string)=>api.get('/admin/minibooks',{params
 // Consultation Services
 getConsultationServices:()=>api.get('/admin/consultation-services'),createConsultationService:(d:any)=>api.post('/admin/consultation-services',d),updateConsultationService:(id:string,d:any)=>api.patch(`/admin/consultation-services/${id}`,d),deleteConsultationService:(id:string)=>api.delete(`/admin/consultation-services/${id}`)};
 export const contentApi={getAll:()=>api.get('/content'),get:(k:string)=>api.get(`/content/${k}`),save:(k:string,d:any)=>api.put(`/content/${k}`,d),autoFill:()=>api.post('/content/autofill')};
+// Public content (articles, videos, minibooks) — no auth required
+export const publicContentApi={getArticles:(p?:number,l?:number,s?:string)=>api.get('/content/articles',{params:{page:p,limit:l,search:s}}),getArticle:(slug:string)=>api.get(`/content/articles/${slug}`),getVideos:(p?:number,l?:number,s?:string)=>api.get('/content/videos',{params:{page:p,limit:l,search:s}}),getVideo:(slug:string)=>api.get(`/content/videos/${slug}`),getMiniBooks:(p?:number,l?:number,s?:string)=>api.get('/content/minibooks',{params:{page:p,limit:l,search:s}}),getMiniBook:(slug:string)=>api.get(`/content/minibooks/${slug}`),getCategories:()=>api.get('/content/categories')};
 export default api;

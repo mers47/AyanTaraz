@@ -25,9 +25,9 @@
 - [x] Commit
 
 ### A5: Consultation Services Management (tab + backend CRUD)
-- [ ] Backend: consultation service CRUD endpoints (edit price/description)
-- [ ] Frontend: admin page new tab for consultation service management
-- [ ] Commit
+- [x] Backend: consultation service CRUD endpoints (edit price/description)
+- [x] Frontend: admin page new tab for consultation service management
+- [x] Commit
 
 ## Then Group B (Frontend public):
 - [ ] Video player component
