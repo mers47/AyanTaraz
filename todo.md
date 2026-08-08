@@ -14,9 +14,9 @@
 - [x] S7: Commit SEO batch, push (1d22afd) — frontend build verified locally
 
 ## Step 2 — Rate Limiting on OTP endpoints
-- [ ] R1: Install @nestjs/throttler, add ThrottlerModule to app.module
-- [ ] R2: Add ThrottlerGuard to send-otp and login endpoints
-- [ ] R3: Commit rate limiting, push, verify CI
+- [x] R1: Install @nestjs/throttler v6.5, add ThrottlerModule (3 named throttlers) to app.module
+- [x] R2: Add @Throttle to send-otp (3/min) and login (10/min), global ThrottlerGuard as APP_GUARD
+- [x] R3: Commit rate limiting (cee58fd), push — backend build + tests pass locally
 
 ## Step 3 — Search UI on public content pages
 - [ ] Q1: Add search input to articles page (connect to existing search API)
