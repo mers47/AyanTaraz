@@ -11,7 +11,13 @@ export interface TaxAssistantOption { id: string; label: string; value: string; 
 export interface TaxAssistantResult { id: string; name: string; title: string; description: string; ruleIds: string[]; action: string | null; severity: 'INFO' | 'WARNING' | 'CRITICAL' | 'NEEDS_REVIEW'; }
 export interface TaxAssistantSession { sessionId: string; question: TaxAssistantQuestion; }
 
-export interface DashboardStats { totalUsers: number; totalArticles: number; totalTaxRules: number; totalBookings: number; pendingBookings: number; confirmedBookings: number; totalQuestions: number; totalResults: number; }
+export interface ContentStats {
+  articles: { published: number; draft: number; review: number; archived?: number; total: number };
+  videos: { published: number; draft: number; review: number; total: number };
+  minibooks: { published: number; draft: number; total: number };
+  categories: { total: number; active: number };
+}
+export interface DashboardStats { totalUsers: number; totalArticles: number; totalTaxRules: number; totalBookings: number; pendingBookings: number; confirmedBookings: number; totalQuestions: number; totalResults: number; content?: ContentStats; }
 export interface UserRow { id: string; phone: string; firstName: string | null; lastName: string | null; role: string; isActive: boolean; phoneVerified: boolean; createdAt: string; }
 export interface AuditLog { id: string; userId: string; action: string; entityType: string; entityId: string; oldValue: string | null; newValue: string | null; ipAddress: string | null; createdAt: string; user?: { id: string; phone: string; firstName: string | null; lastName: string | null }; }
 export interface RecentActivity { recentUsers: any[]; recentArticles: any[]; recentBookings: any[]; }
