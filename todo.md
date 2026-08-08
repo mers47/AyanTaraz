@@ -19,9 +19,9 @@
 - [x] R3: Commit rate limiting (cee58fd), push — backend build + tests pass locally
 
 ## Step 3 — Search UI on public content pages
-- [ ] Q1: Add search input to articles page (connect to existing search API)
-- [ ] Q2: Add search input to videos page
-- [ ] Q3: Commit search UI, push, verify CI
+- [x] Q1: Add search input to articles page (400ms debounce, connect to existing search API)
+- [x] Q2: Add search input to videos page (400ms debounce, connect to existing search API)
+- [x] Q3: Commit search UI (c2e2930), push — frontend build verified locally
 
 ## Step 4 — Stats dashboard in admin panel
 - [ ] D1: Add stats endpoint to admin controller/service

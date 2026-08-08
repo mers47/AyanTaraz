@@ -7,7 +7,13 @@ export class AdminService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getDashboardStats() {
-    const [totalUsers, totalTaxRules, totalBookings, pendingBookings, confirmedBookings, totalQuestions, totalResults] = await Promise.all([
+    const [
+      totalUsers, totalTaxRules, totalBookings, pendingBookings, confirmedBookings, totalQuestions, totalResults,
+      articlesPublished, articlesDraft, articlesReview, articlesArchived,
+      videosPublished, videosDraft, videosReview,
+      minibooksPublished, minibooksDraft,
+      totalCategories, activeCategories,
+    ] = await Promise.all([
       this.prisma.user.count(),
       this.prisma.taxRule.count(),
       this.prisma.consultationBooking.count(),
@@ -15,8 +21,27 @@ export class AdminService {
       this.prisma.consultationBooking.count({ where: { status: 'CONFIRMED' } }),
       this.prisma.taxQuestion.count({ where: { isActive: true } }),
       this.prisma.taxAssistantResult.count({ where: { isActive: true } }),
+      this.prisma.article.count({ where: { status: 'PUBLISHED' } }),
+      this.prisma.article.count({ where: { status: 'DRAFT' } }),
+      this.prisma.article.count({ where: { status: 'REVIEW' } }),
+      this.prisma.article.count({ where: { status: 'ARCHIVED' } }),
+      this.prisma.video.count({ where: { status: 'PUBLISHED' } }),
+      this.prisma.video.count({ where: { status: 'DRAFT' } }),
+      this.prisma.video.count({ where: { status: 'REVIEW' } }),
+      this.prisma.miniBook.count({ where: { status: 'PUBLISHED' } }),
+      this.prisma.miniBook.count({ where: { status: 'DRAFT' } }),
+      this.prisma.category.count(),
+      this.prisma.category.count({ where: { isActive: true } }),
     ]);
-    return { totalUsers, totalTaxRules, totalBookings, pendingBookings, confirmedBookings, totalQuestions, totalResults };
+    return {
+      totalUsers, totalTaxRules, totalBookings, pendingBookings, confirmedBookings, totalQuestions, totalResults,
+      content: {
+        articles: { published: articlesPublished, draft: articlesDraft, review: articlesReview, archived: articlesArchived, total: articlesPublished + articlesDraft + articlesReview + articlesArchived },
+        videos: { published: videosPublished, draft: videosDraft, review: videosReview, total: videosPublished + videosDraft + videosReview },
+        minibooks: { published: minibooksPublished, draft: minibooksDraft, total: minibooksPublished + minibooksDraft },
+        categories: { total: totalCategories, active: activeCategories },
+      },
+    };
   }
 
   async getRecentActivity(limit = 10) {
