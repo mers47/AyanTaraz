@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   openGraph: { type: 'website', locale: 'fa_IR', siteName: 'آیان تراز', title: 'آیان تراز | خدمات تخصصی حسابداری و مشاوره مالیاتی', description: 'خدمات حرفه‌ای حسابداری، مشاوره مالیاتی و برنامه‌ریزی مالی', images: [{ url: '/images/og-image.jpg', width: 1200, height: 630, alt: 'آیان تراز' }] },
   twitter: { card: 'summary_large_image', title: 'آیان تراز', description: 'خدمات تخصصی حسابداری و مشاوره مالیاتی', images: ['/images/og-image.jpg'] },
   robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
-  icons: { icon: '/favicon.ico', apple: '/apple-touch-icon.png' },
+  icons: { icon: [{ url: '/favicon.ico', sizes: 'any' }, { url: '/favicon-32.png', type: 'image/png', sizes: '32x32' }], apple: '/apple-touch-icon.png' },
 };
 
 export const viewport: Viewport = { themeColor: '#0a0a0a', width: 'device-width', initialScale: 1, maximumScale: 5 };

@@ -18,10 +18,28 @@ const NAV: NavItem[] = [
   { label: 'رزرو مشاوره', href: '/consultation' },
 ];
 
-export default function SiteHeader() {
+interface SiteHeaderProps {
+  /** When true, the login modal is shown regardless of internal state.
+   *  Used by pages to auto-open login (e.g. on session expiry). */
+  externalOpen?: boolean;
+  /** Called when the externally-opened login modal is closed. */
+  onExternalClose?: () => void;
+}
+
+export default function SiteHeader({ externalOpen = false, onExternalClose }: SiteHeaderProps = {}) {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
+
+  // React to external open requests (e.g. ?expired=1 on home page).
+  useEffect(() => {
+    if (externalOpen) setShowLogin(true);
+  }, [externalOpen]);
+
+  const closeLogin = () => {
+    setShowLogin(false);
+    if (externalOpen) onExternalClose?.();
+  };
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 30);
@@ -133,7 +151,7 @@ export default function SiteHeader() {
       )}
 
       {showLogin && (
-        <LoginModal title="ورود به آین تراز" onClose={() => setShowLogin(false)} onSuccess={() => setShowLogin(false)} />
+        <LoginModal title="ورود به آین تراز" onClose={closeLogin} onSuccess={closeLogin} />
       )}
     </header>
   );
