@@ -114,7 +114,7 @@ export default function ChatbotPage() {
     );
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--brand-black)', display: 'flex', flexDirection: 'column' }}>
+    <div className="chat-container" style={{ minHeight: '100vh', background: 'var(--brand-black)', display: 'flex', flexDirection: 'column' }}>
       <header
         style={{
           padding: '12px 20px',
@@ -140,7 +140,7 @@ export default function ChatbotPage() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/images/logo-dark.webp" alt="آین تراز" style={{ height: 34, width: 'auto' }} />
           <div>
-            <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>دستیار آین تراز</div>
+            <div className="chat-header-title" style={{ fontWeight: 700, fontSize: '0.9rem' }}>دستیار آین تراز</div>
             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>پاسخگویی سوالات مالیاتی</div>
           </div>
         </div>
@@ -226,12 +226,13 @@ export default function ChatbotPage() {
                     {m.text}
                   </div>
                   {m.options && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 10 }}>
+                    <div className="chat-options" style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 10 }}>
                       {m.options.map((o) => (
                         <button
                           key={o.id}
                           onClick={() => ans(o.id, o.value, o.label)}
                           disabled={wait}
+                          className="chat-option-btn"
                           style={{
                             textAlign: 'right',
                             padding: '13px 16px',

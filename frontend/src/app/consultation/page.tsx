@@ -233,7 +233,7 @@ export default function ConsultationPage() {
             <p style={{ color: 'var(--text-secondary)', marginBottom: 28 }}>روز و ساعت مناسب خود را انتخاب کنید</p>
             <div style={{ marginBottom: 24 }}>
               <div style={{ fontWeight: 600, marginBottom: 12, fontSize: '0.875rem' }}>روز</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(80px,1fr))', gap: 8 }}>
+              <div className="datetime-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(80px,1fr))', gap: 8 }}>
                 {dates.map((d) => (
                   <button key={d} onClick={() => update('date', d)} style={{ padding: '10px', borderRadius: 8, border: `1.5px solid ${form.date === d ? 'var(--brand-gold)' : 'var(--border-subtle)'}`, background: form.date === d ? 'rgba(198,169,98,0.1)' : 'var(--surface-card)', color: form.date === d ? 'var(--brand-gold)' : 'var(--text-primary)', fontFamily: 'Vazirmatn', fontSize: '0.8125rem', cursor: 'pointer', transition: 'all 150ms' }}>{d}</button>
                 ))}
@@ -241,7 +241,7 @@ export default function ConsultationPage() {
             </div>
             <div style={{ marginBottom: 24 }}>
               <div style={{ fontWeight: 600, marginBottom: 12, fontSize: '0.875rem' }}>ساعت</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(80px,1fr))', gap: 8 }}>
+              <div className="datetime-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(80px,1fr))', gap: 8 }}>
                 {times.map((t) => (
                   <button key={t} onClick={() => update('time', t)} style={{ padding: '10px', borderRadius: 8, border: `1.5px solid ${form.time === t ? 'var(--brand-gold)' : 'var(--border-subtle)'}`, background: form.time === t ? 'rgba(198,169,98,0.1)' : 'var(--surface-card)', color: form.time === t ? 'var(--brand-gold)' : 'var(--text-primary)', fontFamily: 'Vazirmatn', fontSize: '0.8125rem', cursor: 'pointer', transition: 'all 150ms' }}>{t}</button>
                 ))}
@@ -283,7 +283,7 @@ export default function ConsultationPage() {
             </div>
 
             {/* Bank card info */}
-            <div className="card" style={{ marginBottom: 24, padding: 20, borderColor: 'rgba(198,169,98,0.3)' }}>
+            <div className="card bank-card-info" style={{ marginBottom: 24, padding: 20, borderColor: 'rgba(198,169,98,0.3)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--brand-gold)" strokeWidth="2"><rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></svg>
                 <span style={{ fontWeight: 700 }}>اطلاعات حساب برای واریز</span>

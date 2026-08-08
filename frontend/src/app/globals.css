@@ -656,3 +656,131 @@ video {
   height: 1px;
   background: linear-gradient(90deg, transparent, rgba(198, 169, 98, 0.4), transparent);
 }
+
+/* ============================================================
+   MOBILE RESPONSIVE — global (≤880px tablet, ≤640px phone)
+   Applies to all pages: tax-calculator, tax-laws, chatbot,
+   consultation, home, articles, videos, minibooks, detail.
+   ============================================================ */
+
+/* ── Tax calculator: stack input/result panels vertically ── */
+@media (max-width: 880px) {
+  .calc-grid {
+    grid-template-columns: 1fr !important;
+    gap: 18px !important;
+  }
+  .calc-tabs {
+    gap: 8px !important;
+  }
+  .calc-tab {
+    padding: 10px 14px !important;
+    font-size: 0.82rem !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .calc-grid > div {
+    padding: 20px !important;
+  }
+  .calc-tab {
+    flex: 1 1 calc(50% - 8px) !important;
+    justify-content: center !important;
+    padding: 11px 10px !important;
+    font-size: 0.78rem !important;
+  }
+}
+
+/* ── Tax-laws: stack sidebar on top, single column rule cards ── */
+@media (max-width: 880px) {
+  .container[style*="grid-template-columns: 260px 1fr"],
+  .container[style*="gridTemplateColumns"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── General mobile spacing & font scaling ── */
+@media (max-width: 640px) {
+  .section-title {
+    font-size: 1.6rem !important;
+  }
+  .section-subtitle {
+    font-size: 0.875rem !important;
+  }
+  .container {
+    padding: 0 16px !important;
+  }
+}
+
+/* ── Chatbot responsive ── */
+@media (max-width: 640px) {
+  .chat-container {
+    padding: 12px !important;
+  }
+  .chat-msg {
+    max-width: 90% !important;
+    font-size: 0.875rem !important;
+  }
+  .chat-options {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+  .chat-option-btn {
+    padding: 12px 14px !important;
+    font-size: 0.825rem !important;
+  }
+  .chat-header-title {
+    font-size: 0.95rem !important;
+  }
+}
+
+/* ── Consultation form responsive ── */
+@media (max-width: 640px) {
+  .datetime-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+  .form-field {
+    margin-bottom: 14px !important;
+  }
+  .bank-card-info {
+    padding: 14px !important;
+    font-size: 0.825rem !important;
+  }
+}
+
+/* ── Detail pages (articles/videos/minibooks) ── */
+@media (max-width: 640px) {
+  .detail-hero h1,
+  .detail-title {
+    font-size: 1.4rem !important;
+  }
+  .detail-body {
+    font-size: 0.9rem !important;
+    line-height: 1.9 !important;
+  }
+}
+
+/* ── Cards grid: fewer columns on mobile ── */
+@media (max-width: 880px) {
+  .cards-grid-3 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+@media (max-width: 640px) {
+  .cards-grid-3,
+  .cards-grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── Detail article/minibook card padding on mobile ── */
+@media (max-width: 640px) {
+  article.card,
+  .card[style*="padding: 2.5rem"] {
+    padding: 1.25rem !important;
+  }
+  .section {
+    padding-top: 28px !important;
+    padding-bottom: 40px !important;
+  }
+}
