@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import SiteHeader from '@/components/SiteHeader';
 
@@ -90,9 +91,45 @@ function useInView(t = 0.05) {
 }
 
 export default function Home() {
+  return (
+    <Suspense fallback={
+      <div className="bg-pattern" style={{ background: 'var(--brand-black)', minHeight: '100vh' }}>
+        <SiteHeader />
+      </div>
+    }>
+      <HomeContent />
+    </Suspense>
+  );
+}
+
+function HomeContent() {
   const [as, sa] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [expiredMsg, setExpiredMsg] = useState<string | null>(null);
+  const [externalLogin, setExternalLogin] = useState(false);
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const ns = useCallback(() => sa((s) => (s + 1) % SLIDES.length), []);
+
+  // Handle ?expired=1 and ?login=required query params.
+  // Sent by the API interceptor when an admin/session token expires.
+  useEffect(() => {
+    const expired = searchParams.get('expired');
+    const loginRequired = searchParams.get('login');
+    if (expired === '1' || loginRequired === 'required') {
+      setExpiredMsg(expired === '1' ? 'نشست شما منقضی شد. لطفاً دوباره وارد شوید.' : 'برای دسترسی به این بخش ابتدا وارد شوید.');
+      setExternalLogin(true);
+      // Clean the URL so the message doesn't reappear on refresh.
+      router.replace('/', { scroll: false });
+    }
+  }, [searchParams, router]);
+
+  // Auto-dismiss the expiry toast after 6 seconds.
+  useEffect(() => {
+    if (!expiredMsg) return;
+    const t = setTimeout(() => setExpiredMsg(null), 6000);
+    return () => clearTimeout(t);
+  }, [expiredMsg]);
 
   // Auto-advance the image slider every 4.5s (pausable on hover).
   useEffect(() => {
@@ -103,7 +140,17 @@ export default function Home() {
 
   return (
     <div className="bg-pattern" style={{ background: 'var(--brand-black)', minHeight: '100vh' }}>
-      <SiteHeader />
+      <SiteHeader externalOpen={externalLogin} onExternalClose={() => setExternalLogin(false)} />
+      {expiredMsg && (
+        <div className="toast-warning" role="alert">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+          {expiredMsg}
+        </div>
+      )}
       <Hero as={as} sa={sa} slides={SLIDES} paused={paused} setPaused={setPaused} />
       <Stats st={ST} />
       <Svc sv={SV} />

@@ -587,6 +587,26 @@ video {
   z-index: 200;
   animation: toastIn 0.3s var(--ease-expo);
 }
+.toast-warning {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(12, 12, 17, 0.92);
+  backdrop-filter: blur(16px);
+  color: var(--brand-gold-light);
+  border: 1px solid var(--brand-gold);
+  padding: 14px 28px;
+  border-radius: 14px;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  z-index: 250;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 8px 32px rgba(198, 169, 98, 0.18);
+  animation: toastIn 0.35s var(--ease-expo);
+}
 
 .hide-mobile {
   display: none;
