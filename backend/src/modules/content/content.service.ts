@@ -40,4 +40,54 @@ export class ContentService {
     }
     return { ok: true, count: Object.keys(LAWS).length, message: '✅ ۸ بخش قوانین ۱۴۰۵ جای‌گذاری شد' };
   }
+
+  // ─── Public content: Articles ───
+  async getPublishedArticles(page = 1, limit = 20, search?: string) {
+    const where: any = { status: 'PUBLISHED' };
+    if (search) where.OR = [{ title: { contains: search, mode: 'insensitive' } }, { excerpt: { contains: search, mode: 'insensitive' } }];
+    const [items, total] = await Promise.all([
+      this.prisma.article.findMany({ where, orderBy: { publishedAt: 'desc' }, skip: (page - 1) * limit, take: limit, include: { category: { select: { name: true, slug: true } } } }),
+      this.prisma.article.count({ where }),
+    ]);
+    return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+
+  async getArticleBySlug(slug: string) {
+    return this.prisma.article.findFirst({ where: { slug, status: 'PUBLISHED' }, include: { category: { select: { name: true, slug: true } } } });
+  }
+
+  // ─── Public content: Videos ───
+  async getPublishedVideos(page = 1, limit = 20, search?: string) {
+    const where: any = { status: 'PUBLISHED' };
+    if (search) where.OR = [{ title: { contains: search, mode: 'insensitive' } }, { description: { contains: search, mode: 'insensitive' } }];
+    const [items, total] = await Promise.all([
+      this.prisma.video.findMany({ where, orderBy: { publishedAt: 'desc' }, skip: (page - 1) * limit, take: limit, include: { category: { select: { name: true, slug: true } } } }),
+      this.prisma.video.count({ where }),
+    ]);
+    return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+
+  async getVideoBySlug(slug: string) {
+    return this.prisma.video.findFirst({ where: { slug, status: 'PUBLISHED' }, include: { category: { select: { name: true, slug: true } } } });
+  }
+
+  // ─── Public content: MiniBooks ───
+  async getPublishedMiniBooks(page = 1, limit = 20, search?: string) {
+    const where: any = { status: 'PUBLISHED' };
+    if (search) where.OR = [{ title: { contains: search, mode: 'insensitive' } }, { description: { contains: search, mode: 'insensitive' } }];
+    const [items, total] = await Promise.all([
+      this.prisma.miniBook.findMany({ where, orderBy: { publishedAt: 'desc' }, skip: (page - 1) * limit, take: limit, include: { category: { select: { name: true, slug: true } } } }),
+      this.prisma.miniBook.count({ where }),
+    ]);
+    return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+
+  async getMiniBookBySlug(slug: string) {
+    return this.prisma.miniBook.findFirst({ where: { slug, status: 'PUBLISHED' }, include: { category: { select: { name: true, slug: true } } } });
+  }
+
+  // ─── Public content: Categories ───
+  async getCategories() {
+    return this.prisma.category.findMany({ where: { isActive: true }, orderBy: { sortOrder: 'asc' }, select: { id: true, name: true, slug: true } });
+  }
 }
