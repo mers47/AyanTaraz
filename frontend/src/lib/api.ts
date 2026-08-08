@@ -61,6 +61,14 @@ export const authApi = {
   logout: () => api.post('/auth/logout'),
 };
 
+// Public tax law reference (topics + rules + versions) — no auth required
+export const taxApi = {
+  getTopics: () => api.get('/tax/topics'),
+  getRules: (topicSlug?: string, page = 1, limit = 100) =>
+    api.get('/tax/rules', { params: { topic: topicSlug, page, limit } }),
+  getRule: (slug: string) => api.get(`/tax/rules/${slug}`),
+};
+
 export const taxAssistantApi = {
   startSession: (q?: string) => api.post('/tax-assistant/start', { questionId: q }),
   answerQuestion: (s: string, q: string, o: string, v: string) =>
