@@ -29,11 +29,33 @@
 - [x] Frontend: admin page new tab for consultation service management
 - [x] Commit
 
-## Then Group B (Frontend public):
-- [ ] Video player component
-- [ ] Connect articles/videos/minibooks pages to API
-- [ ] Login UI (SMS OTP modal)
-- [ ] SMS .env production guide
+## Group B (Frontend public) — in order, commit each:
+
+### B1: Public content endpoints (backend) + public API methods (frontend)
+- [x] Backend: add public GET endpoints for published articles/videos/minibooks to existing content module
+- [x] Frontend: add publicApi methods to api.ts
+- [x] Commit (96dcf03)
+
+### B2: Connect articles page to API
+- [ ] Frontend: replace hardcoded static data in articles/page.tsx with API fetch
+- [ ] Commit
+
+### B3: Connect videos page to API + video player component
+- [ ] Frontend: add video player component (HTML5 video with brand styling)
+- [ ] Frontend: replace static data in videos/page.tsx with API fetch + player
+- [ ] Commit
+
+### B4: Connect minibooks page to API
+- [ ] Frontend: replace hardcoded static data in minibooks/page.tsx with API fetch
+- [ ] Commit
+
+### B5: Login UI (SMS OTP modal/form)
+- [ ] Frontend: create login modal with phone to OTP flow using existing authApi
+- [ ] Commit
+
+### B6: SMS .env production guide
+- [ ] Documentation: create SMS setup guide for production (env vars, provider config)
+- [ ] Commit
 
 ## Rules:
 - Do NOT change architecture (no new modules if existing ones can hold the code)
