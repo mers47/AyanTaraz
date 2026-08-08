@@ -62,4 +62,108 @@ export class AdminService {
     ]);
     return { data: logs, total, page, limit };
   }
+
+  // ==================== Chatbot Q&A Management ====================
+
+  async getTaxQuestions() {
+    return this.prisma.taxQuestion.findMany({
+      orderBy: { sortOrder: 'asc' },
+      include: { options: { orderBy: { sortOrder: 'asc' } } },
+    });
+  }
+
+  async createTaxQuestion(data: { question: string; description?: string; sortOrder?: number; isActive?: boolean }) {
+    return this.prisma.taxQuestion.create({
+      data: {
+        question: data.question,
+        description: data.description || null,
+        sortOrder: data.sortOrder ?? 0,
+        isActive: data.isActive ?? true,
+      },
+      include: { options: true },
+    });
+  }
+
+  async updateTaxQuestion(id: string, data: { question?: string; description?: string; sortOrder?: number; isActive?: boolean }) {
+    return this.prisma.taxQuestion.update({ where: { id }, data, include: { options: { orderBy: { sortOrder: 'asc' } } } });
+  }
+
+  async deleteTaxQuestion(id: string) {
+    // Cascade delete will handle options and flows
+    await this.prisma.taxQuestion.delete({ where: { id } });
+    return { success: true };
+  }
+
+  async createTaxQuestionOption(data: { questionId: string; label: string; value: string; sortOrder?: number; isActive?: boolean }) {
+    return this.prisma.taxQuestionOption.create({
+      data: {
+        questionId: data.questionId,
+        label: data.label,
+        value: data.value,
+        sortOrder: data.sortOrder ?? 0,
+        isActive: data.isActive ?? true,
+      },
+    });
+  }
+
+  async updateTaxQuestionOption(id: string, data: { label?: string; value?: string; sortOrder?: number; isActive?: boolean }) {
+    return this.prisma.taxQuestionOption.update({ where: { id }, data });
+  }
+
+  async deleteTaxQuestionOption(id: string) {
+    await this.prisma.taxQuestionOption.delete({ where: { id } });
+    return { success: true };
+  }
+
+  async getTaxQuestionFlows() {
+    return this.prisma.taxQuestionFlow.findMany({
+      orderBy: { sortOrder: 'asc' },
+      include: { fromQuestion: { select: { id: true, question: true } }, toQuestion: { select: { id: true, question: true } }, option: { select: { id: true, label: true } } },
+    });
+  }
+
+  async createTaxQuestionFlow(data: { fromQuestionId: string; toQuestionId: string; optionId?: string; condition?: string; sortOrder?: number }) {
+    return this.prisma.taxQuestionFlow.create({
+      data: {
+        fromQuestionId: data.fromQuestionId,
+        toQuestionId: data.toQuestionId,
+        optionId: data.optionId || null,
+        condition: data.condition || null,
+        sortOrder: data.sortOrder ?? 0,
+      },
+      include: { fromQuestion: { select: { question: true } }, toQuestion: { select: { question: true } }, option: { select: { label: true } } },
+    });
+  }
+
+  async deleteTaxQuestionFlow(id: string) {
+    await this.prisma.taxQuestionFlow.delete({ where: { id } });
+    return { success: true };
+  }
+
+  async getTaxAssistantResults() {
+    return this.prisma.taxAssistantResult.findMany({ orderBy: { createdAt: 'desc' } });
+  }
+
+  async createTaxAssistantResult(data: { name: string; title: string; description: string; ruleIds?: string[]; action?: string; severity?: string; isActive?: boolean }) {
+    return this.prisma.taxAssistantResult.create({
+      data: {
+        name: data.name,
+        title: data.title,
+        description: data.description,
+        ruleIds: data.ruleIds || [],
+        action: data.action || null,
+        severity: (data.severity as any) || 'INFO',
+        isActive: data.isActive ?? true,
+      },
+    });
+  }
+
+  async updateTaxAssistantResult(id: string, data: { name?: string; title?: string; description?: string; ruleIds?: string[]; action?: string; severity?: string; isActive?: boolean }) {
+    return this.prisma.taxAssistantResult.update({ where: { id }, data: { ...data, severity: data.severity as any } });
+  }
+
+  async deleteTaxAssistantResult(id: string) {
+    await this.prisma.taxAssistantResult.delete({ where: { id } });
+    return { success: true };
+  }
 }

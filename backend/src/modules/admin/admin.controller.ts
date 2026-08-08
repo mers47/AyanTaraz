@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { AdminService } from './admin.service';
@@ -18,4 +18,24 @@ export class AdminController {
   @Post('users/admin') @Roles(UserRole.SUPER_ADMIN) async ca(@Body() b: { phone: string; firstName: string; lastName: string; role?: UserRole }) { return this.svc.createAdminUser(b.phone, b.firstName, b.lastName, b.role); }
   @Patch('users/admin/:id') @Roles(UserRole.SUPER_ADMIN) async ua(@Param('id') id: string, @Body() b: { firstName?: string; lastName?: string; role?: UserRole; isActive?: boolean }) { return this.svc.updateAdminUser(id, b); }
   @Get('audit-logs') async al(@Query('page') p?: number, @Query('limit') l?: number, @Query('action') a?: string, @Query('userId') u?: string, @Query('entityType') e?: string) { return this.svc.getAuditLogs(p ? +p : 1, l ? +l : 20, a, u, e); }
+
+  // ==================== Chatbot Q&A Management ====================
+
+  @Get('tax-questions') async tq() { return this.svc.getTaxQuestions(); }
+  @Post('tax-questions') async ctq(@Body() b: { question: string; description?: string; sortOrder?: number; isActive?: boolean }) { return this.svc.createTaxQuestion(b); }
+  @Patch('tax-questions/:id') async utq(@Param('id') id: string, @Body() b: { question?: string; description?: string; sortOrder?: number; isActive?: boolean }) { return this.svc.updateTaxQuestion(id, b); }
+  @Delete('tax-questions/:id') async dtq(@Param('id') id: string) { return this.svc.deleteTaxQuestion(id); }
+
+  @Post('tax-question-options') async ctqo(@Body() b: { questionId: string; label: string; value: string; sortOrder?: number; isActive?: boolean }) { return this.svc.createTaxQuestionOption(b); }
+  @Patch('tax-question-options/:id') async utqo(@Param('id') id: string, @Body() b: { label?: string; value?: string; sortOrder?: number; isActive?: boolean }) { return this.svc.updateTaxQuestionOption(id, b); }
+  @Delete('tax-question-options/:id') async dtqo(@Param('id') id: string) { return this.svc.deleteTaxQuestionOption(id); }
+
+  @Get('tax-question-flows') async tqf() { return this.svc.getTaxQuestionFlows(); }
+  @Post('tax-question-flows') async ctqf(@Body() b: { fromQuestionId: string; toQuestionId: string; optionId?: string; condition?: string; sortOrder?: number }) { return this.svc.createTaxQuestionFlow(b); }
+  @Delete('tax-question-flows/:id') async dtqf(@Param('id') id: string) { return this.svc.deleteTaxQuestionFlow(id); }
+
+  @Get('tax-assistant-results') async tar() { return this.svc.getTaxAssistantResults(); }
+  @Post('tax-assistant-results') async ctar(@Body() b: { name: string; title: string; description: string; ruleIds?: string[]; action?: string; severity?: string; isActive?: boolean }) { return this.svc.createTaxAssistantResult(b); }
+  @Patch('tax-assistant-results/:id') async utar(@Param('id') id: string, @Body() b: { name?: string; title?: string; description?: string; ruleIds?: string[]; action?: string; severity?: string; isActive?: boolean }) { return this.svc.updateTaxAssistantResult(id, b); }
+  @Delete('tax-assistant-results/:id') async dtar(@Param('id') id: string) { return this.svc.deleteTaxAssistantResult(id); }
 }
