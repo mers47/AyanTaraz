@@ -8,6 +8,12 @@ const nextConfig = {
   // Compress served assets at the Next.js level too (helps behind Nginx).
   compress: true,
 
+  // Security: hide "X-Powered-By: Next.js" header (info leak).
+  poweredByHeader: false,
+
+  // Security/perf: do not ship browser source maps in production.
+  productionBrowserSourceMaps: false,
+
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '**' },
@@ -16,6 +22,14 @@ const nextConfig = {
 
   async headers() {
     return [
+      {
+        // Immutable long-cache for hashed static assets (Next.js content-hashes
+        // _next/static, so these are safe to cache for a full year).
+        source: '/_next/static/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
       {
         source: '/:path*',
         headers: [

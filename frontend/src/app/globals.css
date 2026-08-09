@@ -913,3 +913,168 @@ video {
 .footer-link:hover {
   color: var(--brand-gold);
 }
+
+/* ============================================================
+   ACCESSIBILITY & PREMIUM POLISH (Elite Audit T2)
+   ============================================================ */
+
+/* ── Keyboard focus indicator (focus-visible) ──
+   Only shows the ring for keyboard navigation, not mouse clicks.
+   3:1 contrast against the dark background for WCAG AA. */
+:focus-visible {
+  outline: 2px solid var(--brand-gold);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--brand-gold);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--brand-gold-glow);
+}
+
+/* ── Text selection color (brand gold) ── */
+::selection {
+  background: var(--brand-gold);
+  color: var(--brand-black);
+}
+::-moz-selection {
+  background: var(--brand-gold);
+  color: var(--brand-black);
+}
+
+/* ── Custom scrollbar (WebKit + Firefox) ── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-default) transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--brand-black);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: 10px;
+  border: 2px solid var(--brand-black);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--brand-gold-dark);
+}
+
+/* ── Smooth scroll (respecting reduced-motion below) ── */
+html {
+  scroll-behavior: smooth;
+}
+
+/* ── Skip-to-content link for screen-reader / keyboard users ── */
+.skip-link {
+  position: absolute;
+  top: -100px;
+  right: 16px;
+  z-index: 9999;
+  padding: 12px 20px;
+  background: var(--brand-gold);
+  color: var(--brand-black);
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  font-size: 0.9rem;
+  transition: top 0.2s var(--ease-expo);
+}
+.skip-link:focus {
+  top: 16px;
+}
+
+/* ============================================================
+   SCROLL-REVEAL SYSTEM — reusable for all content pages
+   Add class "reveal" to any element; it fades up on scroll-in.
+   Works with IntersectionObserver (no JS framework needed).
+   ============================================================ */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition:
+    opacity 0.7s var(--ease-expo),
+    transform 0.7s var(--ease-expo);
+  will-change: opacity, transform;
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+/* Staggered children: add reveal-stagger to a parent, children reveal in sequence */
+.reveal-stagger > .reveal {
+  transition-delay: calc(var(--reveal-i, 0) * 80ms);
+}
+
+/* ── Premium button hover micro-interaction ── */
+.btn-gold,
+button[class*="btn"] {
+  transition: transform 0.2s var(--ease-expo), box-shadow 0.2s var(--ease-expo);
+}
+.btn-gold:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px var(--brand-gold-glow);
+}
+.btn-gold:active {
+  transform: translateY(0);
+}
+
+/* ── Glass shimmer skeleton (loading placeholder) ── */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface-card) 25%,
+    var(--surface-hover) 50%,
+    var(--surface-card) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+  border-radius: var(--radius-md);
+}
+
+/* ============================================================
+   REDUCED MOTION — accessibility for vestibular disorders
+   Disables all non-essential animations when the user prefers
+   reduced motion. WCAG 2.1 SC 2.3.3.
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  /* Reveal elements are visible immediately — no fade-up */
+  .reveal {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* ============================================================
+   PRINT STYLES — clean print output for tax reports etc.
+   ============================================================ */
+@media print {
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  .no-print,
+  header,
+  footer,
+  .scroll-indicator {
+    display: none !important;
+  }
+}
