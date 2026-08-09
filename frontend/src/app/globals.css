@@ -491,10 +491,11 @@ video {
   transition: all 0.3s var(--ease-expo);
 }
 .site-header.scrolled {
-  background: rgba(7, 7, 10, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(7, 7, 10, 0.88);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-bottom: 1px solid rgba(198, 169, 98, 0.12);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
   padding: 10px 0;
 }
 
@@ -637,38 +638,74 @@ video {
   position: absolute;
   inset: 0;
   opacity: 0;
-  transition: opacity 1s var(--ease-expo);
+  transition: opacity 1.2s var(--ease-expo);
   background-size: cover;
   background-position: center;
+  will-change: opacity, transform;
 }
 .hero-slide.active {
   opacity: 1;
   animation: kenburns 7s ease-out both;
 }
+/* Overlay: dual gradient — horizontal (RTL text legibility) + vertical (bottom text on mobile).
+   On desktop the text sits in the right-dark zone; the bottom darkening ensures wrapped
+   text on small screens stays readable without pushing content below the image. */
 .hero-slide::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    to right,
-    rgba(7, 7, 10, 0.92) 0%,
-    rgba(7, 7, 10, 0.78) 35%,
-    rgba(7, 7, 10, 0.45) 70%,
-    rgba(7, 7, 10, 0.2) 100%
-  );
+  background:
+    linear-gradient(
+      to right,
+      rgba(7, 7, 10, 0.94) 0%,
+      rgba(7, 7, 10, 0.82) 30%,
+      rgba(7, 7, 10, 0.55) 60%,
+      rgba(7, 7, 10, 0.3) 100%
+    ),
+    linear-gradient(
+      to bottom,
+      rgba(7, 7, 10, 0.4) 0%,
+      rgba(7, 7, 10, 0.15) 35%,
+      rgba(7, 7, 10, 0.55) 75%,
+      rgba(7, 7, 10, 0.85) 100%
+    );
+}
+/* On mobile: darker, more uniform overlay so text is fully readable at all positions. */
+@media (max-width: 768px) {
+  .hero-slide::after {
+    background:
+      linear-gradient(
+        to bottom,
+        rgba(7, 7, 10, 0.72) 0%,
+        rgba(7, 7, 10, 0.4) 30%,
+        rgba(7, 7, 10, 0.72) 65%,
+        rgba(7, 7, 10, 0.92) 100%
+      );
+  }
+}
+/* Hero headline gets a subtle gold-tinted text-shadow for depth against photo. */
+.hero-headline {
+  text-shadow: 0 2px 30px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+.hero-sub {
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.4);
 }
 .hero-dot {
   width: 8px;
   height: 8px;
   border-radius: 4px;
   border: none;
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.3);
   cursor: pointer;
   transition: all 0.3s var(--ease-expo);
 }
+.hero-dot:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
 .hero-dot.active {
-  width: 30px;
+  width: 32px;
   background: linear-gradient(90deg, var(--brand-gold-dark), var(--brand-gold-light));
+  box-shadow: 0 0 12px rgba(198, 169, 98, 0.4);
 }
 
 /* ---------- Utility ---------- */
@@ -803,4 +840,76 @@ video {
     padding-top: 28px !important;
     padding-bottom: 40px !important;
   }
+}
+
+/* ============================================================
+   PREMIUM REFINEMENTS — scroll indicator, hero mobile spacing
+   ============================================================ */
+
+/* Animated scroll-down indicator on hero */
+@keyframes scrollPulse {
+  0%, 100% {
+    transform: translateY(0);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translateY(6px);
+    opacity: 1;
+  }
+}
+.scroll-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.3s var(--ease-expo);
+}
+.scroll-indicator:hover {
+  color: var(--brand-gold);
+}
+.scroll-indicator svg {
+  animation: scrollPulse 2s ease-in-out infinite;
+}
+
+/* Hero content — mobile-first: ensure text is vertically centered with
+   enough bottom padding so it never collides with slide dots. */
+@media (max-width: 640px) {
+  .hero-content {
+    padding-bottom: 80px !important;
+  }
+  .hero-headline {
+    font-size: 1.7rem !important;
+  }
+  .hero-sub {
+    font-size: 0.95rem !important;
+    line-height: 1.8 !important;
+  }
+}
+
+/* Premium section entrance: tag with a gold underline accent */
+.section-tag::after {
+  content: '';
+  display: block;
+  width: 36px;
+  height: 2px;
+  margin: 10px auto 0;
+  background: linear-gradient(90deg, transparent, var(--brand-gold), transparent);
+  border-radius: 1px;
+}
+
+/* Premium footer social/contact icons */
+.footer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  transition: color 0.2s var(--ease-expo);
+}
+.footer-link:hover {
+  color: var(--brand-gold);
 }

@@ -48,6 +48,17 @@ export default function SiteHeader({ externalOpen = false, onExternalClose }: Si
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  // Close mobile menu on route change is handled by onClick handlers.
+  // Prevent body scroll when mobile menu is open.
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [open]);
+
   return (
     <header className={`site-header${scrolled ? ' scrolled' : ''}`}>
       <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
@@ -58,13 +69,13 @@ export default function SiteHeader({ externalOpen = false, onExternalClose }: Si
         </Link>
 
         {/* Desktop nav */}
-        <nav className="hide-mobile" style={{ display: 'none', alignItems: 'center', gap: 4 }}>
+        <nav className="hide-mobile" style={{ display: 'none', alignItems: 'center', gap: 2 }}>
           {NAV.map((n) => (
             <Link
               key={n.href}
               href={n.href}
               style={{
-                padding: '8px 16px',
+                padding: '8px 14px',
                 color: 'var(--text-secondary)',
                 fontSize: '0.9rem',
                 fontWeight: 500,
@@ -102,6 +113,7 @@ export default function SiteHeader({ externalOpen = false, onExternalClose }: Si
             onClick={() => setOpen((v) => !v)}
             className="hide-desktop"
             aria-label="منو"
+            aria-expanded={open}
             style={{
               background: 'rgba(255,255,255,.04)',
               border: '1px solid var(--border-subtle)',
@@ -112,7 +124,7 @@ export default function SiteHeader({ externalOpen = false, onExternalClose }: Si
               display: 'none',
             }}
           >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               {open ? <path d="M18 6L6 18M6 6l12 12" /> : <path d="M3 12h18M3 6h18M3 18h18" />}
             </svg>
           </button>
@@ -120,15 +132,25 @@ export default function SiteHeader({ externalOpen = false, onExternalClose }: Si
         </div>
       </div>
 
-      {/* Mobile menu */}
+      {/* Mobile menu — full-screen premium overlay */}
       {open && (
         <div
           style={{
+            position: 'fixed',
+            top: 0,
+            right: 0,
+            left: 0,
+            bottom: 0,
             background: 'rgba(7,7,10,.98)',
-            backdropFilter: 'blur(20px)',
-            borderTop: '1px solid var(--border-subtle)',
-            padding: '12px 20px 20px',
-            animation: 'slideDown .25s var(--ease-expo)',
+            backdropFilter: 'blur(24px)',
+            WebkitBackdropFilter: 'blur(24px)',
+            padding: '80px 24px 32px',
+            zIndex: 99,
+            animation: 'slideDown .3s var(--ease-expo)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 4,
+            overflowY: 'auto',
           }}
         >
           {NAV.map((n) => (
@@ -136,17 +158,34 @@ export default function SiteHeader({ externalOpen = false, onExternalClose }: Si
               key={n.href}
               href={n.href}
               onClick={() => setOpen(false)}
-              style={{ display: 'block', padding: '14px 0', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-subtle)', fontWeight: 500 }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                padding: '16px 12px',
+                color: 'var(--text-primary)',
+                borderBottom: '1px solid var(--border-subtle)',
+                fontWeight: 600,
+                fontSize: '1rem',
+                transition: 'color .2s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--brand-gold)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-primary)'; }}
             >
+              <svg width="6" height="6" viewBox="0 0 6 6" fill="var(--brand-gold)">
+                <circle cx="3" cy="3" r="3" />
+              </svg>
               {n.label}
             </Link>
           ))}
-          <Link href="/consultation" onClick={() => setOpen(false)} className="btn btn-primary" style={{ marginTop: 16, width: '100%' }}>
-            مشاوره رایگان
-          </Link>
-          <button onClick={() => { setOpen(false); setShowLogin(true); }} className="btn btn-outline" style={{ marginTop: 8, width: '100%' }}>
-            ورود
-          </button>
+          <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <Link href="/consultation" onClick={() => setOpen(false)} className="btn btn-primary" style={{ width: '100%' }}>
+              مشاوره رایگان
+            </Link>
+            <button onClick={() => { setOpen(false); setShowLogin(true); }} className="btn btn-outline" style={{ width: '100%' }}>
+              ورود
+            </button>
+          </div>
         </div>
       )}
 

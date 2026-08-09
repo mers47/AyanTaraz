@@ -10,7 +10,7 @@ import SiteHeader from '@/components/SiteHeader';
 const SLIDES = [
   {
     t: 'راهکارهای هوشمند مالیاتی',
-    s: 'با آین تراز، پیچیدگی‌های مالیاتی را به فرصت تبدیل کنید؛ تحلیل دقیق، کاهش قانونی بدهی و آرامش خاطر.',
+    s: 'با آین تراز، پیچیدگی‌های مالیاتی را به فرصت تبدیل کنید؛ تحلیل دقیق، کاهش قانونی بهره و آرامش خاطر.',
     tag: 'مشاوره تخصصی',
     img: 'https://images.unsplash.com/photo-1554224155-6726b9ff8cb2?auto=format&fit=crop&w=1920&q=80',
   },
@@ -32,7 +32,7 @@ const SV = [
   {
     i: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z',
     n: 'مشاوره مالیاتی',
-    d: 'تحلیل پرونده مالیاتی، شناسایی معافیت‌ها و کاهش قانونی بدهی مالیاتی',
+    d: 'تحلیل پرونده مالیاتی، شناسایی معافیت‌ها و کاهش قانونی بهدهی مالیاتی',
     tags: ['بررسی پرونده', 'معافیت‌ها', 'برنامه‌ریزی'],
   },
   {
@@ -131,10 +131,10 @@ function HomeContent() {
     return () => clearTimeout(t);
   }, [expiredMsg]);
 
-  // Auto-advance the image slider every 4.5s (pausable on hover).
+  // Auto-advance the image slider every 5s (pausable on hover/touch).
   useEffect(() => {
     if (paused) return;
-    const id = setInterval(ns, 4500);
+    const id = setInterval(ns, 5000);
     return () => clearInterval(id);
   }, [ns, paused]);
 
@@ -175,9 +175,13 @@ function Hero({
   paused: boolean;
   setPaused: (v: boolean) => void;
 }) {
+  const scrollToServices = () => {
+    document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   return (
     <section
-      style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', overflow: 'hidden', paddingTop: 80 }}
+      style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', overflow: 'hidden', paddingTop: 90, paddingBottom: 60 }}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
@@ -192,19 +196,21 @@ function Hero({
           position: 'absolute',
           inset: 0,
           background:
-            'radial-gradient(ellipse at 15% 40%, rgba(198,169,98,.12) 0%, transparent 55%), radial-gradient(ellipse at 85% 25%, rgba(234,217,166,.06) 0%, transparent 50%)',
+            'radial-gradient(ellipse at 15% 40%, rgba(198,169,98,.14) 0%, transparent 55%), radial-gradient(ellipse at 85% 25%, rgba(234,217,166,.07) 0%, transparent 50%)',
+          zIndex: 1,
         }}
       />
 
-      <div className="container" style={{ position: 'relative', zIndex: 3 }}>
-        <div style={{ maxWidth: 740 }}>
+      {/* Text overlay — sits above slide + overlay (zIndex 3) */}
+      <div className="container hero-content" style={{ position: 'relative', zIndex: 3, width: '100%' }}>
+        <div style={{ maxWidth: 680 }}>
           <span className="badge badge-gold" style={{ marginBottom: 20 }}>
             {slides[as].tag}
           </span>
-          <h1 key={`t-${as}`} className="animate-in" style={{ fontSize: 'clamp(2rem,5.5vw,3.6rem)', fontWeight: 900, lineHeight: 1.12, marginBottom: 20 }}>
+          <h1 key={`t-${as}`} className="animate-in hero-headline" style={{ fontSize: 'clamp(1.7rem,5vw,3.4rem)', fontWeight: 900, lineHeight: 1.15, marginBottom: 18 }}>
             {slides[as].t}
           </h1>
-          <p key={`s-${as}`} className="animate-in stagger-1" style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', marginBottom: 36, maxWidth: 580, lineHeight: 1.85 }}>
+          <p key={`s-${as}`} className="animate-in stagger-1 hero-sub" style={{ fontSize: 'clamp(0.95rem,2vw,1.15rem)', color: 'var(--text-secondary)', marginBottom: 32, maxWidth: 560, lineHeight: 1.85 }}>
             {slides[as].s}
           </p>
           <div className="animate-in stagger-2" style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
@@ -221,11 +227,22 @@ function Hero({
         </div>
       </div>
 
-      {/* Slide dots + counter */}
-      <div style={{ position: 'absolute', bottom: 36, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 8, zIndex: 10 }}>
+      {/* Slide dots */}
+      <div style={{ position: 'absolute', bottom: 28, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 8, zIndex: 10 }}>
         {slides.map((_, i) => (
           <button key={i} onClick={() => sa(() => i)} className={`hero-dot${i === as ? ' active' : ''}`} aria-label={`اسلاید ${i + 1}`} />
         ))}
+      </div>
+
+      {/* Scroll-down indicator (desktop only) */}
+      <div className="hide-mobile" style={{ position: 'absolute', bottom: 70, left: '50%', transform: 'translateX(-50%)', zIndex: 4 }}>
+        <button className="scroll-indicator" onClick={scrollToServices} aria-label="اسکرول به پایین" style={{ background: 'none', border: 'none', fontFamily: 'inherit' }}>
+          <span>اسکرول</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </button>
+        <style>{`@media(min-width:881px){div.hide-mobile:has(.scroll-indicator){display:block}}`}</style>
       </div>
     </section>
   );
@@ -266,7 +283,7 @@ function Svc({ sv }: { sv: typeof SV }) {
           </h2>
           <p className="section-subtitle">از مشاوره تا اجرا، تمام نیازهای مالی و مالیاتی شما در یک مجموعه تخصصی</p>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 20 }}>
           {sv.map((s, i) => {
             const { ref, inView } = useInView(0.08);
             return (
@@ -274,7 +291,7 @@ function Svc({ sv }: { sv: typeof SV }) {
                 key={i}
                 ref={ref}
                 className="glass-card service-card"
-                style={{ opacity: inView ? 1 : 0, transform: inView ? 'translateY(0)' : 'translateY(24px)', transition: `all .45s var(--ease-expo) ${i * 100}ms`, padding: 30 }}
+                style={{ opacity: inView ? 1 : 0, transform: inView ? 'translateY(0)' : 'translateY(24px)', transition: `all .45s var(--ease-expo) ${i * 100}ms`, padding: 28 }}
               >
                 <div style={{ width: 52, height: 52, borderRadius: 14, background: 'rgba(198,169,98,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 18 }}>
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="var(--brand-gold)">
@@ -301,7 +318,7 @@ function Svc({ sv }: { sv: typeof SV }) {
 
 function WhyUs() {
   const items = [
-    { t: 'تخصص و تجربه', d: 'بیش از یک دهه فعالیت تخصصی در حوزه مالیات و حسابرسی', icon: 'M12 2l2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5L12 2z' },
+    { t: 'تخصص و تجربه', d: 'بیش از یک دهه فعالیت تخصصی در حوزه مالیات و حسابداری', icon: 'M12 2l2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5L12 2z' },
     { t: 'دقت و شفافیت', d: 'گزارش‌های شفاف و قابل پیگیری با ارجاع به منابع رسمی', icon: 'M12 4.5C7 4.5 2.7 7.6 1 12c1.7 4.4 6 7.5 11 7.5s9.3-3.1 11-7.5c-1.7-4.4-6-7.5-11-7.5zm0 12.5a5 5 0 110-10 5 5 0 010 10zm0-8a3 3 0 100 6 3 3 0 000-6z' },
     { t: 'پشتیبانی ۷/۲۴', d: 'تیم پشتیبانی همواره در دسترس برای پاسخ به پرسش‌های شما', icon: 'M12 1a4 4 0 00-4 4v6a4 4 0 008 0V5a4 4 0 00-4-4zm6 10a6 6 0 01-12 0H4a8 8 0 007 7.93V21h2v-2.07A8 8 0 0020 11h-2z' },
     { t: 'رعایت استانداردها', d: 'انطباق کامل با قوانین و مقررات مالیاتی ایران', icon: 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z' },
@@ -315,7 +332,7 @@ function WhyUs() {
             اعتمادی <span className="gradient-text">پایدار و حرفه‌ای</span>
           </h2>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 20 }}>
           {items.map((it, i) => {
             const { ref, inView } = useInView(0.1);
             return (
@@ -346,7 +363,7 @@ function CTA() {
     <section style={{ padding: '90px 0', position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(198,169,98,.06) 0%, transparent 40%, rgba(198,169,98,.04) 100%)' }} />
       <div className="container" style={{ position: 'relative', zIndex: 2, textAlign: 'center', maxWidth: 640, margin: '0 auto' }}>
-        <div className="glass-card" style={{ padding: 52 }}>
+        <div className="glass-card" style={{ padding: 'clamp(32px,6vw,52px)' }}>
           <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'linear-gradient(135deg, var(--brand-gold), var(--brand-gold-light))', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', boxShadow: '0 0 40px rgba(198,169,98,.25)', animation: 'goldPulse 2.5s ease-in-out infinite' }}>
             <svg width="28" height="28" viewBox="0 0 24 24" fill="#07070a">
               <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
@@ -413,8 +430,8 @@ function Foo() {
           <div>
             <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: 12 }}>دسترسی سریع</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {['دستیار مالیاتی', 'رزرو مشاوره', 'پنل مدیریت'].map((l, i) => (
-                <Link key={i} href={['/chatbot', '/consultation', '/admin'][i]} style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+              {['دستیار مالیاتی', 'رزرو مشاوره', 'قوانین مالیاتی', 'ماشین حساب', 'پنل مدیریت'].map((l, i) => (
+                <Link key={i} href={['/chatbot', '/consultation', '/tax-laws', '/tax-calculator', '/admin'][i]} className="footer-link">
                   {l}
                 </Link>
               ))}
@@ -430,7 +447,7 @@ function Foo() {
           </div>
         </div>
         <div className="divider-gold" style={{ marginBottom: 22 }} />
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-muted)', flexWrap: 'wrap', gap: 12 }}>
           <span>© ۱۴۰۴ آین تراز</span>
           <Link href="/admin" style={{ color: 'var(--text-muted)' }}>
             پنل مدیریت
