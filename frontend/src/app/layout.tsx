@@ -26,7 +26,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preload" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/fonts/webfonts/Vazirmatn-Bold.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({ '@context': 'https://schema.org', '@type': 'ProfessionalService', name: 'آیان تراز', url: 'https://ayantaraz.ir', description: 'خدمات تخصصی حسابداری و مشاوره مالیاتی', address: { '@type': 'PostalAddress', addressLocality: 'تهران', addressCountry: 'IR' }, telephone: '+982112345678', email: 'info@ayantaraz.ir', openingHours: 'Sa,Su,Mo,Tu,We,Th 09:00-17:00', sameAs: ['https://instagram.com/ayantaraz', 'https://linkedin.com/company/ayantaraz'] }) }} />
       </head>
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased">
+        <a href="#main-content" className="skip-link">رفتن به محتوای اصلی</a>
+        {children}
+      </body>
     </html>
   );
 }
