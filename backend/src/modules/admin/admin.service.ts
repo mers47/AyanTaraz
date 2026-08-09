@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UserRole } from '@prisma/client';
 
@@ -359,6 +359,180 @@ export class AdminService {
 
   async deleteConsultationService(id: string) {
     await this.prisma.consultationService.delete({ where: { id } });
+    return { success: true };
+  }
+
+  // ==================== Tax Topics Management ====================
+
+  async getTaxTopics() {
+    return this.prisma.taxTopic.findMany({ orderBy: { sortOrder: 'asc' }, include: { _count: { select: { rules: true } } } });
+  }
+
+  async createTaxTopic(data: { name: string; slug?: string; description?: string; sortOrder?: number; isActive?: boolean }) {
+    let slug = data.slug || data.name.trim().replace(/\s+/g, '-').toLowerCase();
+    const existing = await this.prisma.taxTopic.findUnique({ where: { slug } });
+    if (existing) { slug = `${slug}-${Date.now()}`; }
+    return this.prisma.taxTopic.create({
+      data: { name: data.name, slug, description: data.description ?? null, sortOrder: data.sortOrder ?? 0, isActive: data.isActive ?? true },
+    });
+  }
+
+  async updateTaxTopic(id: string, data: { name?: string; description?: string; sortOrder?: number; isActive?: boolean }) {
+    const updateData: any = {};
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+    return this.prisma.taxTopic.update({ where: { id }, data: updateData });
+  }
+
+  async deleteTaxTopic(id: string) {
+    // Tax rules under this topic will be deleted via cascade? No — TaxRule.topicId has no onDelete cascade.
+    // We must first check if there are rules and prevent deletion, or reassign. We'll block if rules exist.
+    const ruleCount = await this.prisma.taxRule.count({ where: { topicId: id } });
+    if (ruleCount > 0) {
+      throw new BadRequestException(`Cannot delete topic with ${ruleCount} rule(s). Remove or reassign rules first.`);
+    }
+    await this.prisma.taxTopic.delete({ where: { id } });
+    return { success: true };
+  }
+
+  // ==================== Tax Sources Management ====================
+
+  async getTaxSources() {
+    return this.prisma.taxSource.findMany({ orderBy: { name: 'asc' }, include: { _count: { select: { rules: true } } } });
+  }
+
+  async createTaxSource(data: { name: string; url?: string; officialName?: string; description?: string; isActive?: boolean }) {
+    return this.prisma.taxSource.create({
+      data: { name: data.name, url: data.url ?? null, officialName: data.officialName ?? null, description: data.description ?? null, isActive: data.isActive ?? true },
+    });
+  }
+
+  async updateTaxSource(id: string, data: { name?: string; url?: string; officialName?: string; description?: string; isActive?: boolean }) {
+    const updateData: any = {};
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.url !== undefined) updateData.url = data.url;
+    if (data.officialName !== undefined) updateData.officialName = data.officialName;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+    return this.prisma.taxSource.update({ where: { id }, data: updateData });
+  }
+
+  async deleteTaxSource(id: string) {
+    const versionCount = await this.prisma.taxRuleVersion.count({ where: { sourceId: id } });
+    if (versionCount > 0) {
+      throw new BadRequestException(`Cannot delete source referenced by ${versionCount} rule version(s).`);
+    }
+    await this.prisma.taxSource.delete({ where: { id } });
+    return { success: true };
+  }
+
+  // ==================== Tax Rules Management ====================
+
+  async getTaxRulesAdmin(topicId?: string, page = 1, limit = 50) {
+    const skip = (page - 1) * limit;
+    const where: any = {};
+    if (topicId) where.topicId = topicId;
+    const [data, total] = await Promise.all([
+      this.prisma.taxRule.findMany({
+        where,
+        skip,
+        take: limit,
+        include: { topic: true, versions: { orderBy: { version: 'desc' }, take: 1 } },
+        orderBy: { updatedAt: 'desc' },
+      }),
+      this.prisma.taxRule.count({ where }),
+    ]);
+    return { data, total, page, limit };
+  }
+
+  async createTaxRule(data: { topicId: string; name: string; slug?: string; description?: string; content: string; sourceId: string; effectiveFrom: string; effectiveTo?: string; status?: string }) {
+    let slug = data.slug || data.name.trim().replace(/\s+/g, '-').toLowerCase();
+    const existing = await this.prisma.taxRule.findUnique({ where: { slug } });
+    if (existing) { slug = `${slug}-${Date.now()}`; }
+    // Create the rule + its first version in a transaction
+    const rule = await this.prisma.$transaction(async (tx) => {
+      const rule = await tx.taxRule.create({
+        data: {
+          topicId: data.topicId,
+          name: data.name,
+          slug,
+          description: data.description ?? null,
+          status: (data.status as any) || 'DRAFT',
+        },
+      });
+      await tx.taxRuleVersion.create({
+        data: {
+          ruleId: rule.id,
+          version: 1,
+          content: data.content,
+          sourceId: data.sourceId,
+          effectiveFrom: new Date(data.effectiveFrom),
+          effectiveTo: data.effectiveTo ? new Date(data.effectiveTo) : null,
+          status: 'DRAFT',
+        },
+      });
+      return rule;
+    });
+    return this.prisma.taxRule.findUnique({ where: { id: rule.id }, include: { topic: true, versions: { orderBy: { version: 'desc' } } } });
+  }
+
+  async updateTaxRule(id: string, data: { topicId?: string; name?: string; description?: string; status?: string }) {
+    const updateData: any = {};
+    if (data.topicId !== undefined) updateData.topicId = data.topicId;
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.status !== undefined) updateData.status = data.status;
+    return this.prisma.taxRule.update({ where: { id }, data: updateData, include: { topic: true, versions: { orderBy: { version: 'desc' } } } });
+  }
+
+  async deleteTaxRule(id: string) {
+    // TaxRuleVersion has onDelete: Cascade on ruleId, so versions are auto-deleted
+    await this.prisma.taxRule.delete({ where: { id } });
+    return { success: true };
+  }
+
+  // ==================== Tax Rule Versions Management ====================
+
+  async createTaxRuleVersion(data: { ruleId: string; content: string; sourceId: string; effectiveFrom: string; effectiveTo?: string; status?: string; reviewNotes?: string }) {
+    // Find the latest version number for this rule
+    const latest = await this.prisma.taxRuleVersion.findFirst({ where: { ruleId: data.ruleId }, orderBy: { version: 'desc' } });
+    const nextVersion = (latest?.version || 0) + 1;
+    const version = await this.prisma.taxRuleVersion.create({
+      data: {
+        ruleId: data.ruleId,
+        version: nextVersion,
+        content: data.content,
+        sourceId: data.sourceId,
+        effectiveFrom: new Date(data.effectiveFrom),
+        effectiveTo: data.effectiveTo ? new Date(data.effectiveTo) : null,
+        status: (data.status as any) || 'DRAFT',
+        reviewNotes: data.reviewNotes ?? null,
+      },
+    });
+    return version;
+  }
+
+  async updateTaxRuleVersion(id: string, data: { content?: string; status?: string; effectiveFrom?: string; effectiveTo?: string; reviewNotes?: string; publishedById?: string }) {
+    const updateData: any = {};
+    if (data.content !== undefined) updateData.content = data.content;
+    if (data.status !== undefined) updateData.status = data.status;
+    if (data.effectiveFrom) updateData.effectiveFrom = new Date(data.effectiveFrom);
+    if (data.effectiveTo) updateData.effectiveTo = new Date(data.effectiveTo);
+    if (data.reviewNotes !== undefined) updateData.reviewNotes = data.reviewNotes;
+    // If publishing, set publishedBy and publishedAt
+    if (data.status === 'PUBLISHED') {
+      updateData.publishedAt = new Date();
+      if (data.publishedById) {
+        updateData.publishedById = data.publishedById;
+      }
+    }
+    return this.prisma.taxRuleVersion.update({ where: { id }, data: updateData });
+  }
+
+  async deleteTaxRuleVersion(id: string) {
+    await this.prisma.taxRuleVersion.delete({ where: { id } });
     return { success: true };
   }
 }
