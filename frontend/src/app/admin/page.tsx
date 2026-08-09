@@ -6,7 +6,7 @@ import { adminApi, contentApi } from '@/lib/api';
 import LoginModal from '@/components/LoginModal';
 import type { DashboardStats, RecentActivity, UserRow, AuditLog, PaginatedResponse } from '@/types';
 
-type Tab = 'dashboard' | 'users' | 'content' | 'chatbot' | 'articles' | 'videos' | 'minibooks' | 'consultation' | 'audit';
+type Tab = 'dashboard' | 'users' | 'content' | 'chatbot' | 'articles' | 'videos' | 'minibooks' | 'consultation' | 'taxlaws' | 'audit';
 
 interface CS {
   title: string;
@@ -62,6 +62,18 @@ export default function AdminPage() {
   const [ecv, secv] = useState<any | null>(null);
   const [ncv, sncv] = useState({ name: '', slug: '', description: '', duration: 30, price: 0, isActive: true, sortOrder: 0 });
 
+  // ---- Tax laws management state ----
+  const [taxTopics, stxTopics] = useState<any[]>([]);
+  const [taxSources, stxSources] = useState<any[]>([]);
+  const [taxRules, stxRules] = useState<any[]>([]);
+  const [etxTopic, setEtxTopic] = useState<any | null>(null);
+  const [ntxTopic, setNtxTopic] = useState({ name: '', slug: '', description: '', sortOrder: 0, isActive: true });
+  const [etxSource, setEtxSource] = useState<any | null>(null);
+  const [ntxSource, setNtxSource] = useState({ name: '', url: '', officialName: '', description: '', isActive: true });
+  const [etxRule, setEtxRule] = useState<any | null>(null);
+  const [ntxRule, setNtxRule] = useState({ topicId: '', name: '', slug: '', description: '', content: '', sourceId: '', effectiveFrom: '', status: 'DRAFT' });
+  const [txSubTab, setTxSubTab] = useState<'rules' | 'topics' | 'sources'>('rules');
+
   const db = useCallback((k: string, d: CS) => {
     if (tmr.current) clearTimeout(tmr.current);
     tmr.current = setTimeout(async () => {
@@ -93,6 +105,21 @@ export default function AdminPage() {
     sl2(true); setAuthFailed(false);
     try { const r = await adminApi.getConsultationServices(); scsvs(r.data || []); }
     catch (e: any) { if (e?.response?.status === 401 || e?.response?.status === 403) setAuthFailed(true); }
+    finally { sl2(false); }
+  }, []);
+
+  const ldTxLaws = useCallback(async () => {
+    sl2(true); setAuthFailed(false);
+    try {
+      const [tp, ts, tr] = await Promise.all([
+        adminApi.getTaxTopicsAdmin(),
+        adminApi.getTaxSources(),
+        adminApi.getTaxRulesAdmin(),
+      ]);
+      stxTopics(tp.data || []);
+      stxSources(ts.data || []);
+      stxRules(tr.data?.data || []);
+    } catch (e: any) { if (e?.response?.status === 401 || e?.response?.status === 403) setAuthFailed(true); }
     finally { sl2(false); }
   }, []);
 
@@ -181,8 +208,9 @@ export default function AdminPage() {
     else if (tb === 'videos') ldV();
     else if (tb === 'minibooks') ldMB();
     else if (tb === 'consultation') ldCS();
+    else if (tb === 'taxlaws') ldTxLaws();
     else if (tb === 'audit') ldL();
-  }, [tb, ldD, ldU, ldC, ldQ, ldA, ldV, ldMB, ldCS, ldL]);
+  }, [tb, ldD, ldU, ldC, ldQ, ldA, ldV, ldMB, ldCS, ldTxLaws, ldL]);
 
   const af = async () => {
     sl2(true);
@@ -218,6 +246,7 @@ export default function AdminPage() {
     { id: 'videos', l: 'ویدیوها', i: '🎬' },
     { id: 'minibooks', l: 'مینی‌بوک‌ها', i: '📚' },
     { id: 'consultation', l: 'مشاوره', i: '📅' },
+    { id: 'taxlaws', l: 'قوانین مالیاتی', i: '⚖️' },
     { id: 'audit', l: 'گزارش‌ها', i: '📋' },
   ];
 
@@ -293,6 +322,7 @@ export default function AdminPage() {
         {tb === 'videos' && <VI vids={vids} ev={ev} sev={sev} nv={nv} snv={snv} cats={cats} sh={sh} ldV={() => ldV()} IS={IS} IS2={IS2} EB={EB} />}
         {tb === 'minibooks' && <MB mbs={mbs} emb={emb} semb={semb} nmb={nmb} snmb={snmb} cats={cats} sh={sh} ldMB={() => ldMB()} IS={IS} IS2={IS2} EB={EB} />}
         {tb === 'consultation' && <CSComp csvs={csvs} ecv={ecv} secv={secv} ncv={ncv} sncv={sncv} sh={sh} ldCS={() => ldCS()} IS={IS} IS2={IS2} EB={EB} />}
+        {tb === 'taxlaws' && <TaxLaws taxTopics={taxTopics} taxSources={taxSources} taxRules={taxRules} etxTopic={etxTopic} setEtxTopic={setEtxTopic} ntxTopic={ntxTopic} setNtxTopic={setNtxTopic} etxSource={etxSource} setEtxSource={setEtxSource} ntxSource={ntxSource} setNtxSource={setNtxSource} etxRule={etxRule} setEtxRule={setEtxRule} ntxRule={ntxRule} setNtxRule={setNtxRule} txSubTab={txSubTab} setTxSubTab={setTxSubTab} sh={sh} ldTxLaws={() => ldTxLaws()} IS={IS} IS2={IS2} EB={EB} />}
         {tb === 'audit' && <AT logs={logs} ldL={ldL} ap={ap} loading={ld} />}
       </div>
     </div>
@@ -638,6 +668,178 @@ return<div style={{display:'flex',flexDirection:'column',gap:24,maxWidth:920}}>
 </div>)}
 {csvs.length===0&&<div style={{textAlign:'center',padding:20,color:'var(--text-muted)'}}>\u062e\u062f\u0645\u0627\u062a \u0645\u0634\u0627\u0648\u0631\u0647\u200c\u0627\u06cc \u0648\u062c\u0648\u062f \u0646\u062f\u0627\u0631\u062f \u2014 \u0627\u0648\u0644\u06cc\u0646 \u062e\u062f\u0645\u062a \u0631\u0627 \u0627\u0636\u0627\u0641\u0647 \u06a9\u0646\u06cc\u062f</div>}
 </div>
+</div>}
+
+function TaxLaws({taxTopics,taxSources,taxRules,etxTopic,setEtxTopic,ntxTopic,setNtxTopic,etxSource,setEtxSource,ntxSource,setNtxSource,etxRule,setEtxRule,ntxRule,setNtxRule,txSubTab,setTxSubTab,sh,ldTxLaws,IS,IS2,EB}:any){
+const subBtn=(id:string,label:string)=>({
+padding:'10px 18px',fontSize:'0.875rem',fontWeight:600,cursor:'pointer',fontFamily:'Vazirmatn',
+border:'none',borderBottom:txSubTab===id?'2px solid var(--brand-gold)':'2px solid transparent',
+background:'none',color:txSubTab===id?'var(--brand-gold)':'var(--text-muted)'});
+
+// ---- Topics CRUD ----
+const svTopic=async()=>{if(!ntxTopic.name.trim()){sh('نام موضوع را وارد کنید');return}try{
+if(etxTopic){await adminApi.updateTaxTopic(etxTopic.id,{name:ntxTopic.name,description:ntxTopic.description,sortOrder:ntxTopic.sortOrder,isActive:ntxTopic.isActive});sh('ویرایش شد ✅')}
+else{await adminApi.createTaxTopic({name:ntxTopic.name,slug:ntxTopic.slug,description:ntxTopic.description,sortOrder:ntxTopic.sortOrder,isActive:ntxTopic.isActive});sh('افزوده شد ✅')}
+setEtxTopic(null);setNtxTopic({name:'',slug:'',description:'',sortOrder:0,isActive:true});ldTxLaws()}catch(e:any){sh(e?.response?.data?.message||'خطا ❌')}};
+const dlTopic=async(id:string)=>{if(!confirm('حذف شود؟'))return;try{await adminApi.deleteTaxTopic(id);sh('حذف شد ✅');ldTxLaws()}catch(e:any){sh(e?.response?.data?.message||'خطا ❌')}};
+
+// ---- Sources CRUD ----
+const svSource=async()=>{if(!ntxSource.name.trim()){sh('نام منبع را وارد کنید');return}try{
+if(etxSource){await adminApi.updateTaxSource(etxSource.id,{name:ntxSource.name,url:ntxSource.url,officialName:ntxSource.officialName,description:ntxSource.description,isActive:ntxSource.isActive});sh('ویرایش شد ✅')}
+else{await adminApi.createTaxSource({name:ntxSource.name,url:ntxSource.url,officialName:ntxSource.officialName,description:ntxSource.description,isActive:ntxSource.isActive});sh('افزوده شد ✅')}
+setEtxSource(null);setNtxSource({name:'',url:'',officialName:'',description:'',isActive:true});ldTxLaws()}catch(e:any){sh(e?.response?.data?.message||'خطا ❌')}};
+const dlSource=async(id:string)=>{if(!confirm('حذف شود؟'))return;try{await adminApi.deleteTaxSource(id);sh('حذف شد ✅');ldTxLaws()}catch(e:any){sh(e?.response?.data?.message||'خطا ❌')}};
+
+// ---- Rules CRUD ----
+const svRule=async()=>{if(!ntxRule.name.trim()||!ntxRule.content.trim()||!ntxRule.topicId||!ntxRule.sourceId||!ntxRule.effectiveFrom){sh('نام، متن قانون، موضوع، منبع و تاریخ اجرا را پر کنید');return}try{
+if(etxRule){await adminApi.updateTaxRule(etxRule.id,{topicId:ntxRule.topicId,name:ntxRule.name,description:ntxRule.description,status:ntxRule.status});sh('ویرایش شد ✅')}
+else{await adminApi.createTaxRule({topicId:ntxRule.topicId,name:ntxRule.name,slug:ntxRule.slug,description:ntxRule.description,content:ntxRule.content,sourceId:ntxRule.sourceId,effectiveFrom:ntxRule.effectiveFrom,status:ntxRule.status});sh('افزوده شد ✅')}
+setEtxRule(null);setNtxRule({topicId:'',name:'',slug:'',description:'',content:'',sourceId:'',effectiveFrom:'',status:'DRAFT'});ldTxLaws()}catch(e:any){sh(e?.response?.data?.message||'خطا ❌')}};
+const dlRule=async(id:string)=>{if(!confirm('حذف شود؟ این عمل تمام نسخه‌های قانون را حذف می‌کند.'))return;try{await adminApi.deleteTaxRule(id);sh('حذف شد ✅');ldTxLaws()}catch(e:any){sh(e?.response?.data?.message||'خطا ❌')}};
+
+// ---- Publish a rule version ----
+const publishRule=async(ruleId:string)=>{if(!confirm('منتشر شود؟'))return;try{
+const rule=taxRules.find((r:any)=>r.id===ruleId);const latestVer=rule?.versions?.[0];
+if(!latestVer){sh('نسخه‌ای وجود ندارد ❌');return}
+await adminApi.updateTaxRuleVersion(latestVer.id,{status:'PUBLISHED'});
+await adminApi.updateTaxRule(ruleId,{status:'PUBLISHED'});
+sh('قانون منتشر شد ✅');ldTxLaws()}catch(e:any){sh(e?.response?.data?.message||'خطا ❌')}};
+
+const stl=(s:string)=>{const m:any={DRAFT:'badge-warning',REVIEW:'badge-gold',APPROVED:'badge-success',PUBLISHED:'badge-success',SUPERSEDED:'badge-error'};return m[s]||'badge-warning'};
+const stx=(s:string)=>{const m:any={DRAFT:'پیش‌نویس',REVIEW:'بررسی',APPROVED:'تأیید شده',PUBLISHED:'منتشر شده',SUPERSEDED:'منسوخ'};return m[s]||s};
+
+return<div style={{display:'flex',flexDirection:'column',gap:24,maxWidth:920}}>
+<h3 style={{fontWeight:700,fontSize:'1.125rem'}}>⚖️ مدیریت قوانین مالیاتی</h3>
+<div style={{display:'flex',gap:2,marginBottom:8,borderBottom:'1px solid var(--border-subtle)'}}>
+<button onClick={()=>setTxSubTab('rules')} style={subBtn('rules','قوانین')}>📋 قوانین ({taxRules.length})</button>
+<button onClick={()=>setTxSubTab('topics')} style={subBtn('topics','موضوعات')}>📂 موضوعات ({taxTopics.length})</button>
+<button onClick={()=>setTxSubTab('sources')} style={subBtn('sources','منابع')}>📚 منابع ({taxSources.length})</button>
+</div>
+
+{txSubTab==='rules'&&<>
+<div className="card" style={{padding:20}}>
+<h4 style={{fontWeight:700,marginBottom:14}}>{etxRule?'✏️ ویرایش قانون':'➕ قانون مالیاتی جدید'}</h4>
+<div style={{display:'flex',flexDirection:'column',gap:10}}>
+<input value={ntxRule.name} onChange={e=>setNtxRule({...ntxRule,name:e.target.value})} style={IS} placeholder="نام قانون (مثال: نرخ مالیات حقوق ۱۴۰۵)"/>
+<input value={ntxRule.slug} onChange={e=>setNtxRule({...ntxRule,slug:e.target.value})} style={IS} placeholder="نشان (اختیاری — خودکار ساخته می‌شود)"/>
+<textarea value={ntxRule.description} onChange={e=>setNtxRule({...ntxRule,description:e.target.value})} style={IS2} placeholder="خلاصه قانون"/>
+<textarea value={ntxRule.content} onChange={e=>setNtxRule({...ntxRule,content:e.target.value})} style={{...IS2,minHeight:160}} placeholder="متن کامل قانون (نسخه اول)"/>
+<div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
+<select value={ntxRule.topicId} onChange={e=>setNtxRule({...ntxRule,topicId:e.target.value})} style={{...IS,flex:1}}>
+<option value="">انتخاب موضوع...</option>
+{taxTopics.map((t:any)=><option key={t.id} value={t.id}>{t.name}</option>)}
+</select>
+<select value={ntxRule.sourceId} onChange={e=>setNtxRule({...ntxRule,sourceId:e.target.value})} style={{...IS,flex:1}}>
+<option value="">انتخاب منبع...</option>
+{taxSources.map((s:any)=><option key={s.id} value={s.id}>{s.name}</option>)}
+</select>
+</div>
+<div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
+<input type="date" value={ntxRule.effectiveFrom} onChange={e=>setNtxRule({...ntxRule,effectiveFrom:e.target.value})} style={{...IS,flex:1}} placeholder="تاریخ اجرا"/>
+<select value={ntxRule.status} onChange={e=>setNtxRule({...ntxRule,status:e.target.value})} style={{...IS,flex:1}}>
+<option value="DRAFT">پیش‌نویس</option><option value="REVIEW">بررسی</option><option value="APPROVED">تأیید شده</option><option value="PUBLISHED">منتشر شده</option>
+</select>
+<button onClick={svRule} className="btn btn-primary" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>{etxRule?'💾 ذخیره':'➕ افزودن قانون'}</button>
+{etxRule&&<button onClick={()=>{setEtxRule(null);setNtxRule({topicId:'',name:'',slug:'',description:'',content:'',sourceId:'',effectiveFrom:'',status:'DRAFT'})}} className="btn btn-ghost" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>انصراف</button>}
+</div>
+</div>
+</div>
+<div style={{display:'flex',flexDirection:'column',gap:8}}>
+{taxRules.map((r:any)=><div key={r.id} className="glass-card" style={{padding:14}}>
+<div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+<div style={{flex:1}}>
+<div style={{fontWeight:600,fontSize:'0.9375rem'}}>{r.name}</div>
+<div style={{fontSize:'0.75rem',color:'var(--text-muted)',marginTop:2}} dir="ltr">/{r.slug}</div>
+{r.description&&<div style={{fontSize:'0.8125rem',color:'var(--text-secondary)',marginTop:4,lineHeight:1.6}}>{r.description.substring(0,150)}</div>}
+<div style={{display:'flex',gap:6,marginTop:6,alignItems:'center',flexWrap:'wrap'}}>
+<span className={stl(r.status)} style={{fontSize:'0.7rem'}}>{stx(r.status)}</span>
+{r.topic&&<span style={{fontSize:'0.7rem',color:'var(--brand-gold)'}}>{r.topic.name}</span>}
+{r.versions?.[0]&&<span style={{fontSize:'0.7rem',color:'var(--text-muted)'}}>نسخه {r.versions[0].version}</span>}
+</div>
+</div>
+<div style={{display:'flex',gap:6,flexShrink:0,alignItems:'center'}}>
+{r.status!=='PUBLISHED'&&<button onClick={()=>publishRule(r.id)} style={{...EB,color:'#22c55e'}}>📢 انتشار</button>}
+<button onClick={()=>{setEtxRule(r);setNtxRule({topicId:r.topicId,name:r.name,slug:r.slug,description:r.description||'',content:r.versions?.[0]?.content||'',sourceId:r.versions?.[0]?.sourceId||'',effectiveFrom:r.versions?.[0]?.effectiveFrom?new Date(r.versions[0].effectiveFrom).toISOString().split('T')[0]:'',status:r.status})}} style={EB}>✏️</button>
+<button onClick={()=>dlRule(r.id)} style={{...EB,color:'#ef4444'}}>🗑</button>
+</div>
+</div>
+</div>)}
+{taxRules.length===0&&<div style={{textAlign:'center',padding:20,color:'var(--text-muted)'}}>قانونی وجود ندارد — ابتدا یک موضوع و منبع ایجاد کنید، سپس قانون جدید اضافه کنید.</div>}
+</div>
+</>}
+
+{txSubTab==='topics'&&<>
+<div className="card" style={{padding:20}}>
+<h4 style={{fontWeight:700,marginBottom:14}}>{etxTopic?'✏️ ویرایش موضوع':'➕ موضوع جدید'}</h4>
+<div style={{display:'flex',flexDirection:'column',gap:10}}>
+<input value={ntxTopic.name} onChange={e=>setNtxTopic({...ntxTopic,name:e.target.value})} style={IS} placeholder="نام موضوع (مثال: مالیات حقوق)"/>
+<input value={ntxTopic.slug} onChange={e=>setNtxTopic({...ntxTopic,slug:e.target.value})} style={IS} placeholder="نشان (اختیاری — خودکار)"/>
+<textarea value={ntxTopic.description} onChange={e=>setNtxTopic({...ntxTopic,description:e.target.value})} style={IS2} placeholder="توضیحات موضوع"/>
+<div style={{display:'flex',gap:10,alignItems:'center'}}>
+<input type="number" value={ntxTopic.sortOrder} onChange={e=>setNtxTopic({...ntxTopic,sortOrder:+e.target.value})} style={{...IS,width:100}} placeholder="ترتیب"/>
+<label style={{display:'flex',alignItems:'center',gap:6,fontSize:'0.875rem',color:'var(--text-muted)'}}><input type="checkbox" checked={ntxTopic.isActive} onChange={e=>setNtxTopic({...ntxTopic,isActive:e.target.checked})}/> فعال</label>
+<button onClick={svTopic} className="btn btn-primary" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>{etxTopic?'💾 ذخیره':'➕ افزودن'}</button>
+{etxTopic&&<button onClick={()=>{setEtxTopic(null);setNtxTopic({name:'',slug:'',description:'',sortOrder:0,isActive:true})}} className="btn btn-ghost" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>انصراف</button>}
+</div>
+</div>
+</div>
+<div style={{display:'flex',flexDirection:'column',gap:8}}>
+{taxTopics.map((t:any)=><div key={t.id} className="glass-card" style={{padding:14}}>
+<div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+<div style={{flex:1}}>
+<div style={{fontWeight:600,fontSize:'0.9375rem'}}>{t.name}</div>
+{t.description&&<div style={{fontSize:'0.8125rem',color:'var(--text-muted)',marginTop:4}}>{t.description.substring(0,100)}</div>}
+<div style={{display:'flex',gap:8,marginTop:6,alignItems:'center'}}>
+<span className={t.isActive?'badge badge-success':'badge badge-error'} style={{fontSize:'0.7rem'}}>{t.isActive?'فعال':'غیرفعال'}</span>
+<span style={{fontSize:'0.7rem',color:'var(--text-muted)'}}>{t._count?.rules||0} قانون</span>
+</div>
+</div>
+<div style={{display:'flex',gap:6,flexShrink:0}}>
+<button onClick={()=>{setEtxTopic(t);setNtxTopic({name:t.name,slug:t.slug,description:t.description||'',sortOrder:t.sortOrder,isActive:t.isActive})}} style={EB}>✏️</button>
+<button onClick={()=>dlTopic(t.id)} style={{...EB,color:'#ef4444'}}>🗑</button>
+</div>
+</div>
+</div>)}
+{taxTopics.length===0&&<div style={{textAlign:'center',padding:20,color:'var(--text-muted)'}}>موضوعی وجود ندارد — اولین موضوع را اضافه کنید.</div>}
+</div>
+</>}
+
+{txSubTab==='sources'&&<>
+<div className="card" style={{padding:20}}>
+<h4 style={{fontWeight:700,marginBottom:14}}>{etxSource?'✏️ ویرایش منبع':'➕ منبع جدید'}</h4>
+<div style={{display:'flex',flexDirection:'column',gap:10}}>
+<input value={ntxSource.name} onChange={e=>setNtxSource({...ntxSource,name:e.target.value})} style={IS} placeholder="نام منبع (مثال: قانون مالیات‌های مستقیم)"/>
+<input value={ntxSource.officialName} onChange={e=>setNtxSource({...ntxSource,officialName:e.target.value})} style={IS} placeholder="نام رسمی (اختیاری)"/>
+<input value={ntxSource.url} onChange={e=>setNtxSource({...ntxSource,url:e.target.value})} style={IS} placeholder="آدرس منبع (URL — اختیاری)"/>
+<textarea value={ntxSource.description} onChange={e=>setNtxSource({...ntxSource,description:e.target.value})} style={IS2} placeholder="توضیحات منبع"/>
+<div style={{display:'flex',gap:10,alignItems:'center'}}>
+<label style={{display:'flex',alignItems:'center',gap:6,fontSize:'0.875rem',color:'var(--text-muted)'}}><input type="checkbox" checked={ntxSource.isActive} onChange={e=>setNtxSource({...ntxSource,isActive:e.target.checked})}/> فعال</label>
+<button onClick={svSource} className="btn btn-primary" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>{etxSource?'💾 ذخیره':'➕ افزودن'}</button>
+{etxSource&&<button onClick={()=>{setEtxSource(null);setNtxSource({name:'',url:'',officialName:'',description:'',isActive:true})}} className="btn btn-ghost" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>انصراف</button>}
+</div>
+</div>
+</div>
+<div style={{display:'flex',flexDirection:'column',gap:8}}>
+{taxSources.map((s:any)=><div key={s.id} className="glass-card" style={{padding:14}}>
+<div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+<div style={{flex:1}}>
+<div style={{fontWeight:600,fontSize:'0.9375rem'}}>{s.name}</div>
+{s.officialName&&<div style={{fontSize:'0.8125rem',color:'var(--text-muted)',marginTop:2}}>{s.officialName}</div>}
+{s.url&&<a href={s.url} target="_blank" rel="noopener noreferrer" style={{fontSize:'0.75rem',color:'var(--brand-gold)',display:'block',marginTop:4}} dir="ltr">{s.url.substring(0,60)}</a>}
+<div style={{display:'flex',gap:8,marginTop:6,alignItems:'center'}}>
+<span className={s.isActive?'badge badge-success':'badge badge-error'} style={{fontSize:'0.7rem'}}>{s.isActive?'فعال':'غیرفعال'}</span>
+<span style={{fontSize:'0.7rem',color:'var(--text-muted)'}}>{s._count?.rules||0} نسخه</span>
+</div>
+</div>
+<div style={{display:'flex',gap:6,flexShrink:0}}>
+<button onClick={()=>{setEtxSource(s);setNtxSource({name:s.name,url:s.url||'',officialName:s.officialName||'',description:s.description||'',isActive:s.isActive})}} style={EB}>✏️</button>
+<button onClick={()=>dlSource(s.id)} style={{...EB,color:'#ef4444'}}>🗑</button>
+</div>
+</div>
+</div>)}
+{taxSources.length===0&&<div style={{textAlign:'center',padding:20,color:'var(--text-muted)'}}>منبعی وجود ندارد — اولین منبع را اضافه کنید.</div>}
+</div>
+</>}
 </div>}
 
 function MB({mbs,emb,semb,nmb,snmb,cats,sh,ldMB,IS,IS2,EB}:any){

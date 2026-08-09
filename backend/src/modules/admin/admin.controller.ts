@@ -68,4 +68,31 @@ export class AdminController {
   @Post('consultation-services') async ccs(@Body() b: { name: string; slug?: string; description: string; duration: number; price?: number; isActive?: boolean; sortOrder?: number }) { return this.svc.createConsultationService(b); }
   @Patch('consultation-services/:id') async ucs(@Param('id') id: string, @Body() b: { name?: string; description?: string; duration?: number; price?: number; isActive?: boolean; sortOrder?: number }) { return this.svc.updateConsultationService(id, b); }
   @Delete('consultation-services/:id') async dcs(@Param('id') id: string) { return this.svc.deleteConsultationService(id); }
+
+  // ==================== Tax Topics Management ====================
+
+  @Get('tax-topics') async gtt() { return this.svc.getTaxTopics(); }
+  @Post('tax-topics') async ctt(@Body() b: { name: string; slug?: string; description?: string; sortOrder?: number; isActive?: boolean }) { return this.svc.createTaxTopic(b); }
+  @Patch('tax-topics/:id') async utt(@Param('id') id: string, @Body() b: { name?: string; description?: string; sortOrder?: number; isActive?: boolean }) { return this.svc.updateTaxTopic(id, b); }
+  @Delete('tax-topics/:id') async dtt(@Param('id') id: string) { return this.svc.deleteTaxTopic(id); }
+
+  // ==================== Tax Sources Management ====================
+
+  @Get('tax-sources') async gts() { return this.svc.getTaxSources(); }
+  @Post('tax-sources') async cts(@Body() b: { name: string; url?: string; officialName?: string; description?: string; isActive?: boolean }) { return this.svc.createTaxSource(b); }
+  @Patch('tax-sources/:id') async uts(@Param('id') id: string, @Body() b: { name?: string; url?: string; officialName?: string; description?: string; isActive?: boolean }) { return this.svc.updateTaxSource(id, b); }
+  @Delete('tax-sources/:id') async dts(@Param('id') id: string) { return this.svc.deleteTaxSource(id); }
+
+  // ==================== Tax Rules Management ====================
+
+  @Get('tax-rules') async gtr(@Query('topicId') tid?: string, @Query('page') p?: number, @Query('limit') l?: number) { return this.svc.getTaxRulesAdmin(tid, p ? +p : 1, l ? +l : 50); }
+  @Post('tax-rules') async ctr(@Body() b: { topicId: string; name: string; slug?: string; description?: string; content: string; sourceId: string; effectiveFrom: string; effectiveTo?: string; status?: string }) { return this.svc.createTaxRule(b); }
+  @Patch('tax-rules/:id') async utr(@Param('id') id: string, @Body() b: { topicId?: string; name?: string; description?: string; status?: string }) { return this.svc.updateTaxRule(id, b); }
+  @Delete('tax-rules/:id') async dtr(@Param('id') id: string) { return this.svc.deleteTaxRule(id); }
+
+  // ==================== Tax Rule Versions Management ====================
+
+  @Post('tax-rule-versions') async ctrv(@Body() b: { ruleId: string; content: string; sourceId: string; effectiveFrom: string; effectiveTo?: string; status?: string; reviewNotes?: string }) { return this.svc.createTaxRuleVersion(b); }
+  @Patch('tax-rule-versions/:id') async utrv(@Param('id') id: string, @Body() b: { content?: string; status?: string; effectiveFrom?: string; effectiveTo?: string; reviewNotes?: string; publishedById?: string }, @Request() req: any) { return this.svc.updateTaxRuleVersion(id, { ...b, publishedById: req.user?.id }); }
+  @Delete('tax-rule-versions/:id') async dtrv(@Param('id') id: string) { return this.svc.deleteTaxRuleVersion(id); }
 }

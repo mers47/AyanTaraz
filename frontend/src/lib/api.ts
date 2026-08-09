@@ -119,6 +119,25 @@ export const adminApi = {
   createConsultationService: (d: any) => api.post('/admin/consultation-services', d),
   updateConsultationService: (id: string, d: any) => api.patch(`/admin/consultation-services/${id}`, d),
   deleteConsultationService: (id: string) => api.delete(`/admin/consultation-services/${id}`),
+  // Tax Topics
+  getTaxTopicsAdmin: () => api.get('/admin/tax-topics'),
+  createTaxTopic: (d: any) => api.post('/admin/tax-topics', d),
+  updateTaxTopic: (id: string, d: any) => api.patch(`/admin/tax-topics/${id}`, d),
+  deleteTaxTopic: (id: string) => api.delete(`/admin/tax-topics/${id}`),
+  // Tax Sources
+  getTaxSources: () => api.get('/admin/tax-sources'),
+  createTaxSource: (d: any) => api.post('/admin/tax-sources', d),
+  updateTaxSource: (id: string, d: any) => api.patch(`/admin/tax-sources/${id}`, d),
+  deleteTaxSource: (id: string) => api.delete(`/admin/tax-sources/${id}`),
+  // Tax Rules
+  getTaxRulesAdmin: (topicId?: string) => api.get('/admin/tax-rules', { params: { topicId } }),
+  createTaxRule: (d: any) => api.post('/admin/tax-rules', d),
+  updateTaxRule: (id: string, d: any) => api.patch(`/admin/tax-rules/${id}`, d),
+  deleteTaxRule: (id: string) => api.delete(`/admin/tax-rules/${id}`),
+  // Tax Rule Versions
+  createTaxRuleVersion: (d: any) => api.post('/admin/tax-rule-versions', d),
+  updateTaxRuleVersion: (id: string, d: any) => api.patch(`/admin/tax-rule-versions/${id}`, d),
+  deleteTaxRuleVersion: (id: string) => api.delete(`/admin/tax-rule-versions/${id}`),
 };
 
 export const contentApi = {
