@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { parseJalaliDateTime } from '../../common/utils/jalali-date';
 
 @Injectable()
 export class ConsultationService {
@@ -16,25 +17,24 @@ export class ConsultationService {
   async book(dto: { serviceId: string; date: string; time: string; phone: string; name: string; notes?: string }) {
     const service = await this.prisma.consultationService.findUnique({ where: { id: dto.serviceId } });
     if (!service) throw new NotFoundException('Service not found');
+    if (!dto.date || !dto.time) throw new BadRequestException('تاریخ و زمان نوبت الزامی است');
 
-    // Parse the requested date/time. dto.date is a fa-IR string like "۱۴۰۵/۰۳/۱۵"
-    // and dto.time is like "۱۰:۰۰". We need a JS Date for the slot.
-    // Since the frontend sends Persian date strings, we store them as notes and
-    // use a normalized date for the slot record.
-    const now = new Date();
-    // Use today + time as a fallback date for the slot (the real date is in notes).
-    // This is simpler than parsing Jalali dates and keeps the booking working.
-    const slotDate = now;
+    // Parse the requested Persian (Jalali) date + time into a real Gregorian Date.
+    // dto.date is a fa-IR string like "۱۴۰۵/۰۳/۱۵" and dto.time like "۱۰:۰۰".
+    const slotDate = parseJalaliDateTime(dto.date, dto.time);
+    if (!slotDate) throw new BadRequestException('تاریخ نوبت نامعتبر است');
 
-    // Find or create an availability record for this service (generic, any day)
+    const dayOfWeek = slotDate.getDay();
+
+    // Find or create an availability record matching the requested day of week.
     let availability = await this.prisma.consultationAvailability.findFirst({
-      where: { serviceId: dto.serviceId, isActive: true },
+      where: { serviceId: dto.serviceId, dayOfWeek, isActive: true },
     });
     if (!availability) {
       availability = await this.prisma.consultationAvailability.create({
         data: {
           serviceId: dto.serviceId,
-          dayOfWeek: slotDate.getDay(),
+          dayOfWeek,
           startTime: '09:00',
           endTime: '18:00',
           isActive: true,
@@ -42,21 +42,33 @@ export class ConsultationService {
       });
     }
 
-    // Find or create a slot for the requested date/time
+    // Slot start/end as Date objects for the requested date/time.
+    const slotStart = new Date(slotDate);
+    const slotEnd = new Date(slotDate.getTime() + (service.duration || 45) * 60 * 1000);
+
+    // Find or create a slot for the requested exact date + time.
     let slot = await this.prisma.consultationSlot.findFirst({
-      where: { availabilityId: availability.id, date: slotDate, startTime: slotDate },
+      where: { availabilityId: availability.id, date: slotDate, startTime: slotStart },
     });
     if (!slot) {
       slot = await this.prisma.consultationSlot.create({
         data: {
           availabilityId: availability.id,
           date: slotDate,
-          startTime: slotDate,
-          endTime: slotDate,
+          startTime: slotStart,
+          endTime: slotEnd,
           maxBookings: 1,
           isActive: true,
         },
       });
+    }
+
+    // Prevent double-booking of the same slot.
+    const existingBooking = await this.prisma.consultationBooking.findFirst({
+      where: { slotId: slot.id, status: { in: ['PENDING', 'CONFIRMED'] } },
+    });
+    if (existingBooking) {
+      throw new BadRequestException('این نوبت قبلاً رزرو شده است. لطفاً زمان دیگری انتخاب کنید.');
     }
 
     // Find or create user by phone
@@ -76,7 +88,7 @@ export class ConsultationService {
         paymentStatus: 'UNPAID',
         amount: service.price || null,
       },
-      include: { service: true },
+      include: { service: true, slot: true },
     });
 
     return booking;

@@ -364,8 +364,6 @@ async function main() {
       ['ثبت‌نام مالیاتی', 'reg'],
       ['مشاوره تخصصی', 'cons'],
     ]],
-    ['POS؟', 7, [['بله', 'y'], ['خیر', 'n']]], ['حساب تفکیک؟', 8, [['بله', 'y'], ['خیر', 'n']]], ['my.tax.gov.ir؟', 9, [['بله', 'y'], ['خیر', 'n']]],
-    ['نوع محل؟', 10, [['ملکی', 'own'], ['اجاره', 'rent'], ['فاقد محل', 'none']]],
   ] as const;
   for (const [question, sortOrder, options] of questionDefs) {
     let q = await P.taxQuestion.findFirst({ where: { sortOrder } });
@@ -377,6 +375,18 @@ async function main() {
       else await P.taxQuestionOption.create({ data: { questionId: q.id, label, value, sortOrder: i + 1 } });
     }
   }
+
+  // Clean up any orphaned questions left over from deprecated seeds (sortOrder > 6).
+  // The decision tree is exactly 6 questions (Q1→Q6→result). Older seeds created
+  // placeholder questions (Q7-Q10) with no flows — they are dead data that caused
+  // the chatbot to fail after a few steps. Remove them so getQ() never returns them.
+  const orphaned = await P.taxQuestion.findMany({ where: { sortOrder: { gt: 6 } } });
+  for (const o of orphaned) {
+    await P.taxQuestionFlow.deleteMany({ where: { OR: [{ fromQuestionId: o.id }, { toQuestionId: o.id }] } });
+    await P.taxQuestionOption.deleteMany({ where: { questionId: o.id } });
+    await P.taxQuestion.delete({ where: { id: o.id } });
+  }
+  if (orphaned.length) console.log(`🧹 Removed ${orphaned.length} orphaned question(s) with sortOrder > 6`);
 
   // ────────────────────────────────────────────────────────────────────────────
   // TaxAssistantResult — use UPSERT so existing (deprecated/incomplete) results
