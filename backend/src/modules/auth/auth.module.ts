@@ -7,6 +7,7 @@ import { OTPService } from './otp.service';
 import { SmsService } from './sms.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { resolveJwtSecret } from '../../common/utils/jwt-secret';
 
 @Module({
   imports: [
@@ -14,7 +15,7 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        secret: config.get<string>('JWT_SECRET') || 'change-me',
+        secret: resolveJwtSecret(config),
         signOptions: { expiresIn: Number(config.get<string>('JWT_EXPIRES_IN', '86400')) },
       }),
     }),

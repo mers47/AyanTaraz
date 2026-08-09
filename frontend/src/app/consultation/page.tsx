@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import PageHeader from '@/components/PageHeader';
-import { consultationApi } from '@/lib/api';
+import { consultationApi, contentApi } from '@/lib/api';
 import type { ConsultationService as Svc, ConsultationBooking } from '@/types';
 
 type Step = 1 | 2 | 3 | 4 | 5;
@@ -27,13 +27,27 @@ export default function ConsultationPage() {
   const [uploadDone, setUploadDone] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Bank card info (placeholder — admin should update in settings)
-  const bankInfo = {
+  // Bank card info — pulled from admin content settings (key: bank_info),
+  // with sensible defaults so the page always renders. Admins can update it
+  // from the admin panel → content tab without redeploying.
+  const defaultBankInfo = {
     bankName: 'بانک ملت',
     cardNumber: '۶۱۰۴۳۴۷۰۱۲۳۴۵۶۷۸',
     shaba: 'IR۶۲ ۰۱۲۰۲۸۰۰ ۰۰۰۰ ۰۰۰۰ ۰۰۰۰ ۰۰۰۱',
     holder: 'شرکت آین تراز',
   };
+  const [bankInfo, setBankInfo] = useState(defaultBankInfo);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await contentApi.get('bank_info');
+        if (r.data && typeof r.data === 'object') setBankInfo({ ...defaultBankInfo, ...r.data });
+      } catch {
+        // keep defaults — bank info is optional content
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     (async () => {

@@ -4,6 +4,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
 import { AuthService } from '../auth.service';
+import { resolveJwtSecret } from '../../../common/utils/jwt-secret';
 
 export interface JwtPayload { sub: string; phone: string; role: string; iat?: number; exp?: number; }
 
@@ -16,7 +17,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       ]),
       passReqToCallback: true,
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>('JWT_SECRET') || 'change-me',
+      secretOrKey: resolveJwtSecret(configService),
     } as any);
   }
 
