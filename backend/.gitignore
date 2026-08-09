@@ -33,7 +33,8 @@ npm-debug.log*
 *.pid.lock
 
 # Prisma
-prisma/migrations/**/migration_lock.toml
+# NOTE: migration_lock.toml MUST be committed — it is required by
+# `prisma migrate deploy` at deploy time. Without it the migration fails.
 
 # Docker
 .docker/

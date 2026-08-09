@@ -5,7 +5,7 @@ import { notFound } from 'next/navigation';
 import VideoPlayer from '@/components/VideoPlayer';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_URL || 'https://ayantaraz.ir';
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const API = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || '';
 
 interface Video {
   id: string;
@@ -25,7 +25,8 @@ interface Video {
 
 async function getVideo(slug: string): Promise<Video | null> {
   try {
-    const res = await fetch(`${API}/content/videos/${slug}`, {
+    const apiUrl = API ? `${API}/api/content/videos/${slug}` : `http://localhost:4000/api/content/videos/${slug}`;
+    const res = await fetch(apiUrl, {
       next: { revalidate: 300 },
     });
     if (!res.ok) return null;

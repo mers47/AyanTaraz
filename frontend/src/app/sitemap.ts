@@ -3,11 +3,22 @@ import type { MetadataRoute } from 'next';
 type Item = { slug: string; updatedAt?: string; publishedAt?: string };
 
 const BASE = process.env.NEXT_PUBLIC_BASE_URL || 'https://ayantaraz.ir';
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+// Server-side API base for SSR fetches.
+// Priority: INTERNAL_API_URL (docker internal, e.g. http://backend:4000) →
+// NEXT_PUBLIC_API_URL (explicit public URL) →
+// relative "/api" fallback (works when SSR runs behind same Nginx proxy).
+const API = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || '';
+
+function apiUrl(path: string): string {
+  if (API) return `${API}/api/${path}`;
+  // In standalone server mode inside a container without INTERNAL_API_URL,
+  // fall back to localhost:4000 (works when backend is on same host).
+  return `http://localhost:4000/api/${path}`;
+}
 
 async function fetchSlugs(path: string): Promise<Item[]> {
   try {
-    const res = await fetch(`${API}/content/${path}?limit=1000`, {
+    const res = await fetch(apiUrl(`content/${path}?limit=1000`), {
       next: { revalidate: 3600 },
     });
     if (!res.ok) return [];
