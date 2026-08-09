@@ -43,6 +43,14 @@ services:
         condition: service_healthy
     ports:
       - "127.0.0.1:4000:4000"
+    volumes:
+      - uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
   frontend:
     build:
       context: ./frontend
@@ -58,10 +66,20 @@ services:
     container_name: ayan-frontend
     restart: unless-stopped
     env_file: .env
+    environment:
+      # Internal API URL for server-side rendering (SSR) fetches.
+      # Frontend container can reach backend via docker network hostname.
+      INTERNAL_API_URL: http://backend:4000
     depends_on:
       - backend
     ports:
       - "127.0.0.1:3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
   nginx:
     image: nginx:alpine
     container_name: ayan-nginx
@@ -76,3 +94,4 @@ services:
 volumes:
   pgdata:
   redisdata:
+  uploads:

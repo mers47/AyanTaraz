@@ -4,7 +4,7 @@ import PageHeader from '@/components/PageHeader';
 import { notFound } from 'next/navigation';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_URL || 'https://ayantaraz.ir';
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const API = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || '';
 
 interface Article {
   id: string;
@@ -23,7 +23,8 @@ interface Article {
 
 async function getArticle(slug: string): Promise<Article | null> {
   try {
-    const res = await fetch(`${API}/content/articles/${slug}`, {
+    const apiUrl = API ? `${API}/api/content/articles/${slug}` : `http://localhost:4000/api/content/articles/${slug}`;
+    const res = await fetch(apiUrl, {
       next: { revalidate: 300 },
     });
     if (!res.ok) return null;
