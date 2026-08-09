@@ -1,3 +1,4 @@
+import { normalizeIranPhone } from '../../common/utils/phone.util';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UserRole } from '@prisma/client';
@@ -57,7 +58,17 @@ export class AdminService {
   }
 
   async createAdminUser(phone: string, firstName: string, lastName: string, role: UserRole = UserRole.ADMIN) {
-    return this.prisma.user.create({ data: { phone, firstName, lastName, role, phoneVerified: true } });
+    const normalizedPhone = normalizeIranPhone(phone);
+
+    return this.prisma.user.create({
+      data: {
+        phone: normalizedPhone,
+        firstName,
+        lastName,
+        role,
+        phoneVerified: true,
+      },
+    });
   }
 
   async updateAdminUser(id: string, data: { firstName?: string; lastName?: string; role?: UserRole; isActive?: boolean }) {

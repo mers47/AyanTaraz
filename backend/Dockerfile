@@ -1,29 +1,43 @@
-FROM node:20-alpine AS builder
+FROM node:20-bookworm-slim AS builder
 
 WORKDIR /app
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openssl \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY package*.json ./
-# --allow-scripts lets the @prisma/client postinstall download the query-engine
-# binary at install time so the Redis/Prisma-backed build (ioredis + Prisma)
-# does not fail with a missing engine at `npm run build` / `prisma:generate`.
+
 RUN npm ci --allow-scripts
 
 COPY . .
-RUN npm run build
-RUN npm run prisma:generate
 
-FROM node:20-alpine AS runner
+RUN npx prisma generate
+
+RUN npm run build
+
+RUN ./node_modules/.bin/tsc -p tsconfig.seed.json
+
+RUN test -f /app/dist/src/main.js
+RUN test -f /app/dist-seed/seed.js
+
+
+FROM node:20-bookworm-slim AS runner
 
 WORKDIR /app
 
 ENV NODE_ENV=production
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openssl \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/dist-seed ./dist-seed
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/tsconfig*.json ./
 
 EXPOSE 4000
 
-CMD ["node", "dist/main"]
+CMD ["node", "dist/src/main.js"]

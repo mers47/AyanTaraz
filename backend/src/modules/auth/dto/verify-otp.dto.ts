@@ -1,3 +1,5 @@
+import { normalizeIranPhone } from '../../../common/utils/phone.util';
+import { Transform } from 'class-transformer';
 import { IsPhoneNumber, IsString, Length, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -6,7 +8,8 @@ export class VerifyOTPDto {
     description: 'Phone number in international format',
     example: '+989123456789',
   })
-  @IsPhoneNumber()
+  @Transform(({ value }) => normalizeIranPhone(value))
+  @IsPhoneNumber('IR')
   phone: string;
 
   @ApiProperty({

@@ -52,9 +52,9 @@ export default function SiteHeader({ externalOpen = false, onExternalClose }: Si
     <header className={`site-header${scrolled ? ' scrolled' : ''}`}>
       <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
         {/* Logo — top-right in RTL (first item in the row) */}
-        <Link href="/" className="brand-logo" aria-label="آین تراز — خانه">
+        <Link href="/" className="brand-logo" aria-label="آیان تراز — خانه">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/logo-dark.webp" alt="لوگوی آین تراز" />
+          <img src="/images/logo-dark.webp" alt="لوگوی آیان تراز" />
         </Link>
 
         {/* Desktop nav */}
@@ -151,7 +151,7 @@ export default function SiteHeader({ externalOpen = false, onExternalClose }: Si
       )}
 
       {showLogin && (
-        <LoginModal title="ورود به آین تراز" onClose={closeLogin} onSuccess={closeLogin} />
+        <LoginModal title="ورود به آیان تراز" onClose={closeLogin} onSuccess={closeLogin} />
       )}
     </header>
   );

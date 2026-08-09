@@ -1,3 +1,5 @@
+import { normalizeIranPhone } from '../../../common/utils/phone.util';
+import { Transform } from 'class-transformer';
 import { IsString, IsPhoneNumber, IsDateString, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -11,7 +13,8 @@ export class CreateBookingDto {
   slotId: string;
 
   @ApiProperty({ description: 'Phone number for verification', example: '+989123456789' })
-  @IsPhoneNumber()
+  @Transform(({ value }) => normalizeIranPhone(value))
+  @IsPhoneNumber('IR')
   phone: string;
 
   @ApiProperty({ description: 'OTP code for verification', example: '123456' })
