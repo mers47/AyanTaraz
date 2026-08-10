@@ -165,7 +165,7 @@ export default function ChatbotPage() {
                 borderRadius: 2,
                 background: 'linear-gradient(90deg, var(--brand-gold-dark), var(--brand-gold), var(--brand-gold-light))',
                 width: `${(qIndex / TOTAL_QS) * 100}%`,
-                transition: 'width 400ms var(--ease-out-expo)',
+                transition: 'width 400ms var(--ease-expo)',
               }}
             />
           </div>
@@ -200,7 +200,11 @@ export default function ChatbotPage() {
                   <div style={{ background: 'rgba(255,255,255,.03)', borderRadius: 'var(--radius-sm)', padding: 14, whiteSpace: 'pre-wrap', fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.85, marginBottom: 14 }}>
                     {m.result.description}
                   </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <Link href="/consultation" className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '8px 14px' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" /></svg>
+                      درخواست مشاوره تخصصی
+                    </Link>
                     <button onClick={restart} className="btn btn-outline" style={{ fontSize: '0.8rem', padding: '8px 14px' }}>
                       🔄 شروع دوباره
                     </button>

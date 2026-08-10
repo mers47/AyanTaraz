@@ -119,6 +119,8 @@ export const adminApi = {
   createConsultationService: (d: any) => api.post('/admin/consultation-services', d),
   updateConsultationService: (id: string, d: any) => api.patch(`/admin/consultation-services/${id}`, d),
   deleteConsultationService: (id: string) => api.delete(`/admin/consultation-services/${id}`),
+  // Consultation Bookings (admin can see all — passes empty phone which backend allows for admins)
+  getAllBookings: () => api.get('/consultation/bookings'),
   // Tax Topics
   getTaxTopicsAdmin: () => api.get('/admin/tax-topics'),
   createTaxTopic: (d: any) => api.post('/admin/tax-topics', d),

@@ -185,7 +185,7 @@ export default function ConsultationPage() {
 
         {/* Step 1: User info */}
         {step === 1 && (
-          <div style={{ animation: 'fadeInUp 300ms var(--ease-out-expo)' }}>
+          <div style={{ animation: 'fadeInUp 300ms var(--ease-expo)' }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: 8 }}>اطلاعات شما</h2>
             <p style={{ color: 'var(--text-secondary)', marginBottom: 28 }}>برای هماهنگی مشاوره، لطفاً اطلاعات زیر را وارد کنید</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -204,7 +204,7 @@ export default function ConsultationPage() {
 
         {/* Step 2: Service selection */}
         {step === 2 && (
-          <div style={{ animation: 'fadeInUp 300ms var(--ease-out-expo)' }}>
+          <div style={{ animation: 'fadeInUp 300ms var(--ease-expo)' }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: 8 }}>نوع خدمت</h2>
             <p style={{ color: 'var(--text-secondary)', marginBottom: 28 }}>خدمت مورد نظر خود را انتخاب کنید</p>
             {loadingSvc ? (
@@ -236,7 +236,7 @@ export default function ConsultationPage() {
 
         {/* Step 3: Date & time */}
         {step === 3 && (
-          <div style={{ animation: 'fadeInUp 300ms var(--ease-out-expo)' }}>
+          <div style={{ animation: 'fadeInUp 300ms var(--ease-expo)' }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: 8 }}>زمان مشاوره</h2>
             <p style={{ color: 'var(--text-secondary)', marginBottom: 28 }}>روز و ساعت مناسب خود را انتخاب کنید</p>
             <div style={{ marginBottom: 24 }}>
@@ -270,7 +270,7 @@ export default function ConsultationPage() {
 
         {/* Step 4: Payment + Receipt upload */}
         {step === 4 && booking && (
-          <div style={{ animation: 'fadeInUp 300ms var(--ease-out-expo)' }}>
+          <div style={{ animation: 'fadeInUp 300ms var(--ease-expo)' }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: 8 }}>پرداخت و بارگذاری رسید</h2>
             <p style={{ color: 'var(--text-secondary)', marginBottom: 24 }}>برای تأیید نهایی رزرو، مبلغ را به کارت زیر واریز کرده و رسید را بارگذاری کنید</p>
 
@@ -343,7 +343,7 @@ export default function ConsultationPage() {
 
         {/* Step 5: Confirmation */}
         {step === 5 && booking && (
-          <div style={{ textAlign: 'center', animation: 'fadeInUp 400ms var(--ease-out-expo)' }}>
+          <div style={{ textAlign: 'center', animation: 'fadeInUp 400ms var(--ease-expo)' }}>
             <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'linear-gradient(135deg,var(--brand-gold),var(--brand-gold-light))', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', boxShadow: '0 0 40px rgba(198,169,98,0.2)' }}>
               <svg width="32" height="32" viewBox="0 0 24 24" fill="#0a0a0a"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>
             </div>
