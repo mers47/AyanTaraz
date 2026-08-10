@@ -203,18 +203,82 @@ npx prisma db seed
 
 ---
 
-## 🚀 دیپلوی پروداکشن
+## 🚀 دیپلوی پروداکشن (یک دستور!)
+
+اسکریپت `deploy.sh` به‌صورت **کاملاً خودکار** همه چیز را انجام می‌دهد:
 
 ```bash
-# Build
-docker-compose -f docker-compose.yml build
+# فقط این را اجرا کنید — همه چیز خودکار است!
+./deploy.sh
+```
 
-# Run
-docker-compose -f docker-compose.yml up -d
+### 🎯 اسکریپت چه می‌کند؟
 
-# Database setup
-docker exec -it ayan-backend npx prisma migrate deploy
-docker exec -it ayan-backend npx prisma db seed
+| مرحله | توضیح |
+|-------|-------|
+| ۱. نصب Docker | اگر Docker نصب نیست، خودکار نصب می‌کند |
+| ۲. تولید `.env` | پسورد PostgreSQL، JWT Secret و تمام رمزها را **خودکار** تولید می‌کند |
+| ۳. پرسش ادمین | فقط شماره موبایل ادمین ارشد را از شما می‌پرسد |
+| ۴. پرسش SMS API | کلید SMS API را می‌پرسد (می‌توانید Enter بزنید و بعداً اضافه کنید) |
+| ۵. Build | تمام ایمیج‌های Docker را build می‌کند |
+| ۶. Migrate | دیتابیس را migrate می‌کند |
+| ۷. Seed | داده‌های قوانین مالیاتی ۱۴۰۵ را بارگذاری می‌کند |
+| ۸. Start | تمام سرویس‌ها را راه‌اندازی می‌کند |
+| ۹. Health Check | وضعیت همه سرویس‌ها را بررسی می‌کند |
+
+### 📋 دستورات
+
+```bash
+./deploy.sh                    # دیپلوی کامل + تولید خودکار .env
+./deploy.sh domain example.com # فعال‌سازی دامنه + SSL خودکار (Certbot)
+./deploy.sh ssl example.com    # فقط نصب SSL روی دامنه موجود
+./deploy.sh status             # بررسی وضعیت سرویس‌ها
+./deploy.sh logs [svc]         # مشاهده لاگ‌ها (اختیاری: سرویس خاص)
+./deploy.sh restart            # راه‌اندازی مجدد
+./deploy.sh down               # توقف همه سرویس‌ها
+./deploy.sh reset              # حذف کامل دیتابیس (خطر!)
+```
+
+### 🔑 بعد از دیپلوی — جای‌گذاری کلید SMS API
+
+اگر در زمان دیپلوی کلید SMS را خالی گذاشتید، بعداً این کار را بکنید:
+
+```bash
+nano .env
+# بخش زیر را پیدا و پر کنید:
+#   SMS_API_URL=https://api.kavenegar.com/v1/...
+#   SMS_API_KEY=your-api-key
+#   SMS_SENDER=your-sender-number
+
+# سپس ری‌استارت کنید:
+./deploy.sh restart
+```
+
+### 🌍 فعال‌سازی دامنه + SSL
+
+```bash
+# ۱. رکورد DNS دامنه را به IP سرور اشاره دهید
+# ۲. اجرا کنید:
+./deploy.sh domain ayantaraz.com
+
+# اسکریپت خودکار:
+#   ✓ CORS و BASE_URL را برای دامنه آپدیت می‌کند
+#   ✓ Frontend را rebuild می‌کند
+#   ✓ SSL Certbot را نصب می‌کند
+#   ✓ گواهی Let's Encrypt را دریافت می‌کند
+#   ✓ Nginx را برای HTTPS کانفیگ می‌کند
+#   ✓ تمدید خودکار SSL را تنظیم می‌کند (هر ۱۲ روز)
+```
+
+### 👤 ورود به پنل ادمین
+
+پس از دیپلوی، با شماره موبایلی که در زمان نصب وارد کردید وارد شوید:
+
+```
+URL:     http://YOUR_SERVER_IP/admin
+شماره:   همان شماره‌ای که به‌عنوان ادمین ارشد وارد کردید
+کد OTP:  اگر SMS API تنظیم شده → پیامک می‌شود
+         اگر SMS API خالی است → در لاگ کنسول: ./deploy.sh logs backend
 ```
 
 ---
