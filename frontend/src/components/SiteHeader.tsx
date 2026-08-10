@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import LoginModal from '@/components/LoginModal';
 
@@ -30,6 +31,14 @@ export default function SiteHeader({ externalOpen = false, onExternalClose }: Si
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
+  const pathname = usePathname();
+
+  // Determine if a nav item is "active" — matches exact path or section anchor on home.
+  const isActive = (href: string): boolean => {
+    if (href === '/') return pathname === '/';
+    if (href.startsWith('/#')) return pathname === '/';
+    return pathname === href || pathname.startsWith(href + '/');
+  };
 
   // React to external open requests (e.g. ?expired=1 on home page).
   useEffect(() => {
@@ -70,30 +79,54 @@ export default function SiteHeader({ externalOpen = false, onExternalClose }: Si
 
         {/* Desktop nav */}
         <nav className="hide-mobile" style={{ display: 'none', alignItems: 'center', gap: 2 }}>
-          {NAV.map((n) => (
-            <Link
-              key={n.href}
-              href={n.href}
-              style={{
-                padding: '8px 14px',
-                color: 'var(--text-secondary)',
-                fontSize: '0.9rem',
-                fontWeight: 500,
-                borderRadius: 8,
-                transition: 'color .2s, background .2s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = 'var(--brand-gold)';
-                e.currentTarget.style.background = 'rgba(198,169,98,.06)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = 'var(--text-secondary)';
-                e.currentTarget.style.background = 'transparent';
-              }}
-            >
-              {n.label}
-            </Link>
-          ))}
+          {NAV.map((n) => {
+            const active = isActive(n.href);
+            return (
+              <Link
+                key={n.href}
+                href={n.href}
+                aria-current={active ? 'page' : undefined}
+                style={{
+                  padding: '8px 14px',
+                  color: active ? 'var(--brand-gold)' : 'var(--text-secondary)',
+                  fontSize: '0.9rem',
+                  fontWeight: active ? 600 : 500,
+                  borderRadius: 8,
+                  transition: 'color .2s, background .2s',
+                  position: 'relative',
+                }}
+                onMouseEnter={(e) => {
+                  if (!active) {
+                    e.currentTarget.style.color = 'var(--brand-gold)';
+                    e.currentTarget.style.background = 'rgba(198,169,98,.06)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!active) {
+                    e.currentTarget.style.color = 'var(--text-secondary)';
+                    e.currentTarget.style.background = 'transparent';
+                  }
+                }}
+              >
+                {n.label}
+                {active && (
+                  <span
+                    aria-hidden
+                    style={{
+                      position: 'absolute',
+                      bottom: 2,
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      width: 18,
+                      height: 2,
+                      borderRadius: 1,
+                      background: 'linear-gradient(90deg, var(--brand-gold-dark), var(--brand-gold-light))',
+                    }}
+                  />
+                )}
+              </Link>
+            );
+          })}
           <style>{`@media(min-width:880px){nav.hide-mobile{display:flex!important}}`}</style>
         </nav>
 
@@ -153,31 +186,36 @@ export default function SiteHeader({ externalOpen = false, onExternalClose }: Si
             overflowY: 'auto',
           }}
         >
-          {NAV.map((n) => (
-            <Link
-              key={n.href}
-              href={n.href}
-              onClick={() => setOpen(false)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: '16px 12px',
-                color: 'var(--text-primary)',
-                borderBottom: '1px solid var(--border-subtle)',
-                fontWeight: 600,
-                fontSize: '1rem',
-                transition: 'color .2s',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--brand-gold)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-primary)'; }}
-            >
-              <svg width="6" height="6" viewBox="0 0 6 6" fill="var(--brand-gold)">
-                <circle cx="3" cy="3" r="3" />
-              </svg>
-              {n.label}
-            </Link>
-          ))}
+          {NAV.map((n) => {
+            const active = isActive(n.href);
+            return (
+              <Link
+                key={n.href}
+                href={n.href}
+                onClick={() => setOpen(false)}
+                aria-current={active ? 'page' : undefined}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '16px 12px',
+                  color: active ? 'var(--brand-gold)' : 'var(--text-primary)',
+                  borderBottom: '1px solid var(--border-subtle)',
+                  fontWeight: active ? 700 : 600,
+                  fontSize: '1rem',
+                  transition: 'color .2s',
+                  background: active ? 'rgba(198,169,98,.05)' : 'transparent',
+                }}
+                onMouseEnter={(e) => { if (!active) e.currentTarget.style.color = 'var(--brand-gold)'; }}
+                onMouseLeave={(e) => { if (!active) e.currentTarget.style.color = 'var(--text-primary)'; }}
+              >
+                <svg width="6" height="6" viewBox="0 0 6 6" fill={active ? 'var(--brand-gold)' : 'var(--brand-gold)'} opacity={active ? 1 : 0.5}>
+                  <circle cx="3" cy="3" r="3" />
+                </svg>
+                {n.label}
+              </Link>
+            );
+          })}
           <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 10 }}>
             <Link href="/consultation" onClick={() => setOpen(false)} className="btn btn-primary" style={{ width: '100%' }}>
               مشاوره رایگان

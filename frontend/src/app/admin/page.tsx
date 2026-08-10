@@ -59,6 +59,7 @@ export default function AdminPage() {
   const [emb, semb] = useState<any | null>(null);
   const [nmb, snmb] = useState({ title: '', slug: '', description: '', fileUrl: '', coverImage: '', pageCount: 0, status: 'DRAFT', categoryId: '' });
   const [csvs, scsvs] = useState<any[]>([]);
+  const [cbks, scbks] = useState<any[]>([]);
   const [ecv, secv] = useState<any | null>(null);
   const [ncv, sncv] = useState({ name: '', slug: '', description: '', duration: 30, price: 0, isActive: true, sortOrder: 0 });
 
@@ -103,7 +104,10 @@ export default function AdminPage() {
 
   const ldCS = useCallback(async () => {
     sl2(true); setAuthFailed(false);
-    try { const r = await adminApi.getConsultationServices(); scsvs(r.data || []); }
+    try {
+      const r = await adminApi.getConsultationServices(); scsvs(r.data || []);
+      try { const rb = await adminApi.getAllBookings(); scbks(Array.isArray(rb.data) ? rb.data : []); } catch { scbks([]); }
+    }
     catch (e: any) { if (e?.response?.status === 401 || e?.response?.status === 403) setAuthFailed(true); }
     finally { sl2(false); }
   }, []);
@@ -321,7 +325,7 @@ export default function AdminPage() {
         {tb === 'articles' && <AR arts={arts} ea={ea} sea={sea} na={na} sna={sna} cats={cats} sh={sh} ldA={() => ldA()} IS={IS} IS2={IS2} EB={EB} />}
         {tb === 'videos' && <VI vids={vids} ev={ev} sev={sev} nv={nv} snv={snv} cats={cats} sh={sh} ldV={() => ldV()} IS={IS} IS2={IS2} EB={EB} />}
         {tb === 'minibooks' && <MB mbs={mbs} emb={emb} semb={semb} nmb={nmb} snmb={snmb} cats={cats} sh={sh} ldMB={() => ldMB()} IS={IS} IS2={IS2} EB={EB} />}
-        {tb === 'consultation' && <CSComp csvs={csvs} ecv={ecv} secv={secv} ncv={ncv} sncv={sncv} sh={sh} ldCS={() => ldCS()} IS={IS} IS2={IS2} EB={EB} />}
+        {tb === 'consultation' && <CSComp csvs={csvs} cbks={cbks} ecv={ecv} secv={secv} ncv={ncv} sncv={sncv} sh={sh} ldCS={() => ldCS()} IS={IS} IS2={IS2} EB={EB} />}
         {tb === 'taxlaws' && <TaxLaws taxTopics={taxTopics} taxSources={taxSources} taxRules={taxRules} etxTopic={etxTopic} setEtxTopic={setEtxTopic} ntxTopic={ntxTopic} setNtxTopic={setNtxTopic} etxSource={etxSource} setEtxSource={setEtxSource} ntxSource={ntxSource} setNtxSource={setNtxSource} etxRule={etxRule} setEtxRule={setEtxRule} ntxRule={ntxRule} setNtxRule={setNtxRule} txSubTab={txSubTab} setTxSubTab={setTxSubTab} sh={sh} ldTxLaws={() => ldTxLaws()} IS={IS} IS2={IS2} EB={EB} />}
         {tb === 'audit' && <AT logs={logs} ldL={ldL} ap={ap} loading={ld} />}
       </div>
@@ -624,7 +628,7 @@ function B({ onClick, disabled, children }: any) {
   );
 }
 
-function CSComp({csvs,ecv,secv,ncv,sncv,sh,ldCS,IS,IS2,EB}:any){
+function CSComp({csvs,cbks,ecv,secv,ncv,sncv,sh,ldCS,IS,IS2,EB}:any){
 const sv=async()=>{if(!ncv.name.trim()||!ncv.description.trim()){sh('\u0646\u0627\u0645 \u0648 \u062a\u0648\u0636\u06cc\u062d \u0631\u0627 \u067e\u0631 \u06a9\u0646\u06cc\u062f');return}try{if(ecv){await adminApi.updateConsultationService(ecv.id,{name:ncv.name,description:ncv.description,duration:ncv.duration,price:ncv.price||undefined,isActive:ncv.isActive,sortOrder:ncv.sortOrder});sh('\u0648\u06cc\u0631\u0627\u06cc\u0634 \u0634\u062f \u2705')}else{await adminApi.createConsultationService({name:ncv.name,slug:ncv.slug,description:ncv.description,duration:ncv.duration,price:ncv.price||undefined,isActive:ncv.isActive,sortOrder:ncv.sortOrder});sh('\u0627\u0641\u0632\u0648\u062f\u0647 \u0634\u062f \u2705')}secv(null);sncv({name:'',slug:'',description:'',duration:30,price:0,isActive:true,sortOrder:0});ldCS()}catch{sh('\u062e\u0637\u0627 \u274c')}};
 const dl=async(id:string)=>{if(!confirm('\u062d\u0630\u0641 \u0634\u0648\u062f\u061f'))return;try{await adminApi.deleteConsultationService(id);sh('\u062d\u0630\u0641 \u0634\u062f \u2705');ldCS()}catch{sh('\u062e\u0637\u0627 \u274c')}};
 const fmtP=(p?:number|null)=>{if(!p||p===0)return'\u0631\u0627\u06cc\u06af\u0627\u0646';return new Intl.NumberFormat('fa-IR').format(p)+' \u062a\u0648\u0645\u0627\u0646'};
@@ -667,6 +671,27 @@ return<div style={{display:'flex',flexDirection:'column',gap:24,maxWidth:920}}>
 </div>
 </div>)}
 {csvs.length===0&&<div style={{textAlign:'center',padding:20,color:'var(--text-muted)'}}>\u062e\u062f\u0645\u0627\u062a \u0645\u0634\u0627\u0648\u0631\u0647\u200c\u0627\u06cc \u0648\u062c\u0648\u062f \u0646\u062f\u0627\u0631\u062f \u2014 \u0627\u0648\u0644\u06cc\u0646 \u062e\u062f\u0645\u062a \u0631\u0627 \u0627\u0636\u0627\u0641\u0647 \u06a9\u0646\u06cc\u062f</div>}
+</div>
+<h3 style={{fontWeight:700,fontSize:'1.125rem',marginTop:8}}>\ud83d\udcc5 \u0631\u0632\u0631\u0648\u0647\u0627\u06cc \u0645\u0634\u0627\u0648\u0631\u0647 ({cbks?.length||0})</h3>
+<div style={{display:'flex',flexDirection:'column',gap:8}}>
+{(cbks||[]).map((b:any)=><div key={b.id} className="glass-card" style={{padding:14}}>
+<div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:10,flexWrap:'wrap'}}>
+<div style={{flex:1,minWidth:200}}>
+<div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+<span style={{fontWeight:600,fontSize:'0.9375rem'}}>{b.service?.name||'\u0646\u0627\u0645\u0634\u0646\u0627\u0633'}</span>
+<span className={b.status==='CONFIRMED'?'badge badge-success':b.status==='PENDING'?'badge badge-warning':'badge badge-error'} style={{fontSize:'0.7rem'}}>{b.status==='CONFIRMED'?'\u062a\u0627\u06cc\u06cc\u062f \u0634\u062f\u0647':b.status==='PENDING'?'\u062f\u0631 \u0627\u0646\u062a\u0638\u0627\u0631':'\u0644\u063a\u0648 \u0634\u062f\u0647'}</span>
+<span className={b.paymentStatus==='PAID'?'badge badge-success':b.paymentStatus==='PENDING'?'badge badge-warning':'badge badge-error'} style={{fontSize:'0.7rem'}}>{b.paymentStatus==='PAID'?'\u067e\u0631\u062f\u0627\u062e\u062a \u0634\u062f\u0647':b.paymentStatus==='PENDING'?'\u067e\u0631\u062f\u0627\u062e\u062a \u062f\u0631 \u0627\u0646\u062a\u0638\u0627\u0631':'\u067e\u0631\u062f\u0627\u062e\u062a \u0646\u0634\u062f\u0647'}</span>
+</div>
+<div style={{fontSize:'0.8125rem',color:'var(--text-secondary)',marginTop:4,lineHeight:1.6}}>{b.notes||'\u0628\u062f\u0648\u0646 \u062a\u0648\u0636\u06cc\u062d\u0627\u062a'}</div>
+<div style={{display:'flex',gap:12,marginTop:6,alignItems:'center',flexWrap:'wrap'}}>
+<span style={{fontSize:'0.75rem',color:'var(--text-muted)'}}>\ud83d\udcde {b.phone}</span>
+{b.amount!=null&&<span style={{fontSize:'0.8125rem',color:'var(--brand-gold)',fontWeight:600}}>{fmtP(b.amount)}</span>}
+{b.receiptUrl&&<a href={b.receiptUrl} target="_blank" rel="noopener noreferrer" style={{fontSize:'0.75rem',color:'var(--brand-gold)'}}>\ud83d\udcc4 \u0631\u0633\u06cc\u062f</a>}
+</div>
+</div>
+</div>
+</div>)}
+{(cbks||[]).length===0&&<div style={{textAlign:'center',padding:20,color:'var(--text-muted)'}}>\u0631\u0632\u0631\u0648\u06cc \u0628\u0631\u0627\u06cc \u0646\u0645\u0627\u06cc\u0634 \u0648\u062c\u0648\u062f \u0646\u062f\u0627\u0631\u062f</div>}
 </div>
 </div>}
 
