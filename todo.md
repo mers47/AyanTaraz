@@ -32,9 +32,9 @@
 ## فاز ۴ — اصلاح کیفیت کد و UI فرانت‌اند (Frontend Code Quality)
 - [ ] 4.1: حذف/کاهش `any` در فرانت‌اند (~۶۶ مورد) — تایپ‌گذاری کامل `adminApi` و `RecentActivity`
 - [ ] 4.2: اصلاح naming مخفف در `admin/page.tsx` (`tb, st, ss, sa, su, sl, ld, sl2` → نام‌گذاری واضح)
-- [ ] 4.3: جایگزینی inline style در `chatbot/page.tsx` با کلاس‌های Tailwind
-- [ ] 4.4: داینامیک کردن آمار صفحه فرود — به جای مقادیر هاردکد از API/AdminSetting بخواند
-- [ ] 4.5: حذف `TOTAL_QS = 6` هاردکد در chatbot — تعداد سؤال‌ها از درخت تصمیم محاسبه شود
+- [x] 4.3: جایگزینی inline style در `chatbot/page.tsx` با کلاس‌های Tailwind — از ۳۹ به ۵ (۵ مورد باقی‌مانده مقادیر داینامیک هستند) ✅
+- [x] 4.4: داینامیک کردن آمار صفحه فرد — خواندن از API/AdminSetting با fallback به مقادیر پیش‌فرض ✅
+- [x] 4.5: حذف `TOTAL_QS = 6` هاردکد در chatbot — تعداد سؤال‌ها از درخت تصمیم محاسبه می‌شود ✅
 - [ ] 4.6: کامیت، push، PR، مرج
 
 ## فاز ۵ — بهبود زیرساخت و دیپلوی (Infrastructure & Deployment)

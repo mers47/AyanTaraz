@@ -25,8 +25,8 @@ export default function TaxLawsPage() {
     try {
       const r = await taxApi.getTopics();
       setTopics(r.data || []);
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'خطا در دریافت موضوعات مالیاتی');
+    } catch (e: unknown) {
+      setError((e as { response?: { data?: { message?: string } } })?.response?.data?.message || 'خطا در دریافت موضوعات مالیاتی');
     }
   }, []);
 
@@ -36,8 +36,8 @@ export default function TaxLawsPage() {
     try {
       const r = await taxApi.getRules(topicSlug, 1, 100);
       setRules(r.data?.data || []);
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'خطا در دریافت قوانین مالیاتی');
+    } catch (e: unknown) {
+      setError((e as { response?: { data?: { message?: string } } })?.response?.data?.message || 'خطا در دریافت قوانین مالیاتی');
       setRules([]);
     } finally {
       setLoading(false);
@@ -50,8 +50,8 @@ export default function TaxLawsPage() {
     try {
       const r = await taxApi.getRule(slug);
       setSelectedRule(r.data);
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'خطا در دریافت جزئیات قانون');
+    } catch (e: unknown) {
+      setError((e as { response?: { data?: { message?: string } } })?.response?.data?.message || 'خطا در دریافت جزئیات قانون');
     } finally {
       setLoadingDetail(false);
     }

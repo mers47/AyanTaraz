@@ -4,261 +4,266 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { adminApi, contentApi } from '@/lib/api';
 import LoginModal from '@/components/LoginModal';
-import type { DashboardStats, RecentActivity, UserRow, AuditLog, PaginatedResponse } from '@/types';
+import type {
+  DashboardStats, RecentActivity, UserRow, AuditLog, PaginatedResponse,
+  Article, Video, MiniBook, Category, TaxQuestion, TaxQuestionOption, TaxAssistantResultAdmin,
+  TaxTopic, TaxSource, TaxRule, ConsultationService, ConsultationBooking,
+  ContentSection, ContentStatus, TaxRuleStatus, TaxResultSeverity,
+} from '@/types';
 
 type Tab = 'dashboard' | 'users' | 'content' | 'chatbot' | 'articles' | 'videos' | 'minibooks' | 'consultation' | 'taxlaws' | 'audit';
 
-interface CS {
-  title: string;
-  hero: string;
-  subtitle: string;
-  description: string;
-}
-
 export default function AdminPage() {
-  const [tb, st] = useState<Tab>('dashboard');
-  const [stats, ss] = useState<DashboardStats | null>(null);
-  const [act, sa] = useState<RecentActivity | null>(null);
-  const [users, su] = useState<PaginatedResponse<UserRow> | null>(null);
-  const [logs, sl] = useState<PaginatedResponse<AuditLog> | null>(null);
-  const [ld, sl2] = useState(true);
+  const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [recentActivity, setRecentActivity] = useState<RecentActivity | null>(null);
+  const [users, setUsers] = useState<PaginatedResponse<UserRow> | null>(null);
+  const [logs, setLogs] = useState<PaginatedResponse<AuditLog> | null>(null);
+  const [loading, setLoading] = useState(true);
   const [authFailed, setAuthFailed] = useState(false);
-  const [up, sp] = useState(1);
-  const [ap, sp2] = useState(1);
-  const [q, sq] = useState('');
-  const [to, sto] = useState('');
-  const [ac, sc] = useState<Record<string, CS>>({});
-  const [ek, se] = useState<string | null>(null);
-  const [ed, sd] = useState<CS>({ title: '', hero: '', subtitle: '', description: '' });
-  const tmr = useRef<any>(null);
+  const [usersPage, setUsersPage] = useState(1);
+  const [auditPage, setAuditPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [toastMsg, setToastMsg] = useState('');
+  const [contentSections, setContentSections] = useState<Record<string, ContentSection>>({});
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [editData, setEditData] = useState<ContentSection>({ title: '', hero: '', subtitle: '', description: '' });
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
-  const sh = (m: string) => {
-    sto(m);
-    setTimeout(() => sto(''), 2500);
+  const showToast = (message: string) => {
+    setToastMsg(message);
+    setTimeout(() => setToastMsg(''), 2500);
   };
 
   // ---- Content management state (from main: chatbot / articles / videos / minibooks / consultation) ----
-  const [nl, snl] = useState(false);
-  const chkErr = (x: any) => { if (x?.response?.status === 401 || x?.response?.status === 403) snl(true); };
-  const [tq, stq] = useState<any[]>([]);
-  const [tqr, stqr] = useState<any[]>([]);
-  const [eq, seq] = useState<any | null>(null);
-  const [nq, snq] = useState({ question: '', description: '', sortOrder: 0, isActive: true });
-  const [eo, seo] = useState<any | null>(null);
-  const [no, sno] = useState({ questionId: '', label: '', value: '', sortOrder: 0 });
-  const [nr, snr] = useState({ name: '', title: '', description: '', action: '', severity: 'INFO', isActive: true });
-  const [er, ser] = useState<any | null>(null);
-  const [arts, sarts] = useState<any[]>([]);
-  const [ea, sea] = useState<any | null>(null);
-  const [na, sna] = useState({ title: '', slug: '', excerpt: '', content: '', featuredImage: '', status: 'DRAFT', categoryId: '' });
-  const [cats, scats] = useState<any[]>([]);
-  const [vids, svids] = useState<any[]>([]);
-  const [ev, sev] = useState<any | null>(null);
-  const [nv, snv] = useState({ title: '', slug: '', description: '', url: '', thumbnail: '', duration: 0, status: 'DRAFT', categoryId: '' });
-  const [mbs, smbs] = useState<any[]>([]);
-  const [emb, semb] = useState<any | null>(null);
-  const [nmb, snmb] = useState({ title: '', slug: '', description: '', fileUrl: '', coverImage: '', pageCount: 0, status: 'DRAFT', categoryId: '' });
-  const [csvs, scsvs] = useState<any[]>([]);
-  const [cbks, scbks] = useState<any[]>([]);
-  const [ecv, secv] = useState<any | null>(null);
-  const [ncv, sncv] = useState({ name: '', slug: '', description: '', duration: 30, price: 0, isActive: true, sortOrder: 0 });
+  const [needsLogin, setNeedsLogin] = useState(false);
+  const checkAuthError = (err: unknown) => {
+    const e = err as { response?: { status?: number } };
+    if (e?.response?.status === 401 || e?.response?.status === 403) setNeedsLogin(true);
+  };
+  const [taxQuestions, setTaxQuestions] = useState<TaxQuestion[]>([]);
+  const [taxResults, setTaxResults] = useState<TaxAssistantResultAdmin[]>([]);
+  const [editingQuestion, setEditingQuestion] = useState<TaxQuestion | null>(null);
+  const [newQuestion, setNewQuestion] = useState({ question: '', description: '', sortOrder: 0, isActive: true });
+  const [editingOption, setEditingOption] = useState<TaxQuestionOption | null>(null);
+  const [newOption, setNewOption] = useState({ questionId: '', label: '', value: '', sortOrder: 0 });
+  const [newResult, setNewResult] = useState({ name: '', title: '', description: '', action: '', severity: 'INFO' as TaxResultSeverity, isActive: true });
+  const [editingResult, setEditingResult] = useState<TaxAssistantResultAdmin | null>(null);
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [editingArticle, setEditingArticle] = useState<Article | null>(null);
+  const [newArticle, setNewArticle] = useState({ title: '', slug: '', excerpt: '', content: '', featuredImage: '', status: 'DRAFT' as ContentStatus, categoryId: '' });
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [videos, setVideos] = useState<Video[]>([]);
+  const [editingVideo, setEditingVideo] = useState<Video | null>(null);
+  const [newVideo, setNewVideo] = useState({ title: '', slug: '', description: '', url: '', thumbnail: '', duration: 0, status: 'DRAFT' as ContentStatus, categoryId: '' });
+  const [miniBooks, setMiniBooks] = useState<MiniBook[]>([]);
+  const [editingMiniBook, setEditingMiniBook] = useState<MiniBook | null>(null);
+  const [newMiniBook, setNewMiniBook] = useState({ title: '', slug: '', description: '', fileUrl: '', coverImage: '', pageCount: 0, status: 'DRAFT' as ContentStatus, categoryId: '' });
+  const [consultationServices, setConsultationServices] = useState<ConsultationService[]>([]);
+  const [consultationBookings, setConsultationBookings] = useState<ConsultationBooking[]>([]);
+  const [editingService, setEditingService] = useState<ConsultationService | null>(null);
+  const [newService, setNewService] = useState({ name: '', slug: '', description: '', duration: 30, price: 0, isActive: true, sortOrder: 0 });
 
   // ---- Tax laws management state ----
-  const [taxTopics, stxTopics] = useState<any[]>([]);
-  const [taxSources, stxSources] = useState<any[]>([]);
-  const [taxRules, stxRules] = useState<any[]>([]);
-  const [etxTopic, setEtxTopic] = useState<any | null>(null);
-  const [ntxTopic, setNtxTopic] = useState({ name: '', slug: '', description: '', sortOrder: 0, isActive: true });
-  const [etxSource, setEtxSource] = useState<any | null>(null);
-  const [ntxSource, setNtxSource] = useState({ name: '', url: '', officialName: '', description: '', isActive: true });
-  const [etxRule, setEtxRule] = useState<any | null>(null);
-  const [ntxRule, setNtxRule] = useState({ topicId: '', name: '', slug: '', description: '', content: '', sourceId: '', effectiveFrom: '', status: 'DRAFT' });
+  const [taxTopics, setTaxTopics] = useState<TaxTopic[]>([]);
+  const [taxSources, setTaxSources] = useState<TaxSource[]>([]);
+  const [taxRules, setTaxRules] = useState<TaxRule[]>([]);
+  const [editingTopic, setEditingTopic] = useState<TaxTopic | null>(null);
+  const [newTopic, setNewTopic] = useState({ name: '', slug: '', description: '', sortOrder: 0, isActive: true });
+  const [editingSource, setEditingSource] = useState<TaxSource | null>(null);
+  const [newSource, setNewSource] = useState({ name: '', url: '', officialName: '', description: '', isActive: true });
+  const [editingRule, setEditingRule] = useState<TaxRule | null>(null);
+  const [newRule, setNewRule] = useState({ topicId: '', name: '', slug: '', description: '', content: '', sourceId: '', effectiveFrom: '', status: 'DRAFT' as TaxRuleStatus });
   const [txSubTab, setTxSubTab] = useState<'rules' | 'topics' | 'sources'>('rules');
 
-  const db = useCallback((k: string, d: CS) => {
-    if (tmr.current) clearTimeout(tmr.current);
-    tmr.current = setTimeout(async () => {
+  const debounceSave = useCallback((k: string, d: ContentSection) => {
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(async () => {
       try {
         await contentApi.save(k, d);
-        sc((p) => ({ ...p, [k]: d }));
-        sh('ذخیره خودکار ✅');
+        setContentSections((p) => ({ ...p, [k]: d }));
+        showToast('ذخیره خودکار ✅');
       } catch {
-        sh('ذخیره خودکار ناموفق ❌');
+        showToast('ذخیره خودکار ناموفق ❌');
       }
     }, 800);
   }, []);
 
-  const ldD = useCallback(async () => {
-    sl2(true);
+  const loadDashboard = useCallback(async () => {
+    setLoading(true);
     setAuthFailed(false);
     try {
-      const [s, a] = await Promise.all([adminApi.getDashboardStats(), adminApi.getRecentActivity(5)]);
-      ss(s.data);
-      sa(a.data);
-    } catch (e: any) {
-      if (e?.response?.status === 401 || e?.response?.status === 403) setAuthFailed(true);
+      const [statsRes, activityRes] = await Promise.all([adminApi.getDashboardStats(), adminApi.getRecentActivity(5)]);
+      setStats(statsRes.data);
+      setRecentActivity(activityRes.data);
+    } catch (e: unknown) {
+      const err = e as { response?: { status?: number } };
+      if (err?.response?.status === 401 || err?.response?.status === 403) setAuthFailed(true);
     } finally {
-      sl2(false);
+      setLoading(false);
     }
   }, []);
 
-  const ldCS = useCallback(async () => {
-    sl2(true); setAuthFailed(false);
+  const loadConsultation = useCallback(async () => {
+    setLoading(true); setAuthFailed(false);
     try {
-      const r = await adminApi.getConsultationServices(); scsvs(r.data || []);
-      try { const rb = await adminApi.getAllBookings(); scbks(Array.isArray(rb.data) ? rb.data : []); } catch { scbks([]); }
+      const servicesRes = await adminApi.getConsultationServices(); setConsultationServices(servicesRes.data || []);
+      try { const bookingsRes = await adminApi.getAllBookings(); setConsultationBookings(Array.isArray(bookingsRes.data) ? bookingsRes.data : []); } catch { setConsultationBookings([]); }
     }
-    catch (e: any) { if (e?.response?.status === 401 || e?.response?.status === 403) setAuthFailed(true); }
-    finally { sl2(false); }
+    catch (e: unknown) { const err = e as { response?: { status?: number } }; if (err?.response?.status === 401 || err?.response?.status === 403) setAuthFailed(true); }
+    finally { setLoading(false); }
   }, []);
 
-  const ldTxLaws = useCallback(async () => {
-    sl2(true); setAuthFailed(false);
+  const loadTaxLaws = useCallback(async () => {
+    setLoading(true); setAuthFailed(false);
     try {
-      const [tp, ts, tr] = await Promise.all([
+      const [topicsRes, sourcesRes, rulesRes] = await Promise.all([
         adminApi.getTaxTopicsAdmin(),
         adminApi.getTaxSources(),
         adminApi.getTaxRulesAdmin(),
       ]);
-      stxTopics(tp.data || []);
-      stxSources(ts.data || []);
-      stxRules(tr.data?.data || []);
-    } catch (e: any) { if (e?.response?.status === 401 || e?.response?.status === 403) setAuthFailed(true); }
-    finally { sl2(false); }
+      setTaxTopics(topicsRes.data || []);
+      setTaxSources(sourcesRes.data || []);
+      setTaxRules(rulesRes.data?.data || []);
+    } catch (e: unknown) { const err = e as { response?: { status?: number } }; if (err?.response?.status === 401 || err?.response?.status === 403) setAuthFailed(true); }
+    finally { setLoading(false); }
   }, []);
 
-  const ldMB = useCallback(async () => {
-    sl2(true); setAuthFailed(false);
-    try { const r = await adminApi.getMiniBooks(1, 50); smbs(r.data?.data || []); }
-    catch (e: any) { if (e?.response?.status === 401 || e?.response?.status === 403) setAuthFailed(true); }
-    finally { sl2(false); }
+  const loadMiniBooks = useCallback(async () => {
+    setLoading(true); setAuthFailed(false);
+    try { const res = await adminApi.getMiniBooks(1, 50); setMiniBooks(res.data?.data || []); }
+    catch (e: unknown) { const err = e as { response?: { status?: number } }; if (err?.response?.status === 401 || err?.response?.status === 403) setAuthFailed(true); }
+    finally { setLoading(false); }
   }, []);
 
-  const ldV = useCallback(async () => {
-    sl2(true); setAuthFailed(false);
-    try { const r = await adminApi.getVideos(1, 50); svids(r.data?.data || []); }
-    catch (e: any) { if (e?.response?.status === 401 || e?.response?.status === 403) setAuthFailed(true); }
-    finally { sl2(false); }
+  const loadVideos = useCallback(async () => {
+    setLoading(true); setAuthFailed(false);
+    try { const res = await adminApi.getVideos(1, 50); setVideos(res.data?.data || []); }
+    catch (e: unknown) { const err = e as { response?: { status?: number } }; if (err?.response?.status === 401 || err?.response?.status === 403) setAuthFailed(true); }
+    finally { setLoading(false); }
   }, []);
 
-  const ldA = useCallback(async () => {
-    sl2(true); setAuthFailed(false);
-    try { const [r, cs] = await Promise.all([adminApi.getArticles(1, 50), adminApi.getCategories()]); sarts(r.data?.data || []); scats(cs.data || []); }
-    catch (e: any) { if (e?.response?.status === 401 || e?.response?.status === 403) setAuthFailed(true); }
-    finally { sl2(false); }
+  const loadArticles = useCallback(async () => {
+    setLoading(true); setAuthFailed(false);
+    try { const [artsRes, catsRes] = await Promise.all([adminApi.getArticles(1, 50), adminApi.getCategories()]); setArticles(artsRes.data?.data || []); setCategories(catsRes.data || []); }
+    catch (e: unknown) { const err = e as { response?: { status?: number } }; if (err?.response?.status === 401 || err?.response?.status === 403) setAuthFailed(true); }
+    finally { setLoading(false); }
   }, []);
 
-  const ldQ = useCallback(async () => {
-    sl2(true); setAuthFailed(false);
-    try { const [qs, rs] = await Promise.all([adminApi.getTaxQuestions(), adminApi.getTaxAssistantResults()]); stq(qs.data || []); stqr(rs.data || []); }
-    catch (e: any) { if (e?.response?.status === 401 || e?.response?.status === 403) setAuthFailed(true); }
-    finally { sl2(false); }
+  const loadQuestions = useCallback(async () => {
+    setLoading(true); setAuthFailed(false);
+    try { const [questionsRes, resultsRes] = await Promise.all([adminApi.getTaxQuestions(), adminApi.getTaxAssistantResults()]); setTaxQuestions(questionsRes.data || []); setTaxResults(resultsRes.data || []); }
+    catch (e: unknown) { const err = e as { response?: { status?: number } }; if (err?.response?.status === 401 || err?.response?.status === 403) setAuthFailed(true); }
+    finally { setLoading(false); }
   }, []);
 
-  const ldU = useCallback(async (p = 1) => {
-    sl2(true);
+  const loadUsers = useCallback(async (page = 1) => {
+    setLoading(true);
     setAuthFailed(false);
     try {
-      const r = await adminApi.getUsers(p, 15, q);
-      su(r.data);
-      sp(p);
-    } catch (e: any) {
-      if (e?.response?.status === 401 || e?.response?.status === 403) setAuthFailed(true);
+      const res = await adminApi.getUsers(page, 15, searchQuery);
+      setUsers(res.data);
+      setUsersPage(page);
+    } catch (e: unknown) {
+      const err = e as { response?: { status?: number } };
+      if (err?.response?.status === 401 || err?.response?.status === 403) setAuthFailed(true);
     } finally {
-      sl2(false);
+      setLoading(false);
     }
-  }, [q]);
+  }, [searchQuery]);
 
-  const ldC = useCallback(async () => {
-    sl2(true);
+  const loadContent = useCallback(async () => {
+    setLoading(true);
     setAuthFailed(false);
     try {
-      const r = await contentApi.getAll();
-      if (r.data && typeof r.data === 'object') {
-        const m: any = {};
-        for (const [k, v] of Object.entries(r.data)) {
+      const res = await contentApi.getAll();
+      if (res.data && typeof res.data === 'object') {
+        const sections: Record<string, ContentSection> = {};
+        for (const [k, v] of Object.entries(res.data as Record<string, ContentSection>)) {
           const key = k.replace('content_', '');
-          m[key] = v;
+          sections[key] = v;
         }
-        sc(m);
+        setContentSections(sections);
       }
-    } catch (e: any) {
-      if (e?.response?.status === 401 || e?.response?.status === 403) setAuthFailed(true);
+    } catch (e: unknown) {
+      const err = e as { response?: { status?: number } };
+      if (err?.response?.status === 401 || err?.response?.status === 403) setAuthFailed(true);
     } finally {
-      sl2(false);
+      setLoading(false);
     }
   }, []);
 
-  const ldL = useCallback(async (p = 1) => {
-    sl2(true);
+  const loadLogs = useCallback(async (page = 1) => {
+    setLoading(true);
     setAuthFailed(false);
     try {
-      const r = await adminApi.getAuditLogs({ page: p, limit: 15 });
-      sl(r.data);
-      sp2(p);
-    } catch (e: any) {
-      if (e?.response?.status === 401 || e?.response?.status === 403) setAuthFailed(true);
+      const res = await adminApi.getAuditLogs({ page, limit: 15 });
+      setLogs(res.data);
+      setAuditPage(page);
+    } catch (e: unknown) {
+      const err = e as { response?: { status?: number } };
+      if (err?.response?.status === 401 || err?.response?.status === 403) setAuthFailed(true);
     } finally {
-      sl2(false);
+      setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    if (tb === 'dashboard') ldD();
-    else if (tb === 'users') ldU();
-    else if (tb === 'content') ldC();
-    else if (tb === 'chatbot') ldQ();
-    else if (tb === 'articles') ldA();
-    else if (tb === 'videos') ldV();
-    else if (tb === 'minibooks') ldMB();
-    else if (tb === 'consultation') ldCS();
-    else if (tb === 'taxlaws') ldTxLaws();
-    else if (tb === 'audit') ldL();
-  }, [tb, ldD, ldU, ldC, ldQ, ldA, ldV, ldMB, ldCS, ldTxLaws, ldL]);
+    if (activeTab === 'dashboard') loadDashboard();
+    else if (activeTab === 'users') loadUsers();
+    else if (activeTab === 'content') loadContent();
+    else if (activeTab === 'chatbot') loadQuestions();
+    else if (activeTab === 'articles') loadArticles();
+    else if (activeTab === 'videos') loadVideos();
+    else if (activeTab === 'minibooks') loadMiniBooks();
+    else if (activeTab === 'consultation') loadConsultation();
+    else if (activeTab === 'taxlaws') loadTaxLaws();
+    else if (activeTab === 'audit') loadLogs();
+  }, [activeTab, loadDashboard, loadUsers, loadContent, loadQuestions, loadArticles, loadVideos, loadMiniBooks, loadConsultation, loadTaxLaws, loadLogs]);
 
-  const af = async () => {
-    sl2(true);
+  const autoFillContent = async () => {
+    setLoading(true);
     try {
-      const r = await contentApi.autoFill();
-      sh(r.data.message || '✅');
-      ldC();
+      const response = await contentApi.autoFill();
+      showToast(response.data.message || '✅');
+      loadContent();
     } catch {
-      sh('❌ خطا در جای‌گذاری خودکار');
+      showToast('❌ خطا در جای‌گذاری خودکار');
     } finally {
-      sl2(false);
+      setLoading(false);
     }
   };
 
-  const sv = async () => {
-    if (!ek) return;
+  const saveContentSection = async () => {
+    if (!editingKey) return;
     try {
-      await contentApi.save(ek, ed);
-      sc((p) => ({ ...p, [ek]: ed }));
-      se(null);
-      sh('ذخیره شد ✅');
+      await contentApi.save(editingKey, editData);
+      setContentSections((p) => ({ ...p, [editingKey]: editData }));
+      setEditingKey(null);
+      showToast('ذخیره شد ✅');
     } catch {
-      sh('ذخیره ناموفق ❌');
+      showToast('ذخیره ناموفق ❌');
     }
   };
 
-  const tabs: any[] = [
-    { id: 'dashboard', l: 'داشبورد', i: '📊' },
-    { id: 'users', l: 'کاربران', i: '👥' },
-    { id: 'content', l: 'ویرایش محتوا', i: '✏️' },
-    { id: 'chatbot', l: 'چتبات', i: '🤖' },
-    { id: 'articles', l: 'مقالات', i: '📝' },
-    { id: 'videos', l: 'ویدیوها', i: '🎬' },
-    { id: 'minibooks', l: 'مینی‌بوک‌ها', i: '📚' },
-    { id: 'consultation', l: 'مشاوره', i: '📅' },
-    { id: 'taxlaws', l: 'قوانین مالیاتی', i: '⚖️' },
-    { id: 'audit', l: 'گزارش‌ها', i: '📋' },
+  const tabs: { id: Tab; label: string; icon: string }[] = [
+    { id: 'dashboard', label: 'داشبورد', icon: '📊' },
+    { id: 'users', label: 'کاربران', icon: '👥' },
+    { id: 'content', label: 'ویرایش محتوا', icon: '✏️' },
+    { id: 'chatbot', label: 'چتبات', icon: '🤖' },
+    { id: 'articles', label: 'مقالات', icon: '📝' },
+    { id: 'videos', label: 'ویدیوها', icon: '🎬' },
+    { id: 'minibooks', label: 'مینی‌بوک‌ها', icon: '📚' },
+    { id: 'consultation', label: 'مشاوره', icon: '📅' },
+    { id: 'taxlaws', label: 'قوانین مالیاتی', icon: '⚖️' },
+    { id: 'audit', label: 'گزارش‌ها', icon: '📋' },
   ];
 
   // ---- Loading gate: only show full-screen spinner on the very first load ----
-  if (ld && !authFailed && !stats && !users && !logs && Object.keys(ac).length === 0) {
+  if (loading && !authFailed && !stats && !users && !logs && Object.keys(contentSections).length === 0) {
     return (
-      <div style={C}>
-        <div style={SP} />
+      <div style={centerStyle}>
+        <div style={spinnerStyle} />
       </div>
     );
   }
@@ -266,7 +271,7 @@ export default function AdminPage() {
   // ---- Auth failed: show login prompt instead of infinite spinner ----
   if (authFailed) {
     return (
-      <div style={C}>
+      <div style={centerStyle}>
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
         <div className="glass-card" style={{ maxWidth: 440, width: '92%', padding: 40, textAlign: 'center' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -284,50 +289,50 @@ export default function AdminPage() {
   }
 
   return (
-    <div style={C2}>
+    <div style={blockStyle}>
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-      {nl && (
+      {needsLogin && (
         <LoginModal
           title="ورود به پنل مدیریت"
-          onClose={() => snl(false)}
-          onSuccess={() => { snl(false); ldD(); }}
+          onClose={() => setNeedsLogin(false)}
+          onSuccess={() => { setNeedsLogin(false); loadDashboard(); }}
         />
       )}
-      <header style={HD}>
-        <div className="container" style={HD2}>
+      <header style={headerStyle}>
+        <div className="container" style={headerInnerStyle}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/images/logo-dark.webp" alt="آیان تراز" style={{ height: 34, width: 'auto', filter: 'drop-shadow(0 2px 8px rgba(198,169,98,.25))' }} />
             <span style={{ color: 'var(--border-default)' }}>|</span>
             <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: 600 }}>پنل مدیریت</span>
           </div>
-          <Link href="/" style={HL2}>خروج</Link>
+          <Link href="/" style={headerLinkStyle}>خروج</Link>
         </div>
       </header>
       <div className="container" style={{ paddingTop: 28, paddingBottom: 60 }}>
-        {to && <div className="toast">{to}</div>}
-        <div style={TBAR}>
-          {tabs.map((t) => (
+        {toastMsg && <div className="toast">{toastMsg}</div>}
+        <div style={tabBarStyle}>
+          {tabs.map((tab) => (
             <button
-              key={t.id}
-              onClick={() => st(t.id as Tab)}
-              style={tb === t.id ? TBA : TBB}
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              style={activeTab === tab.id ? tabActiveStyle : tabInactiveStyle}
             >
-              <span style={{ marginLeft: 6 }}>{t.i}</span> {t.l}
+              <span style={{ marginLeft: 6 }}>{tab.icon}</span> {tab.label}
             </button>
           ))}
         </div>
 
-        {tb === 'dashboard' && <Dash stats={stats} act={act} loading={ld} />}
-        {tb === 'content' && <CT ac={ac} af={af} ek={ek} se={se} ed={ed} sd={sd} db={db} sv={sv} loading={ld} />}
-        {tb === 'users' && <UT users={users} q={q} sq={sq} ldU={ldU} up={up} loading={ld} />}
-        {tb === 'chatbot' && <CB tq={tq} stq={stq} tqr={tqr} stqr={stqr} eq={eq} seq={seq} nq={nq} snq={snq} eo={eo} seo={seo} no={no} sno={sno} nr={nr} snr={snr} er={er} ser={ser} sh={sh} ldQ={() => ldQ()} IS={IS} EB={EB} LB={LB} IS2={IS2} />}
-        {tb === 'articles' && <AR arts={arts} ea={ea} sea={sea} na={na} sna={sna} cats={cats} sh={sh} ldA={() => ldA()} IS={IS} IS2={IS2} EB={EB} />}
-        {tb === 'videos' && <VI vids={vids} ev={ev} sev={sev} nv={nv} snv={snv} cats={cats} sh={sh} ldV={() => ldV()} IS={IS} IS2={IS2} EB={EB} />}
-        {tb === 'minibooks' && <MB mbs={mbs} emb={emb} semb={semb} nmb={nmb} snmb={snmb} cats={cats} sh={sh} ldMB={() => ldMB()} IS={IS} IS2={IS2} EB={EB} />}
-        {tb === 'consultation' && <CSComp csvs={csvs} cbks={cbks} ecv={ecv} secv={secv} ncv={ncv} sncv={sncv} sh={sh} ldCS={() => ldCS()} IS={IS} IS2={IS2} EB={EB} />}
-        {tb === 'taxlaws' && <TaxLaws taxTopics={taxTopics} taxSources={taxSources} taxRules={taxRules} etxTopic={etxTopic} setEtxTopic={setEtxTopic} ntxTopic={ntxTopic} setNtxTopic={setNtxTopic} etxSource={etxSource} setEtxSource={setEtxSource} ntxSource={ntxSource} setNtxSource={setNtxSource} etxRule={etxRule} setEtxRule={setEtxRule} ntxRule={ntxRule} setNtxRule={setNtxRule} txSubTab={txSubTab} setTxSubTab={setTxSubTab} sh={sh} ldTxLaws={() => ldTxLaws()} IS={IS} IS2={IS2} EB={EB} />}
-        {tb === 'audit' && <AT logs={logs} ldL={ldL} ap={ap} loading={ld} />}
+        {activeTab === 'dashboard' && <DashboardView stats={stats} recentActivity={recentActivity} loading={loading} />}
+        {activeTab === 'content' && <ContentEditor sections={contentSections} onAutoFill={autoFillContent} editingKey={editingKey} setEditingKey={setEditingKey} editData={editData} setEditData={setEditData} debounceSave={debounceSave} onSave={saveContentSection} loading={loading} />}
+        {activeTab === 'users' && <UsersTable users={users} searchQuery={searchQuery} setSearchQuery={setSearchQuery} loadUsers={loadUsers} usersPage={usersPage} loading={loading} />}
+        {activeTab === 'chatbot' && <ChatbotManager questions={taxQuestions} results={taxResults} editingQuestion={editingQuestion} setEditingQuestion={setEditingQuestion} newQuestion={newQuestion} setNewQuestion={setNewQuestion} editingOption={editingOption} setEditingOption={setEditingOption} newOption={newOption} setNewOption={setNewOption} newResult={newResult} setNewResult={setNewResult} editingResult={editingResult} setEditingResult={setEditingResult} showToast={showToast} reload={() => loadQuestions()} inputStyle={inputStyle} editButtonStyle={editButtonStyle} labelStyle={labelStyle} textareaStyle={textareaStyle} />}
+        {activeTab === 'articles' && <ArticlesManager articles={articles} editingArticle={editingArticle} setEditingArticle={setEditingArticle} newArticle={newArticle} setNewArticle={setNewArticle} categories={categories} showToast={showToast} reload={() => loadArticles()} inputStyle={inputStyle} textareaStyle={textareaStyle} editButtonStyle={editButtonStyle} />}
+        {activeTab === 'videos' && <VideosManager videos={videos} editingVideo={editingVideo} setEditingVideo={setEditingVideo} newVideo={newVideo} setNewVideo={setNewVideo} categories={categories} showToast={showToast} reload={() => loadVideos()} inputStyle={inputStyle} textareaStyle={textareaStyle} editButtonStyle={editButtonStyle} />}
+        {activeTab === 'minibooks' && <MiniBooksManager miniBooks={miniBooks} editingMiniBook={editingMiniBook} setEditingMiniBook={setEditingMiniBook} newMiniBook={newMiniBook} setNewMiniBook={setNewMiniBook} categories={categories} showToast={showToast} reload={() => loadMiniBooks()} inputStyle={inputStyle} textareaStyle={textareaStyle} editButtonStyle={editButtonStyle} />}
+        {activeTab === 'consultation' && <ConsultationManager services={consultationServices} bookings={consultationBookings} editingService={editingService} setEditingService={setEditingService} newService={newService} setNewService={setNewService} showToast={showToast} reload={() => loadConsultation()} inputStyle={inputStyle} textareaStyle={textareaStyle} editButtonStyle={editButtonStyle} />}
+        {activeTab === 'taxlaws' && <TaxLawsManager taxTopics={taxTopics} taxSources={taxSources} taxRules={taxRules} editingTopic={editingTopic} setEditingTopic={setEditingTopic} newTopic={newTopic} setNewTopic={setNewTopic} editingSource={editingSource} setEditingSource={setEditingSource} newSource={newSource} setNewSource={setNewSource} editingRule={editingRule} setEditingRule={setEditingRule} newRule={newRule} setNewRule={setNewRule} txSubTab={txSubTab} setTxSubTab={setTxSubTab} showToast={showToast} reload={() => loadTaxLaws()} inputStyle={inputStyle} textareaStyle={textareaStyle} editButtonStyle={editButtonStyle} />}
+        {activeTab === 'audit' && <AuditTable logs={logs} loadLogs={loadLogs} auditPage={auditPage} loading={loading} />}
       </div>
     </div>
   );
@@ -342,7 +347,7 @@ function Empty({ label }: { label: string }) {
   );
 }
 
-function Dash({ stats, act, loading }: any) {
+function DashboardView({ stats, recentActivity, loading }: { stats: DashboardStats | null; recentActivity: RecentActivity | null; loading: boolean }) {
   if (loading && !stats) return <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>در حال بارگذاری…</div>;
   if (!stats) return <Empty label="اطلاعات داشبورد در دسترس نیست" />;
   return (
@@ -391,14 +396,14 @@ function Dash({ stats, act, loading }: any) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))', gap: 20 }}>
         <div className="card">
           <h3 style={{ fontWeight: 700, marginBottom: 16 }}>کاربران جدید</h3>
-          {act?.recentUsers?.length ? (
-            act.recentUsers.map((u: any) => (
-              <div key={u.id} style={KR}>
+          {recentActivity?.recentUsers?.length ? (
+            recentActivity.recentUsers.map((user) => (
+              <div key={user.id} style={rowStyle}>
                 <div>
-                  <div style={{ fontWeight: 600 }}>{u.firstName || u.lastName ? `${u.firstName || ''} ${u.lastName || ''}` : 'بدون نام'}</div>
-                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }} dir="ltr">{u.phone}</div>
+                  <div style={{ fontWeight: 600 }}>{user.firstName || user.lastName ? `${user.firstName || ''} ${user.lastName || ''}` : 'بدون نام'}</div>
+                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }} dir="ltr">{user.phone}</div>
                 </div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{new Date(u.createdAt).toLocaleDateString('fa-IR')}</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{new Date(user.createdAt).toLocaleDateString('fa-IR')}</div>
               </div>
             ))
           ) : (
@@ -407,15 +412,15 @@ function Dash({ stats, act, loading }: any) {
         </div>
         <div className="card">
           <h3 style={{ fontWeight: 700, marginBottom: 16 }}>رزروها</h3>
-          {act?.recentBookings?.length ? (
-            act.recentBookings.map((b: any) => (
-              <div key={b.id} style={KR}>
+          {recentActivity?.recentBookings?.length ? (
+            recentActivity.recentBookings.map((booking) => (
+              <div key={booking.id} style={rowStyle}>
                 <div>
-                  <div style={{ fontWeight: 600 }}>{b.service?.name || 'مشاوره'}</div>
-                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{b.user?.firstName} {b.user?.lastName}</div>
+                  <div style={{ fontWeight: 600 }}>{booking.service?.name || 'مشاوره'}</div>
+                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{booking.user?.firstName} {booking.user?.lastName}</div>
                 </div>
-                <span className={`badge ${b.status === 'CONFIRMED' ? 'badge-success' : b.status === 'PENDING' ? 'badge-warning' : 'badge-error'}`}>
-                  {b.status === 'CONFIRMED' ? 'تأیید' : b.status === 'PENDING' ? 'منتظر' : b.status}
+                <span className={`badge ${booking.status === 'CONFIRMED' ? 'badge-success' : booking.status === 'PENDING' ? 'badge-warning' : 'badge-error'}`}>
+                  {booking.status === 'CONFIRMED' ? 'تأیید' : booking.status === 'PENDING' ? 'منتظر' : booking.status}
                 </span>
               </div>
             ))
@@ -428,50 +433,60 @@ function Dash({ stats, act, loading }: any) {
   );
 }
 
-function CT({ ac, af, ek, se, ed, sd, db, sv, loading }: any) {
+function ContentEditor({ sections, onAutoFill, editingKey, setEditingKey, editData, setEditData, debounceSave, onSave, loading }: {
+  sections: Record<string, ContentSection>;
+  onAutoFill: () => void;
+  editingKey: string | null;
+  setEditingKey: (k: string | null) => void;
+  editData: ContentSection;
+  setEditData: (d: ContentSection) => void;
+  debounceSave: (k: string, d: ContentSection) => void;
+  onSave: () => void;
+  loading: boolean;
+}) {
   return (
     <div style={{ maxWidth: 900 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>ویرایش متون سایت</h3>
-        <button onClick={af} className="btn btn-primary" style={{ fontSize: '0.875rem', padding: '10px 20px' }} disabled={loading}>
+        <button onClick={onAutoFill} className="btn btn-primary" style={{ fontSize: '0.875rem', padding: '10px 20px' }} disabled={loading}>
           🪄 جای‌گذاری خودکار قوانین ۱۴۰۵
         </button>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {Object.entries(ac).length === 0 && !loading && (
+        {Object.entries(sections).length === 0 && !loading && (
           <div className="card" style={{ textAlign: 'center', padding: 40 }}>
             <p style={{ color: 'var(--text-muted)', marginBottom: 16 }}>هنوز محتوایی ذخیره نشده</p>
-            <button onClick={af} className="btn btn-primary">🪄 جای‌گذاری خودکار قوانین ۱۴۰۵</button>
+            <button onClick={onAutoFill} className="btn btn-primary">🪄 جای‌گذاری خودکار قوانین ۱۴۰۵</button>
           </div>
         )}
-        {Object.entries(ac).map(([k, v]: any) => (
+        {Object.entries(sections).map(([k, v]) => (
           <div key={k} className="glass-card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{k}</span>
                 <span style={{ fontWeight: 700, fontSize: '0.9rem', marginRight: 8 }}>{v?.title || ''}</span>
               </div>
-              {ek !== k && (
-                <button onClick={() => { se(k); sd(v || { title: '', hero: '', subtitle: '', description: '' }); }} style={EB}>✏️ ویرایش</button>
+              {editingKey !== k && (
+                <button onClick={() => { setEditingKey(k); setEditData(v || { title: '', hero: '', subtitle: '', description: '' }); }} style={editButtonStyle}>✏️ ویرایش</button>
               )}
             </div>
-            {ek === k ? (
+            {editingKey === k ? (
               <>
-                <input value={ed.title} onChange={(e) => { const d = { ...ed, title: e.target.value }; sd(d); db(k, d); }} style={IS} placeholder="عنوان" />
-                <input value={ed.hero} onChange={(e) => { const d = { ...ed, hero: e.target.value }; sd(d); db(k, d); }} style={IS} placeholder="متن اصلی" />
-                <input value={ed.subtitle} onChange={(e) => { const d = { ...ed, subtitle: e.target.value }; sd(d); db(k, d); }} style={IS} placeholder="زیرعنوان" />
-                <textarea value={ed.description} onChange={(e) => { const d = { ...ed, description: e.target.value }; sd(d); db(k, d); }} rows={5} style={{ ...IS, resize: 'vertical', minHeight: 100 }} placeholder="توضیحات" />
+                <input value={editData.title} onChange={(e) => { const d = { ...editData, title: e.target.value }; setEditData(d); debounceSave(k, d); }} style={inputStyle} placeholder="عنوان" />
+                <input value={editData.hero} onChange={(e) => { const d = { ...editData, hero: e.target.value }; setEditData(d); debounceSave(k, d); }} style={inputStyle} placeholder="متن اصلی" />
+                <input value={editData.subtitle} onChange={(e) => { const d = { ...editData, subtitle: e.target.value }; setEditData(d); debounceSave(k, d); }} style={inputStyle} placeholder="زیرعنوان" />
+                <textarea value={editData.description} onChange={(e) => { const d = { ...editData, description: e.target.value }; setEditData(d); debounceSave(k, d); }} rows={5} style={{ ...inputStyle, resize: 'vertical', minHeight: 100 }} placeholder="توضیحات" />
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={sv} className="btn btn-primary" style={{ fontSize: '0.8125rem', padding: '8px 16px' }}>💾 ذخیره</button>
-                  <button onClick={() => se(null)} className="btn btn-ghost" style={{ fontSize: '0.8125rem', padding: '8px 16px' }}>انصراف</button>
+                  <button onClick={onSave} className="btn btn-primary" style={{ fontSize: '0.8125rem', padding: '8px 16px' }}>💾 ذخیره</button>
+                  <button onClick={() => setEditingKey(null)} className="btn btn-ghost" style={{ fontSize: '0.8125rem', padding: '8px 16px' }}>انصراف</button>
                 </div>
-                <div style={PVS}>
+                <div style={previewStyle}>
                   <span style={{ fontSize: '0.75rem', color: 'var(--brand-gold)', fontWeight: 600 }}>🔍 پیش‌نمایش</span>
                   <div style={{ marginTop: 8, padding: 12, background: 'var(--surface-card)', borderRadius: 6 }}>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--brand-gold)' }}>{ed.title}</div>
-                    <div style={{ fontWeight: 700, fontSize: '1rem', margin: '4px 0' }}>{ed.hero || '—'}</div>
-                    <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{ed.subtitle || '—'}</div>
-                    <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.7, borderTop: '1px solid var(--border-subtle)', paddingTop: 8 }}>{ed.description || '—'}</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--brand-gold)' }}>{editData.title}</div>
+                    <div style={{ fontWeight: 700, fontSize: '1rem', margin: '4px 0' }}>{editData.hero || '—'}</div>
+                    <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{editData.subtitle || '—'}</div>
+                    <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.8125rem', color: 'var(--text-secondary)', lineHeight: 1.7, borderTop: '1px solid var(--border-subtle)', paddingTop: 8 }}>{editData.description || '—'}</div>
                   </div>
                 </div>
               </>
@@ -479,16 +494,16 @@ function CT({ ac, af, ek, se, ed, sd, db, sv, loading }: any) {
               <>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 8 }}>
                   <div>
-                    <span style={LB}>Hero</span>
+                    <span style={labelStyle}>Hero</span>
                     <div style={{ fontSize: '0.9375rem', color: 'var(--text-secondary)' }}>{v?.hero || '—'}</div>
                   </div>
                   <div>
-                    <span style={LB}>زیرعنوان</span>
+                    <span style={labelStyle}>زیرعنوان</span>
                     <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{v?.subtitle || '—'}</div>
                   </div>
                 </div>
                 <div>
-                  <span style={LB}>توضیحات</span>
+                  <span style={labelStyle}>توضیحات</span>
                   <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.8, maxHeight: 80, overflow: 'hidden' }}>
                     {v?.description?.substring(0, 200) || '—'}{(v?.description?.length || 0) > 200 ? '...' : ''}
                   </div>
@@ -502,12 +517,19 @@ function CT({ ac, af, ek, se, ed, sd, db, sv, loading }: any) {
   );
 }
 
-function UT({ users, q, sq, ldU, up, loading }: any) {
+function UsersTable({ users, searchQuery, setSearchQuery, loadUsers, usersPage, loading }: {
+  users: PaginatedResponse<UserRow> | null;
+  searchQuery: string;
+  setSearchQuery: (q: string) => void;
+  loadUsers: (p?: number) => void;
+  usersPage: number;
+  loading: boolean;
+}) {
   return (
     <div>
       <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
-        <input value={q} onChange={(e) => sq(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && ldU(1)} placeholder="جستجو..." style={{ ...IS, flex: 1 }} />
-        <button onClick={() => ldU(1)} className="btn btn-primary" style={{ fontSize: '0.8125rem', padding: '10px 18px' }}>جستجو</button>
+        <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && loadUsers(1)} placeholder="جستجو..." style={{ ...inputStyle, flex: 1 }} />
+        <button onClick={() => loadUsers(1)} className="btn btn-primary" style={{ fontSize: '0.8125rem', padding: '10px 18px' }}>جستجو</button>
       </div>
       {loading && !users ? (
         <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>در حال بارگذاری…</div>
@@ -516,30 +538,30 @@ function UT({ users, q, sq, ldU, up, loading }: any) {
       ) : (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ overflowX: 'auto' }}>
-            <table style={TB}>
+            <table style={tableStyle}>
               <thead>
-                <tr style={TR}>
-                  {(['نام', 'شماره', 'نقش', 'وضعیت', 'تأیید', 'تاریخ'] as string[]).map((x) => (
-                    <th key={x} style={TH}>{x}</th>
+                <tr style={tableRowStyle}>
+                  {(['نام', 'شماره', 'نقش', 'وضعیت', 'تأیید', 'تاریخ'] as string[]).map((header) => (
+                    <th key={header} style={tableHeadStyle}>{header}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {users.data.map((u: any) => (
-                  <tr key={u.id} style={TR}>
+                {users.data.map((user) => (
+                  <tr key={user.id} style={tableRowStyle}>
                     {(
                       [
-                        u.firstName || u.lastName ? `${u.firstName || ''} ${u.lastName || ''}` : '---',
-                        <span dir="ltr">{u.phone}</span>,
-                        <span className={`badge ${u.role === 'SUPER_ADMIN' ? 'badge-error' : u.role === 'ADMIN' ? 'badge-gold' : 'badge-success'}`}>
-                          {u.role === 'SUPER_ADMIN' ? 'سوپر' : u.role === 'ADMIN' ? 'ادمین' : 'کاربر'}
+                        user.firstName || user.lastName ? `${user.firstName || ''} ${user.lastName || ''}` : '---',
+                        <span dir="ltr">{user.phone}</span>,
+                        <span className={`badge ${user.role === 'SUPER_ADMIN' ? 'badge-error' : user.role === 'ADMIN' ? 'badge-gold' : 'badge-success'}`}>
+                          {user.role === 'SUPER_ADMIN' ? 'سوپر' : user.role === 'ADMIN' ? 'ادمین' : 'کاربر'}
                         </span>,
-                        <span style={{ fontSize: '0.8125rem', color: u.isActive ? '#22c55e' : '#ef4444' }}>{u.isActive ? 'فعال' : 'غیرفعال'}</span>,
-                        u.phoneVerified ? '✅' : '⏳',
-                        new Date(u.createdAt).toLocaleDateString('fa-IR'),
-                      ] as any[]
-                    ).map((c: any, j: number) => (
-                      <td key={j} style={TD}>{c}</td>
+                        <span style={{ fontSize: '0.8125rem', color: user.isActive ? '#22c55e' : '#ef4444' }}>{user.isActive ? 'فعال' : 'غیرفعال'}</span>,
+                        user.phoneVerified ? '✅' : '⏳',
+                        new Date(user.createdAt).toLocaleDateString('fa-IR'),
+                      ] as React.ReactNode[]
+                    ).map((cell, cellIndex) => (
+                      <td key={cellIndex} style={tableDataStyle}>{cell}</td>
                     ))}
                   </tr>
                 ))}
@@ -547,11 +569,11 @@ function UT({ users, q, sq, ldU, up, loading }: any) {
             </table>
           </div>
           {users.total > 15 && (
-            <div style={PG}>
-              <span>صفحه {up} از {Math.ceil(users.total / 15)}</span>
-              <div style={PGB}>
-                <B onClick={() => ldU(up - 1)} disabled={up <= 1}>قبلی</B>
-                <B onClick={() => ldU(up + 1)} disabled={up * 15 >= users.total}>بعدی</B>
+            <div style={paginationStyle}>
+              <span>صفحه {usersPage} از {Math.ceil(users.total / 15)}</span>
+              <div style={paginationButtonsStyle}>
+                <PaginationButton onClick={() => loadUsers(usersPage - 1)} disabled={usersPage <= 1}>قبلی</PaginationButton>
+                <PaginationButton onClick={() => loadUsers(usersPage + 1)} disabled={usersPage * 15 >= users.total}>بعدی</PaginationButton>
               </div>
             </div>
           )}
@@ -561,32 +583,37 @@ function UT({ users, q, sq, ldU, up, loading }: any) {
   );
 }
 
-function AT({ logs, ldL, ap, loading }: any) {
+function AuditTable({ logs, loadLogs, auditPage, loading }: {
+  logs: PaginatedResponse<AuditLog> | null;
+  loadLogs: (p?: number) => void;
+  auditPage: number;
+  loading: boolean;
+}) {
   if (loading && !logs) return <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>در حال بارگذاری…</div>;
   if (!logs || !logs.data?.length) return <Empty label="گزارشی ثبت نشده است" />;
   return (
     <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
       <div style={{ overflowX: 'auto' }}>
-        <table style={TB}>
+        <table style={tableStyle}>
           <thead>
-            <tr style={TR}>
-              {(['کاربر', 'عملیات', 'نوع', 'تاریخ'] as string[]).map((x) => (
-                <th key={x} style={TH}>{x}</th>
+            <tr style={tableRowStyle}>
+              {(['کاربر', 'عملیات', 'نوع', 'تاریخ'] as string[]).map((header) => (
+                <th key={header} style={tableHeadStyle}>{header}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {logs.data.map((l: any) => (
-              <tr key={l.id} style={TR}>
+            {logs.data.map((log) => (
+              <tr key={log.id} style={tableRowStyle}>
                 {(
                   [
-                    l.user ? `${l.user.firstName || ''} ${l.user.lastName || ''}` : '—',
-                    <span className="badge badge-gold">{l.action}</span>,
-                    l.entityType,
-                    new Date(l.createdAt).toLocaleString('fa-IR'),
-                  ] as any[]
-                ).map((c: any, j: number) => (
-                  <td key={j} style={TD}>{c}</td>
+                    log.user ? `${log.user.firstName || ''} ${log.user.lastName || ''}` : '—',
+                    <span className="badge badge-gold">{log.action}</span>,
+                    log.entityType,
+                    new Date(log.createdAt).toLocaleString('fa-IR'),
+                  ] as React.ReactNode[]
+                ).map((cell, cellIndex) => (
+                  <td key={cellIndex} style={tableDataStyle}>{cell}</td>
                 ))}
               </tr>
             ))}
@@ -594,11 +621,11 @@ function AT({ logs, ldL, ap, loading }: any) {
         </table>
       </div>
       {logs.total > 15 && (
-        <div style={PG}>
-          <span>صفحه {ap} از {Math.ceil(logs.total / 15)}</span>
-          <div style={PGB}>
-            <B onClick={() => ldL(ap - 1)} disabled={ap <= 1}>قبلی</B>
-            <B onClick={() => ldL(ap + 1)} disabled={ap * 15 >= logs.total}>بعدی</B>
+        <div style={paginationStyle}>
+          <span>صفحه {auditPage} از {Math.ceil(logs.total / 15)}</span>
+          <div style={paginationButtonsStyle}>
+            <PaginationButton onClick={() => loadLogs(auditPage - 1)} disabled={auditPage <= 1}>قبلی</PaginationButton>
+            <PaginationButton onClick={() => loadLogs(auditPage + 1)} disabled={auditPage * 15 >= logs.total}>بعدی</PaginationButton>
           </div>
         </div>
       )}
@@ -606,7 +633,7 @@ function AT({ logs, ldL, ap, loading }: any) {
   );
 }
 
-function B({ onClick, disabled, children }: any) {
+function PaginationButton({ onClick, disabled, children }: { onClick: () => void; disabled?: boolean; children: React.ReactNode }) {
   return (
     <button
       onClick={onClick}
@@ -628,110 +655,143 @@ function B({ onClick, disabled, children }: any) {
   );
 }
 
-function CSComp({csvs,cbks,ecv,secv,ncv,sncv,sh,ldCS,IS,IS2,EB}:any){
-const sv=async()=>{if(!ncv.name.trim()||!ncv.description.trim()){sh('\u0646\u0627\u0645 \u0648 \u062a\u0648\u0636\u06cc\u062d \u0631\u0627 \u067e\u0631 \u06a9\u0646\u06cc\u062f');return}try{if(ecv){await adminApi.updateConsultationService(ecv.id,{name:ncv.name,description:ncv.description,duration:ncv.duration,price:ncv.price||undefined,isActive:ncv.isActive,sortOrder:ncv.sortOrder});sh('\u0648\u06cc\u0631\u0627\u06cc\u0634 \u0634\u062f \u2705')}else{await adminApi.createConsultationService({name:ncv.name,slug:ncv.slug,description:ncv.description,duration:ncv.duration,price:ncv.price||undefined,isActive:ncv.isActive,sortOrder:ncv.sortOrder});sh('\u0627\u0641\u0632\u0648\u062f\u0647 \u0634\u062f \u2705')}secv(null);sncv({name:'',slug:'',description:'',duration:30,price:0,isActive:true,sortOrder:0});ldCS()}catch{sh('\u062e\u0637\u0627 \u274c')}};
-const dl=async(id:string)=>{if(!confirm('\u062d\u0630\u0641 \u0634\u0648\u062f\u061f'))return;try{await adminApi.deleteConsultationService(id);sh('\u062d\u0630\u0641 \u0634\u062f \u2705');ldCS()}catch{sh('\u062e\u0637\u0627 \u274c')}};
+function ConsultationManager({services,bookings,editingService,setEditingService,newService,setNewService,showToast,reload,inputStyle,textareaStyle,editButtonStyle}:{
+  services: ConsultationService[];
+  bookings: ConsultationBooking[];
+  editingService: ConsultationService | null;
+  setEditingService: (s: ConsultationService | null) => void;
+  newService: { name: string; slug: string; description: string; duration: number; price: number; isActive: boolean; sortOrder: number };
+  setNewService: (s: { name: string; slug: string; description: string; duration: number; price: number; isActive: boolean; sortOrder: number }) => void;
+  showToast: (m: string) => void;
+  reload: () => void;
+  inputStyle: React.CSSProperties; textareaStyle: React.CSSProperties; editButtonStyle: React.CSSProperties;
+}){
+const saveService=async()=>{if(!newService.name.trim()||!newService.description.trim()){showToast('\u0646\u0627\u0645 \u0648 \u062a\u0648\u0636\u06cc\u062d \u0631\u0627 \u067e\u0631 \u06a9\u0646\u06cc\u062f');return}try{if(editingService){await adminApi.updateConsultationService(editingService.id,{name:newService.name,description:newService.description,duration:newService.duration,price:newService.price||undefined,isActive:newService.isActive,sortOrder:newService.sortOrder});showToast('\u0648\u06cc\u0631\u0627\u06cc\u0634 \u0634\u062f \u2705')}else{await adminApi.createConsultationService({name:newService.name,slug:newService.slug,description:newService.description,duration:newService.duration,price:newService.price||undefined,isActive:newService.isActive,sortOrder:newService.sortOrder});showToast('\u0627\u0641\u0632\u0648\u062f\u0647 \u0634\u062f \u2705')}setEditingService(null);setNewService({name:'',slug:'',description:'',duration:30,price:0,isActive:true,sortOrder:0});reload()}catch{showToast('\u062e\u0637\u0627 \u274c')}};
+const deleteService=async(id:string)=>{if(!confirm('\u062d\u0630\u0641 \u0634\u0648\u062f\u061f'))return;try{await adminApi.deleteConsultationService(id);showToast('\u062d\u0630\u0641 \u0634\u062f \u2705');reload()}catch{showToast('\u062e\u0637\u0627 \u274c')}};
 const fmtP=(p?:number|null)=>{if(!p||p===0)return'\u0631\u0627\u06cc\u06af\u0627\u0646';return new Intl.NumberFormat('fa-IR').format(p)+' \u062a\u0648\u0645\u0627\u0646'};
 return<div style={{display:'flex',flexDirection:'column',gap:24,maxWidth:920}}>
-<h3 style={{fontWeight:700,fontSize:'1.125rem'}}>\ud83d\udcc5 \u0645\u062f\u06cc\u0631\u06cc\u062a \u062e\u062f\u0645\u0627\u062a \u0645\u0634\u0627\u0648\u0631\u0647 ({csvs.length})</h3>
+<h3 style={{fontWeight:700,fontSize:'1.125rem'}}>\ud83d\udcc5 \u0645\u062f\u06cc\u0631\u06cc\u062a \u062e\u062f\u0645\u0627\u062a \u0645\u0634\u0627\u0648\u0631\u0647 ({services.length})</h3>
 <div className="card" style={{padding:20}}>
-<h4 style={{fontWeight:700,marginBottom:14}}>{ecv?'\u270f\ufe0f \u0648\u06cc\u0631\u0627\u06cc\u0634 \u062e\u062f\u0645\u062a':'\u2795 \u062e\u062f\u0645\u062a \u0645\u0634\u0627\u0648\u0631\u0647 \u062c\u062f\u06cc\u062f'}</h4>
+<h4 style={{fontWeight:700,marginBottom:14}}>{editingService?'\u270f\ufe0f \u0648\u06cc\u0631\u0627\u06cc\u0634 \u062e\u062f\u0645\u062a':'\u2795 \u062e\u062f\u0645\u062a \u0645\u0634\u0627\u0648\u0631\u0647 \u062c\u062f\u06cc\u062f'}</h4>
 <div style={{display:'flex',flexDirection:'column',gap:10}}>
-<input value={ncv.name} onChange={e=>sncv({...ncv,name:e.target.value})} style={IS} placeholder="\u0646\u0627\u0645 \u062e\u062f\u0645\u062a (\u0645\u062b\u0627\u0644: \u0645\u0634\u0627\u0648\u0631\u0647 \u062a\u0644\u0641\u0646\u06cc)"/>
-<input value={ncv.slug} onChange={e=>sncv({...ncv,slug:e.target.value})} style={IS} placeholder="\u0646\u0634\u0627\u0646 (\u0627\u062e\u062a\u06cc\u0627\u0631\u06cc \u2014 \u062e\u0648\u062f\u06a9\u0627\u0631)"/>
-<textarea value={ncv.description} onChange={e=>sncv({...ncv,description:e.target.value})} style={IS2} placeholder="\u062a\u0648\u0636\u06cc\u062d\u0627\u062a \u062e\u062f\u0645\u062a"/>
+<input value={newService.name} onChange={e=>setNewService({...newService,name:e.target.value})} style={inputStyle} placeholder="\u0646\u0627\u0645 \u062e\u062f\u0645\u062a (\u0645\u062b\u0627\u0644: \u0645\u0634\u0627\u0648\u0631\u0647 \u062a\u0644\u0641\u0646\u06cc)"/>
+<input value={newService.slug} onChange={e=>setNewService({...newService,slug:e.target.value})} style={inputStyle} placeholder="\u0646\u0634\u0627\u0646 (\u0627\u062e\u062a\u06cc\u0627\u0631\u06cc \u2014 \u062e\u0648\u062f\u06a9\u0627\u0631)"/>
+<textarea value={newService.description} onChange={e=>setNewService({...newService,description:e.target.value})} style={textareaStyle} placeholder="\u062a\u0648\u0636\u06cc\u062d\u0627\u062a \u062e\u062f\u0645\u062a"/>
 <div style={{display:'flex',gap:10,alignItems:'center'}}>
-<input type="number" value={ncv.duration} onChange={e=>sncv({...ncv,duration:+e.target.value})} style={{...IS,width:120}} placeholder="\u0632\u0645\u0627\u0646 (\u062f\u0642\u06cc\u0642\u0647)"/>
-<input type="number" value={ncv.price} onChange={e=>sncv({...ncv,price:+e.target.value})} style={{...IS,width:150}} placeholder="\u0642\u06cc\u0645\u062a (\u062a\u0648\u0645\u0627\u0646)"/>
-<input type="number" value={ncv.sortOrder} onChange={e=>sncv({...ncv,sortOrder:+e.target.value})} style={{...IS,width:100}} placeholder="\u062a\u0631\u062a\u06cc\u0628"/>
-<label style={{display:'flex',alignItems:'center',gap:6,fontSize:'0.875rem',color:'var(--text-muted)'}}><input type="checkbox" checked={ncv.isActive} onChange={e=>sncv({...ncv,isActive:e.target.checked})}/> \u0641\u0639\u0627\u0644</label>
-<button onClick={sv} className="btn btn-primary" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>{ecv?'\ud83d\udcbe \u0630\u062e\u06cc\u0631\u0647':'\u2795 \u0627\u0641\u0632\u0648\u062f\u0646'}</button>
-{ecv&&<button onClick={()=>{secv(null);sncv({name:'',slug:'',description:'',duration:30,price:0,isActive:true,sortOrder:0})}} className="btn btn-ghost" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>\u0627\u0646\u0635\u0631\u0627\u0641</button>}
+<input type="number" value={newService.duration} onChange={e=>setNewService({...newService,duration:+e.target.value})} style={{...inputStyle,width:120}} placeholder="\u0632\u0645\u0627\u0646 (\u062f\u0642\u06cc\u0642\u0647)"/>
+<input type="number" value={newService.price} onChange={e=>setNewService({...newService,price:+e.target.value})} style={{...inputStyle,width:150}} placeholder="\u0642\u06cc\u0645\u062a (\u062a\u0648\u0645\u0627\u0646)"/>
+<input type="number" value={newService.sortOrder} onChange={e=>setNewService({...newService,sortOrder:+e.target.value})} style={{...inputStyle,width:100}} placeholder="\u062a\u0631\u062a\u06cc\u0628"/>
+<label style={{display:'flex',alignItems:'center',gap:6,fontSize:'0.875rem',color:'var(--text-muted)'}}><input type="checkbox" checked={newService.isActive} onChange={e=>setNewService({...newService,isActive:e.target.checked})}/> \u0641\u0639\u0627\u0644</label>
+<button onClick={saveService} className="btn btn-primary" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>{editingService?'\ud83d\udcbe \u0630\u062e\u06cc\u0631\u0647':'\u2795 \u0627\u0641\u0632\u0648\u062f\u0646'}</button>
+{editingService&&<button onClick={()=>{setEditingService(null);setNewService({name:'',slug:'',description:'',duration:30,price:0,isActive:true,sortOrder:0})}} className="btn btn-ghost" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>\u0627\u0646\u0635\u0631\u0627\u0641</button>}
 </div>
 </div>
 </div>
 <div style={{display:'flex',flexDirection:'column',gap:8}}>
-{csvs.map((s:any)=><div key={s.id} className="glass-card" style={{padding:14}}>
+{services.map((service)=><div key={service.id} className="glass-card" style={{padding:14}}>
 <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
 <div style={{flex:1}}>
 <div style={{display:'flex',alignItems:'center',gap:8}}>
-<span style={{fontWeight:600,fontSize:'0.9375rem'}}>{s.name}</span>
-<span className={s.isActive?'badge badge-success':'badge badge-error'} style={{fontSize:'0.7rem'}}>{s.isActive?'\u0641\u0639\u0627\u0644':'\u063a\u06cc\u0631\u0641\u0639\u0627\u0644'}</span>
+<span style={{fontWeight:600,fontSize:'0.9375rem'}}>{service.name}</span>
+<span className={service.isActive?'badge badge-success':'badge badge-error'} style={{fontSize:'0.7rem'}}>{service.isActive?'\u0641\u0639\u0627\u0644':'\u063a\u06cc\u0631\u0641\u0639\u0627\u0644'}</span>
 </div>
-<div style={{fontSize:'0.8125rem',color:'var(--text-secondary)',marginTop:4,lineHeight:1.6}}>{s.description?.substring(0,150)}</div>
+<div style={{fontSize:'0.8125rem',color:'var(--text-secondary)',marginTop:4,lineHeight:1.6}}>{service.description?.substring(0,150)}</div>
 <div style={{display:'flex',gap:12,marginTop:8,alignItems:'center'}}>
-<span style={{fontSize:'0.8125rem',color:'var(--brand-gold)',fontWeight:600}}>{fmtP(s.price)}</span>
-<span style={{fontSize:'0.75rem',color:'var(--text-muted)'}}>\u23f1 {s.duration} \u062f\u0642\u06cc\u0642\u0647</span>
+<span style={{fontSize:'0.8125rem',color:'var(--brand-gold)',fontWeight:600}}>{fmtP(service.price)}</span>
+<span style={{fontSize:'0.75rem',color:'var(--text-muted)'}}>\u23f1 {service.duration} \u062f\u0642\u06cc\u0642\u0647</span>
 </div>
 </div>
 <div style={{display:'flex',gap:6,flexShrink:0}}>
-<button onClick={()=>{secv(s);sncv({name:s.name,slug:s.slug,description:s.description,duration:s.duration,price:s.price||0,isActive:s.isActive,sortOrder:s.sortOrder})}} style={EB}>\u270f\ufe0f</button>
-<button onClick={()=>dl(s.id)} style={{...EB,color:'#ef4444'}}>\ud83d\uddd1</button>
+<button onClick={()=>{setEditingService(service);setNewService({name:service.name,slug:service.slug,description:service.description,duration:service.duration,price:service.price||0,isActive:service.isActive,sortOrder:service.sortOrder})}} style={editButtonStyle}>\u270f\ufe0f</button>
+<button onClick={()=>deleteService(service.id)} style={{...editButtonStyle,color:'#ef4444'}}>\ud83d\uddd1</button>
 </div>
 </div>
 </div>)}
-{csvs.length===0&&<div style={{textAlign:'center',padding:20,color:'var(--text-muted)'}}>\u062e\u062f\u0645\u0627\u062a \u0645\u0634\u0627\u0648\u0631\u0647\u200c\u0627\u06cc \u0648\u062c\u0648\u062f \u0646\u062f\u0627\u0631\u062f \u2014 \u0627\u0648\u0644\u06cc\u0646 \u062e\u062f\u0645\u062a \u0631\u0627 \u0627\u0636\u0627\u0641\u0647 \u06a9\u0646\u06cc\u062f</div>}
+{services.length===0&&<div style={{textAlign:'center',padding:20,color:'var(--text-muted)'}}>\u062e\u062f\u0645\u0627\u062a \u0645\u0634\u0627\u0648\u0631\u0647\u200c\u0627\u06cc \u0648\u062c\u0648\u062f \u0646\u062f\u0627\u0631\u062f \u2014 \u0627\u0648\u0644\u06cc\u0646 \u062e\u062f\u0645\u062a \u0631\u0627 \u0627\u0636\u0627\u0641\u0647 \u06a9\u0646\u06cc\u062f</div>}
 </div>
-<h3 style={{fontWeight:700,fontSize:'1.125rem',marginTop:8}}>\ud83d\udcc5 \u0631\u0632\u0631\u0648\u0647\u0627\u06cc \u0645\u0634\u0627\u0648\u0631\u0647 ({cbks?.length||0})</h3>
+<h3 style={{fontWeight:700,fontSize:'1.125rem',marginTop:8}}>\ud83d\udcc5 \u0631\u0632\u0631\u0648\u0647\u0627\u06cc \u0645\u0634\u0627\u0648\u0631\u0647 ({bookings?.length||0})</h3>
 <div style={{display:'flex',flexDirection:'column',gap:8}}>
-{(cbks||[]).map((b:any)=><div key={b.id} className="glass-card" style={{padding:14}}>
+{(bookings||[]).map((booking)=><div key={booking.id} className="glass-card" style={{padding:14}}>
 <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:10,flexWrap:'wrap'}}>
 <div style={{flex:1,minWidth:200}}>
 <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-<span style={{fontWeight:600,fontSize:'0.9375rem'}}>{b.service?.name||'\u0646\u0627\u0645\u0634\u0646\u0627\u0633'}</span>
-<span className={b.status==='CONFIRMED'?'badge badge-success':b.status==='PENDING'?'badge badge-warning':'badge badge-error'} style={{fontSize:'0.7rem'}}>{b.status==='CONFIRMED'?'\u062a\u0627\u06cc\u06cc\u062f \u0634\u062f\u0647':b.status==='PENDING'?'\u062f\u0631 \u0627\u0646\u062a\u0638\u0627\u0631':'\u0644\u063a\u0648 \u0634\u062f\u0647'}</span>
-<span className={b.paymentStatus==='PAID'?'badge badge-success':b.paymentStatus==='PENDING'?'badge badge-warning':'badge badge-error'} style={{fontSize:'0.7rem'}}>{b.paymentStatus==='PAID'?'\u067e\u0631\u062f\u0627\u062e\u062a \u0634\u062f\u0647':b.paymentStatus==='PENDING'?'\u067e\u0631\u062f\u0627\u062e\u062a \u062f\u0631 \u0627\u0646\u062a\u0638\u0627\u0631':'\u067e\u0631\u062f\u0627\u062e\u062a \u0646\u0634\u062f\u0647'}</span>
+<span style={{fontWeight:600,fontSize:'0.9375rem'}}>{booking.service?.name||'\u0646\u0627\u0645\u0634\u0646\u0627\u0633'}</span>
+<span className={booking.status==='CONFIRMED'?'badge badge-success':booking.status==='PENDING'?'badge badge-warning':'badge badge-error'} style={{fontSize:'0.7rem'}}>{booking.status==='CONFIRMED'?'\u062a\u0627\u06cc\u06cc\u062f \u0634\u062f\u0647':booking.status==='PENDING'?'\u062f\u0631 \u0627\u0646\u062a\u0638\u0627\u0631':'\u0644\u063a\u0648 \u0634\u062f\u0647'}</span>
+<span className={booking.paymentStatus==='PAID'?'badge badge-success':booking.paymentStatus==='PENDING'?'badge badge-warning':'badge badge-error'} style={{fontSize:'0.7rem'}}>{booking.paymentStatus==='PAID'?'\u067e\u0631\u062f\u0627\u062e\u062a \u0634\u062f\u0647':booking.paymentStatus==='PENDING'?'\u067e\u0631\u062f\u0627\u062e\u062a \u062f\u0631 \u0627\u0646\u062a\u0638\u0627\u0631':'\u067e\u0631\u062f\u0627\u062e\u062a \u0646\u0634\u062f\u0647'}</span>
 </div>
-<div style={{fontSize:'0.8125rem',color:'var(--text-secondary)',marginTop:4,lineHeight:1.6}}>{b.notes||'\u0628\u062f\u0648\u0646 \u062a\u0648\u0636\u06cc\u062d\u0627\u062a'}</div>
+<div style={{fontSize:'0.8125rem',color:'var(--text-secondary)',marginTop:4,lineHeight:1.6}}>{booking.notes||'\u0628\u062f\u0648\u0646 \u062a\u0648\u0636\u06cc\u062d\u0627\u062a'}</div>
 <div style={{display:'flex',gap:12,marginTop:6,alignItems:'center',flexWrap:'wrap'}}>
-<span style={{fontSize:'0.75rem',color:'var(--text-muted)'}}>\ud83d\udcde {b.phone}</span>
-{b.amount!=null&&<span style={{fontSize:'0.8125rem',color:'var(--brand-gold)',fontWeight:600}}>{fmtP(b.amount)}</span>}
-{b.receiptUrl&&<a href={b.receiptUrl} target="_blank" rel="noopener noreferrer" style={{fontSize:'0.75rem',color:'var(--brand-gold)'}}>\ud83d\udcc4 \u0631\u0633\u06cc\u062f</a>}
+<span style={{fontSize:'0.75rem',color:'var(--text-muted)'}}>\ud83d\udcde {booking.phone}</span>
+{booking.amount!=null&&<span style={{fontSize:'0.8125rem',color:'var(--brand-gold)',fontWeight:600}}>{fmtP(booking.amount)}</span>}
+{booking.receiptUrl&&<a href={booking.receiptUrl} target="_blank" rel="noopener noreferrer" style={{fontSize:'0.75rem',color:'var(--brand-gold)'}}>\ud83d\udcc4 \u0631\u0633\u06cc\u062f</a>}
 </div>
 </div>
 </div>
 </div>)}
-{(cbks||[]).length===0&&<div style={{textAlign:'center',padding:20,color:'var(--text-muted)'}}>\u0631\u0632\u0631\u0648\u06cc \u0628\u0631\u0627\u06cc \u0646\u0645\u0627\u06cc\u0634 \u0648\u062c\u0648\u062f \u0646\u062f\u0627\u0631\u062f</div>}
+{(bookings||[]).length===0&&<div style={{textAlign:'center',padding:20,color:'var(--text-muted)'}}>\u0631\u0632\u0631\u0648\u06cc \u0628\u0631\u0627\u06cc \u0646\u0645\u0627\u06cc\u0634 \u0648\u062c\u0648\u062f \u0646\u062f\u0627\u0631\u062f</div>}
 </div>
 </div>}
 
-function TaxLaws({taxTopics,taxSources,taxRules,etxTopic,setEtxTopic,ntxTopic,setNtxTopic,etxSource,setEtxSource,ntxSource,setNtxSource,etxRule,setEtxRule,ntxRule,setNtxRule,txSubTab,setTxSubTab,sh,ldTxLaws,IS,IS2,EB}:any){
+function TaxLawsManager({taxTopics,taxSources,taxRules,editingTopic,setEditingTopic,newTopic,setNewTopic,editingSource,setEditingSource,newSource,setNewSource,editingRule,setEditingRule,newRule,setNewRule,txSubTab,setTxSubTab,showToast,reload,inputStyle,textareaStyle,editButtonStyle}:{
+  taxTopics: TaxTopic[];
+  taxSources: TaxSource[];
+  taxRules: TaxRule[];
+  editingTopic: TaxTopic | null;
+  setEditingTopic: (t: TaxTopic | null) => void;
+  newTopic: { name: string; slug: string; description: string; sortOrder: number; isActive: boolean };
+  setNewTopic: (t: { name: string; slug: string; description: string; sortOrder: number; isActive: boolean }) => void;
+  editingSource: TaxSource | null;
+  setEditingSource: (s: TaxSource | null) => void;
+  newSource: { name: string; url: string; officialName: string; description: string; isActive: boolean };
+  setNewSource: (s: { name: string; url: string; officialName: string; description: string; isActive: boolean }) => void;
+  editingRule: TaxRule | null;
+  setEditingRule: (r: TaxRule | null) => void;
+  newRule: { topicId: string; name: string; slug: string; description: string; content: string; sourceId: string; effectiveFrom: string; status: TaxRuleStatus };
+  setNewRule: (r: { topicId: string; name: string; slug: string; description: string; content: string; sourceId: string; effectiveFrom: string; status: TaxRuleStatus }) => void;
+  txSubTab: 'rules' | 'topics' | 'sources';
+  setTxSubTab: (t: 'rules' | 'topics' | 'sources') => void;
+  showToast: (m: string) => void;
+  reload: () => void;
+  inputStyle: React.CSSProperties;
+  textareaStyle: React.CSSProperties;
+  editButtonStyle: React.CSSProperties;
+}){
 const subBtn=(id:string,label:string)=>({
 padding:'10px 18px',fontSize:'0.875rem',fontWeight:600,cursor:'pointer',fontFamily:'Vazirmatn',
 border:'none',borderBottom:txSubTab===id?'2px solid var(--brand-gold)':'2px solid transparent',
 background:'none',color:txSubTab===id?'var(--brand-gold)':'var(--text-muted)'});
 
 // ---- Topics CRUD ----
-const svTopic=async()=>{if(!ntxTopic.name.trim()){sh('نام موضوع را وارد کنید');return}try{
-if(etxTopic){await adminApi.updateTaxTopic(etxTopic.id,{name:ntxTopic.name,description:ntxTopic.description,sortOrder:ntxTopic.sortOrder,isActive:ntxTopic.isActive});sh('ویرایش شد ✅')}
-else{await adminApi.createTaxTopic({name:ntxTopic.name,slug:ntxTopic.slug,description:ntxTopic.description,sortOrder:ntxTopic.sortOrder,isActive:ntxTopic.isActive});sh('افزوده شد ✅')}
-setEtxTopic(null);setNtxTopic({name:'',slug:'',description:'',sortOrder:0,isActive:true});ldTxLaws()}catch(e:any){sh(e?.response?.data?.message||'خطا ❌')}};
-const dlTopic=async(id:string)=>{if(!confirm('حذف شود؟'))return;try{await adminApi.deleteTaxTopic(id);sh('حذف شد ✅');ldTxLaws()}catch(e:any){sh(e?.response?.data?.message||'خطا ❌')}};
+const saveTopic=async()=>{if(!newTopic.name.trim()){showToast('نام موضوع را وارد کنید');return}try{
+if(editingTopic){await adminApi.updateTaxTopic(editingTopic.id,{name:newTopic.name,description:newTopic.description,sortOrder:newTopic.sortOrder,isActive:newTopic.isActive});showToast('ویرایش شد ✅')}
+else{await adminApi.createTaxTopic({name:newTopic.name,slug:newTopic.slug,description:newTopic.description,sortOrder:newTopic.sortOrder,isActive:newTopic.isActive});showToast('افزوده شد ✅')}
+setEditingTopic(null);setNewTopic({name:'',slug:'',description:'',sortOrder:0,isActive:true});reload()}catch(e:unknown){const err=e as {response?:{data?:{message?:string}}};showToast(err?.response?.data?.message||'خطا ❌')}};
+const deleteTopic=async(id:string)=>{if(!confirm('حذف شود؟'))return;try{await adminApi.deleteTaxTopic(id);showToast('حذف شد ✅');reload()}catch(e:unknown){const err=e as {response?:{data?:{message?:string}}};showToast(err?.response?.data?.message||'خطا ❌')}};
 
 // ---- Sources CRUD ----
-const svSource=async()=>{if(!ntxSource.name.trim()){sh('نام منبع را وارد کنید');return}try{
-if(etxSource){await adminApi.updateTaxSource(etxSource.id,{name:ntxSource.name,url:ntxSource.url,officialName:ntxSource.officialName,description:ntxSource.description,isActive:ntxSource.isActive});sh('ویرایش شد ✅')}
-else{await adminApi.createTaxSource({name:ntxSource.name,url:ntxSource.url,officialName:ntxSource.officialName,description:ntxSource.description,isActive:ntxSource.isActive});sh('افزوده شد ✅')}
-setEtxSource(null);setNtxSource({name:'',url:'',officialName:'',description:'',isActive:true});ldTxLaws()}catch(e:any){sh(e?.response?.data?.message||'خطا ❌')}};
-const dlSource=async(id:string)=>{if(!confirm('حذف شود؟'))return;try{await adminApi.deleteTaxSource(id);sh('حذف شد ✅');ldTxLaws()}catch(e:any){sh(e?.response?.data?.message||'خطا ❌')}};
+const saveSource=async()=>{if(!newSource.name.trim()){showToast('نام منبع را وارد کنید');return}try{
+if(editingSource){await adminApi.updateTaxSource(editingSource.id,{name:newSource.name,url:newSource.url,officialName:newSource.officialName,description:newSource.description,isActive:newSource.isActive});showToast('ویرایش شد ✅')}
+else{await adminApi.createTaxSource({name:newSource.name,url:newSource.url,officialName:newSource.officialName,description:newSource.description,isActive:newSource.isActive});showToast('افزوده شد ✅')}
+setEditingSource(null);setNewSource({name:'',url:'',officialName:'',description:'',isActive:true});reload()}catch(e:unknown){const err=e as {response?:{data?:{message?:string}}};showToast(err?.response?.data?.message||'خطا ❌')}};
+const deleteSource=async(id:string)=>{if(!confirm('حذف شود؟'))return;try{await adminApi.deleteTaxSource(id);showToast('حذف شد ✅');reload()}catch(e:unknown){const err=e as {response?:{data?:{message?:string}}};showToast(err?.response?.data?.message||'خطا ❌')}};
 
 // ---- Rules CRUD ----
-const svRule=async()=>{if(!ntxRule.name.trim()||!ntxRule.content.trim()||!ntxRule.topicId||!ntxRule.sourceId||!ntxRule.effectiveFrom){sh('نام، متن قانون، موضوع، منبع و تاریخ اجرا را پر کنید');return}try{
-if(etxRule){await adminApi.updateTaxRule(etxRule.id,{topicId:ntxRule.topicId,name:ntxRule.name,description:ntxRule.description,status:ntxRule.status});sh('ویرایش شد ✅')}
-else{await adminApi.createTaxRule({topicId:ntxRule.topicId,name:ntxRule.name,slug:ntxRule.slug,description:ntxRule.description,content:ntxRule.content,sourceId:ntxRule.sourceId,effectiveFrom:ntxRule.effectiveFrom,status:ntxRule.status});sh('افزوده شد ✅')}
-setEtxRule(null);setNtxRule({topicId:'',name:'',slug:'',description:'',content:'',sourceId:'',effectiveFrom:'',status:'DRAFT'});ldTxLaws()}catch(e:any){sh(e?.response?.data?.message||'خطا ❌')}};
-const dlRule=async(id:string)=>{if(!confirm('حذف شود؟ این عمل تمام نسخه‌های قانون را حذف می‌کند.'))return;try{await adminApi.deleteTaxRule(id);sh('حذف شد ✅');ldTxLaws()}catch(e:any){sh(e?.response?.data?.message||'خطا ❌')}};
+const saveRule=async()=>{if(!newRule.name.trim()||!newRule.content.trim()||!newRule.topicId||!newRule.sourceId||!newRule.effectiveFrom){showToast('نام، متن قانون، موضوع، منبع و تاریخ اجرا را پر کنید');return}try{
+if(editingRule){await adminApi.updateTaxRule(editingRule.id,{topicId:newRule.topicId,name:newRule.name,description:newRule.description,status:newRule.status});showToast('ویرایش شد ✅')}
+else{await adminApi.createTaxRule({topicId:newRule.topicId,name:newRule.name,slug:newRule.slug,description:newRule.description,content:newRule.content,sourceId:newRule.sourceId,effectiveFrom:newRule.effectiveFrom,status:newRule.status});showToast('افزوده شد ✅')}
+setEditingRule(null);setNewRule({topicId:'',name:'',slug:'',description:'',content:'',sourceId:'',effectiveFrom:'',status:'DRAFT'});reload()}catch(e:unknown){const err=e as {response?:{data?:{message?:string}}};showToast(err?.response?.data?.message||'خطا ❌')}};
+const deleteRule=async(id:string)=>{if(!confirm('حذف شود؟ این عمل تمام نسخه‌های قانون را حذف می‌کند.'))return;try{await adminApi.deleteTaxRule(id);showToast('حذف شد ✅');reload()}catch(e:unknown){const err=e as {response?:{data?:{message?:string}}};showToast(err?.response?.data?.message||'خطا ❌')}};
 
 // ---- Publish a rule version ----
 const publishRule=async(ruleId:string)=>{if(!confirm('منتشر شود؟'))return;try{
-const rule=taxRules.find((r:any)=>r.id===ruleId);const latestVer=rule?.versions?.[0];
-if(!latestVer){sh('نسخه‌ای وجود ندارد ❌');return}
+const rule=taxRules.find((ruleItem)=>ruleItem.id===ruleId);const latestVer=rule?.versions?.[0];
+if(!latestVer){showToast('نسخه‌ای وجود ندارد ❌');return}
 await adminApi.updateTaxRuleVersion(latestVer.id,{status:'PUBLISHED'});
 await adminApi.updateTaxRule(ruleId,{status:'PUBLISHED'});
-sh('قانون منتشر شد ✅');ldTxLaws()}catch(e:any){sh(e?.response?.data?.message||'خطا ❌')}};
+showToast('قانون منتشر شد ✅');reload()}catch(e:unknown){const err=e as {response?:{data?:{message?:string}}};showToast(err?.response?.data?.message||'خطا ❌')}};
 
-const stl=(s:string)=>{const m:any={DRAFT:'badge-warning',REVIEW:'badge-gold',APPROVED:'badge-success',PUBLISHED:'badge-success',SUPERSEDED:'badge-error'};return m[s]||'badge-warning'};
-const stx=(s:string)=>{const m:any={DRAFT:'پیش‌نویس',REVIEW:'بررسی',APPROVED:'تأیید شده',PUBLISHED:'منتشر شده',SUPERSEDED:'منسوخ'};return m[s]||s};
+const statusBadgeClass=(s:string)=>{const m:Record<string,string>={DRAFT:'badge-warning',REVIEW:'badge-gold',APPROVED:'badge-success',PUBLISHED:'badge-success',SUPERSEDED:'badge-error'};return m[s]||'badge-warning'};
+const statusLabel=(s:string)=>{const m:Record<string,string>={DRAFT:'پیش‌نویس',REVIEW:'بررسی',APPROVED:'تأیید شده',PUBLISHED:'منتشر شده',SUPERSEDED:'منسوخ'};return m[s]||s};
 
 return<div style={{display:'flex',flexDirection:'column',gap:24,maxWidth:920}}>
 <h3 style={{fontWeight:700,fontSize:'1.125rem'}}>⚖️ مدیریت قوانین مالیاتی</h3>
@@ -743,49 +803,49 @@ return<div style={{display:'flex',flexDirection:'column',gap:24,maxWidth:920}}>
 
 {txSubTab==='rules'&&<>
 <div className="card" style={{padding:20}}>
-<h4 style={{fontWeight:700,marginBottom:14}}>{etxRule?'✏️ ویرایش قانون':'➕ قانون مالیاتی جدید'}</h4>
+<h4 style={{fontWeight:700,marginBottom:14}}>{editingRule?'✏️ ویرایش قانون':'➕ قانون مالیاتی جدید'}</h4>
 <div style={{display:'flex',flexDirection:'column',gap:10}}>
-<input value={ntxRule.name} onChange={e=>setNtxRule({...ntxRule,name:e.target.value})} style={IS} placeholder="نام قانون (مثال: نرخ مالیات حقوق ۱۴۰۵)"/>
-<input value={ntxRule.slug} onChange={e=>setNtxRule({...ntxRule,slug:e.target.value})} style={IS} placeholder="نشان (اختیاری — خودکار ساخته می‌شود)"/>
-<textarea value={ntxRule.description} onChange={e=>setNtxRule({...ntxRule,description:e.target.value})} style={IS2} placeholder="خلاصه قانون"/>
-<textarea value={ntxRule.content} onChange={e=>setNtxRule({...ntxRule,content:e.target.value})} style={{...IS2,minHeight:160}} placeholder="متن کامل قانون (نسخه اول)"/>
+<input value={newRule.name} onChange={e=>setNewRule({...newRule,name:e.target.value})} style={inputStyle} placeholder="نام قانون (مثال: نرخ مالیات حقوق ۱۴۰۵)"/>
+<input value={newRule.slug} onChange={e=>setNewRule({...newRule,slug:e.target.value})} style={inputStyle} placeholder="نشان (اختیاری — خودکار ساخته می‌شود)"/>
+<textarea value={newRule.description} onChange={e=>setNewRule({...newRule,description:e.target.value})} style={textareaStyle} placeholder="خلاصه قانون"/>
+<textarea value={newRule.content} onChange={e=>setNewRule({...newRule,content:e.target.value})} style={{...textareaStyle,minHeight:160}} placeholder="متن کامل قانون (نسخه اول)"/>
 <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
-<select value={ntxRule.topicId} onChange={e=>setNtxRule({...ntxRule,topicId:e.target.value})} style={{...IS,flex:1}}>
+<select value={newRule.topicId} onChange={e=>setNewRule({...newRule,topicId:e.target.value})} style={{...inputStyle,flex:1}}>
 <option value="">انتخاب موضوع...</option>
-{taxTopics.map((t:any)=><option key={t.id} value={t.id}>{t.name}</option>)}
+{taxTopics.map((topic)=><option key={topic.id} value={topic.id}>{topic.name}</option>)}
 </select>
-<select value={ntxRule.sourceId} onChange={e=>setNtxRule({...ntxRule,sourceId:e.target.value})} style={{...IS,flex:1}}>
+<select value={newRule.sourceId} onChange={e=>setNewRule({...newRule,sourceId:e.target.value})} style={{...inputStyle,flex:1}}>
 <option value="">انتخاب منبع...</option>
-{taxSources.map((s:any)=><option key={s.id} value={s.id}>{s.name}</option>)}
+{taxSources.map((source)=><option key={source.id} value={source.id}>{source.name}</option>)}
 </select>
 </div>
 <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
-<input type="date" value={ntxRule.effectiveFrom} onChange={e=>setNtxRule({...ntxRule,effectiveFrom:e.target.value})} style={{...IS,flex:1}} placeholder="تاریخ اجرا"/>
-<select value={ntxRule.status} onChange={e=>setNtxRule({...ntxRule,status:e.target.value})} style={{...IS,flex:1}}>
+<input type="date" value={newRule.effectiveFrom} onChange={e=>setNewRule({...newRule,effectiveFrom:e.target.value})} style={{...inputStyle,flex:1}} placeholder="تاریخ اجرا"/>
+<select value={newRule.status} onChange={e=>setNewRule({...newRule,status:e.target.value as TaxRuleStatus})} style={{...inputStyle,flex:1}}>
 <option value="DRAFT">پیش‌نویس</option><option value="REVIEW">بررسی</option><option value="APPROVED">تأیید شده</option><option value="PUBLISHED">منتشر شده</option>
 </select>
-<button onClick={svRule} className="btn btn-primary" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>{etxRule?'💾 ذخیره':'➕ افزودن قانون'}</button>
-{etxRule&&<button onClick={()=>{setEtxRule(null);setNtxRule({topicId:'',name:'',slug:'',description:'',content:'',sourceId:'',effectiveFrom:'',status:'DRAFT'})}} className="btn btn-ghost" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>انصراف</button>}
+<button onClick={saveRule} className="btn btn-primary" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>{editingRule?'💾 ذخیره':'➕ افزودن قانون'}</button>
+{editingRule&&<button onClick={()=>{setEditingRule(null);setNewRule({topicId:'',name:'',slug:'',description:'',content:'',sourceId:'',effectiveFrom:'',status:'DRAFT'})}} className="btn btn-ghost" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>انصراف</button>}
 </div>
 </div>
 </div>
 <div style={{display:'flex',flexDirection:'column',gap:8}}>
-{taxRules.map((r:any)=><div key={r.id} className="glass-card" style={{padding:14}}>
+{taxRules.map((rule)=><div key={rule.id} className="glass-card" style={{padding:14}}>
 <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
 <div style={{flex:1}}>
-<div style={{fontWeight:600,fontSize:'0.9375rem'}}>{r.name}</div>
-<div style={{fontSize:'0.75rem',color:'var(--text-muted)',marginTop:2}} dir="ltr">/{r.slug}</div>
-{r.description&&<div style={{fontSize:'0.8125rem',color:'var(--text-secondary)',marginTop:4,lineHeight:1.6}}>{r.description.substring(0,150)}</div>}
+<div style={{fontWeight:600,fontSize:'0.9375rem'}}>{rule.name}</div>
+<div style={{fontSize:'0.75rem',color:'var(--text-muted)',marginTop:2}} dir="ltr">/{rule.slug}</div>
+{rule.description&&<div style={{fontSize:'0.8125rem',color:'var(--text-secondary)',marginTop:4,lineHeight:1.6}}>{rule.description.substring(0,150)}</div>}
 <div style={{display:'flex',gap:6,marginTop:6,alignItems:'center',flexWrap:'wrap'}}>
-<span className={stl(r.status)} style={{fontSize:'0.7rem'}}>{stx(r.status)}</span>
-{r.topic&&<span style={{fontSize:'0.7rem',color:'var(--brand-gold)'}}>{r.topic.name}</span>}
-{r.versions?.[0]&&<span style={{fontSize:'0.7rem',color:'var(--text-muted)'}}>نسخه {r.versions[0].version}</span>}
+<span className={statusBadgeClass(rule.status)} style={{fontSize:'0.7rem'}}>{statusLabel(rule.status)}</span>
+{rule.topic&&<span style={{fontSize:'0.7rem',color:'var(--brand-gold)'}}>{rule.topic.name}</span>}
+{rule.versions?.[0]&&<span style={{fontSize:'0.7rem',color:'var(--text-muted)'}}>نسخه {rule.versions[0].version}</span>}
 </div>
 </div>
 <div style={{display:'flex',gap:6,flexShrink:0,alignItems:'center'}}>
-{r.status!=='PUBLISHED'&&<button onClick={()=>publishRule(r.id)} style={{...EB,color:'#22c55e'}}>📢 انتشار</button>}
-<button onClick={()=>{setEtxRule(r);setNtxRule({topicId:r.topicId,name:r.name,slug:r.slug,description:r.description||'',content:r.versions?.[0]?.content||'',sourceId:r.versions?.[0]?.sourceId||'',effectiveFrom:r.versions?.[0]?.effectiveFrom?new Date(r.versions[0].effectiveFrom).toISOString().split('T')[0]:'',status:r.status})}} style={EB}>✏️</button>
-<button onClick={()=>dlRule(r.id)} style={{...EB,color:'#ef4444'}}>🗑</button>
+{rule.status!=='PUBLISHED'&&<button onClick={()=>publishRule(rule.id)} style={{...editButtonStyle,color:'#22c55e'}}>📢 انتشار</button>}
+<button onClick={()=>{setEditingRule(rule);setNewRule({topicId:rule.topicId,name:rule.name,slug:rule.slug,description:rule.description||'',content:rule.versions?.[0]?.content||'',sourceId:rule.versions?.[0]?.sourceId||'',effectiveFrom:rule.versions?.[0]?.effectiveFrom?new Date(rule.versions[0].effectiveFrom).toISOString().split('T')[0]:'',status:rule.status})}} style={editButtonStyle}>✏️</button>
+<button onClick={()=>deleteRule(rule.id)} style={{...editButtonStyle,color:'#ef4444'}}>🗑</button>
 </div>
 </div>
 </div>)}
@@ -795,33 +855,33 @@ return<div style={{display:'flex',flexDirection:'column',gap:24,maxWidth:920}}>
 
 {txSubTab==='topics'&&<>
 <div className="card" style={{padding:20}}>
-<h4 style={{fontWeight:700,marginBottom:14}}>{etxTopic?'✏️ ویرایش موضوع':'➕ موضوع جدید'}</h4>
+<h4 style={{fontWeight:700,marginBottom:14}}>{editingTopic?'✏️ ویرایش موضوع':'➕ موضوع جدید'}</h4>
 <div style={{display:'flex',flexDirection:'column',gap:10}}>
-<input value={ntxTopic.name} onChange={e=>setNtxTopic({...ntxTopic,name:e.target.value})} style={IS} placeholder="نام موضوع (مثال: مالیات حقوق)"/>
-<input value={ntxTopic.slug} onChange={e=>setNtxTopic({...ntxTopic,slug:e.target.value})} style={IS} placeholder="نشان (اختیاری — خودکار)"/>
-<textarea value={ntxTopic.description} onChange={e=>setNtxTopic({...ntxTopic,description:e.target.value})} style={IS2} placeholder="توضیحات موضوع"/>
+<input value={newTopic.name} onChange={e=>setNewTopic({...newTopic,name:e.target.value})} style={inputStyle} placeholder="نام موضوع (مثال: مالیات حقوق)"/>
+<input value={newTopic.slug} onChange={e=>setNewTopic({...newTopic,slug:e.target.value})} style={inputStyle} placeholder="نشان (اختیاری — خودکار)"/>
+<textarea value={newTopic.description} onChange={e=>setNewTopic({...newTopic,description:e.target.value})} style={textareaStyle} placeholder="توضیحات موضوع"/>
 <div style={{display:'flex',gap:10,alignItems:'center'}}>
-<input type="number" value={ntxTopic.sortOrder} onChange={e=>setNtxTopic({...ntxTopic,sortOrder:+e.target.value})} style={{...IS,width:100}} placeholder="ترتیب"/>
-<label style={{display:'flex',alignItems:'center',gap:6,fontSize:'0.875rem',color:'var(--text-muted)'}}><input type="checkbox" checked={ntxTopic.isActive} onChange={e=>setNtxTopic({...ntxTopic,isActive:e.target.checked})}/> فعال</label>
-<button onClick={svTopic} className="btn btn-primary" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>{etxTopic?'💾 ذخیره':'➕ افزودن'}</button>
-{etxTopic&&<button onClick={()=>{setEtxTopic(null);setNtxTopic({name:'',slug:'',description:'',sortOrder:0,isActive:true})}} className="btn btn-ghost" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>انصراف</button>}
+<input type="number" value={newTopic.sortOrder} onChange={e=>setNewTopic({...newTopic,sortOrder:+e.target.value})} style={{...inputStyle,width:100}} placeholder="ترتیب"/>
+<label style={{display:'flex',alignItems:'center',gap:6,fontSize:'0.875rem',color:'var(--text-muted)'}}><input type="checkbox" checked={newTopic.isActive} onChange={e=>setNewTopic({...newTopic,isActive:e.target.checked})}/> فعال</label>
+<button onClick={saveTopic} className="btn btn-primary" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>{editingTopic?'💾 ذخیره':'➕ افزودن'}</button>
+{editingTopic&&<button onClick={()=>{setEditingTopic(null);setNewTopic({name:'',slug:'',description:'',sortOrder:0,isActive:true})}} className="btn btn-ghost" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>انصراف</button>}
 </div>
 </div>
 </div>
 <div style={{display:'flex',flexDirection:'column',gap:8}}>
-{taxTopics.map((t:any)=><div key={t.id} className="glass-card" style={{padding:14}}>
+{taxTopics.map((topic)=><div key={topic.id} className="glass-card" style={{padding:14}}>
 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
 <div style={{flex:1}}>
-<div style={{fontWeight:600,fontSize:'0.9375rem'}}>{t.name}</div>
-{t.description&&<div style={{fontSize:'0.8125rem',color:'var(--text-muted)',marginTop:4}}>{t.description.substring(0,100)}</div>}
+<div style={{fontWeight:600,fontSize:'0.9375rem'}}>{topic.name}</div>
+{topic.description&&<div style={{fontSize:'0.8125rem',color:'var(--text-muted)',marginTop:4}}>{topic.description.substring(0,100)}</div>}
 <div style={{display:'flex',gap:8,marginTop:6,alignItems:'center'}}>
-<span className={t.isActive?'badge badge-success':'badge badge-error'} style={{fontSize:'0.7rem'}}>{t.isActive?'فعال':'غیرفعال'}</span>
-<span style={{fontSize:'0.7rem',color:'var(--text-muted)'}}>{t._count?.rules||0} قانون</span>
+<span className={topic.isActive?'badge badge-success':'badge badge-error'} style={{fontSize:'0.7rem'}}>{topic.isActive?'فعال':'غیرفعال'}</span>
+<span style={{fontSize:'0.7rem',color:'var(--text-muted)'}}>{topic._count?.rules||0} قانون</span>
 </div>
 </div>
 <div style={{display:'flex',gap:6,flexShrink:0}}>
-<button onClick={()=>{setEtxTopic(t);setNtxTopic({name:t.name,slug:t.slug,description:t.description||'',sortOrder:t.sortOrder,isActive:t.isActive})}} style={EB}>✏️</button>
-<button onClick={()=>dlTopic(t.id)} style={{...EB,color:'#ef4444'}}>🗑</button>
+<button onClick={()=>{setEditingTopic(topic);setNewTopic({name:topic.name,slug:topic.slug,description:topic.description||'',sortOrder:topic.sortOrder,isActive:topic.isActive})}} style={editButtonStyle}>✏️</button>
+<button onClick={()=>deleteTopic(topic.id)} style={{...editButtonStyle,color:'#ef4444'}}>🗑</button>
 </div>
 </div>
 </div>)}
@@ -831,34 +891,34 @@ return<div style={{display:'flex',flexDirection:'column',gap:24,maxWidth:920}}>
 
 {txSubTab==='sources'&&<>
 <div className="card" style={{padding:20}}>
-<h4 style={{fontWeight:700,marginBottom:14}}>{etxSource?'✏️ ویرایش منبع':'➕ منبع جدید'}</h4>
+<h4 style={{fontWeight:700,marginBottom:14}}>{editingSource?'✏️ ویرایش منبع':'➕ منبع جدید'}</h4>
 <div style={{display:'flex',flexDirection:'column',gap:10}}>
-<input value={ntxSource.name} onChange={e=>setNtxSource({...ntxSource,name:e.target.value})} style={IS} placeholder="نام منبع (مثال: قانون مالیات‌های مستقیم)"/>
-<input value={ntxSource.officialName} onChange={e=>setNtxSource({...ntxSource,officialName:e.target.value})} style={IS} placeholder="نام رسمی (اختیاری)"/>
-<input value={ntxSource.url} onChange={e=>setNtxSource({...ntxSource,url:e.target.value})} style={IS} placeholder="آدرس منبع (URL — اختیاری)"/>
-<textarea value={ntxSource.description} onChange={e=>setNtxSource({...ntxSource,description:e.target.value})} style={IS2} placeholder="توضیحات منبع"/>
+<input value={newSource.name} onChange={e=>setNewSource({...newSource,name:e.target.value})} style={inputStyle} placeholder="نام منبع (مثال: قانون مالیات‌های مستقیم)"/>
+<input value={newSource.officialName} onChange={e=>setNewSource({...newSource,officialName:e.target.value})} style={inputStyle} placeholder="نام رسمی (اختیاری)"/>
+<input value={newSource.url} onChange={e=>setNewSource({...newSource,url:e.target.value})} style={inputStyle} placeholder="آدرس منبع (URL — اختیاری)"/>
+<textarea value={newSource.description} onChange={e=>setNewSource({...newSource,description:e.target.value})} style={textareaStyle} placeholder="توضیحات منبع"/>
 <div style={{display:'flex',gap:10,alignItems:'center'}}>
-<label style={{display:'flex',alignItems:'center',gap:6,fontSize:'0.875rem',color:'var(--text-muted)'}}><input type="checkbox" checked={ntxSource.isActive} onChange={e=>setNtxSource({...ntxSource,isActive:e.target.checked})}/> فعال</label>
-<button onClick={svSource} className="btn btn-primary" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>{etxSource?'💾 ذخیره':'➕ افزودن'}</button>
-{etxSource&&<button onClick={()=>{setEtxSource(null);setNtxSource({name:'',url:'',officialName:'',description:'',isActive:true})}} className="btn btn-ghost" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>انصراف</button>}
+<label style={{display:'flex',alignItems:'center',gap:6,fontSize:'0.875rem',color:'var(--text-muted)'}}><input type="checkbox" checked={newSource.isActive} onChange={e=>setNewSource({...newSource,isActive:e.target.checked})}/> فعال</label>
+<button onClick={saveSource} className="btn btn-primary" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>{editingSource?'💾 ذخیره':'➕ افزودن'}</button>
+{editingSource&&<button onClick={()=>{setEditingSource(null);setNewSource({name:'',url:'',officialName:'',description:'',isActive:true})}} className="btn btn-ghost" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>انصراف</button>}
 </div>
 </div>
 </div>
 <div style={{display:'flex',flexDirection:'column',gap:8}}>
-{taxSources.map((s:any)=><div key={s.id} className="glass-card" style={{padding:14}}>
+{taxSources.map((source)=><div key={source.id} className="glass-card" style={{padding:14}}>
 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
 <div style={{flex:1}}>
-<div style={{fontWeight:600,fontSize:'0.9375rem'}}>{s.name}</div>
-{s.officialName&&<div style={{fontSize:'0.8125rem',color:'var(--text-muted)',marginTop:2}}>{s.officialName}</div>}
-{s.url&&<a href={s.url} target="_blank" rel="noopener noreferrer" style={{fontSize:'0.75rem',color:'var(--brand-gold)',display:'block',marginTop:4}} dir="ltr">{s.url.substring(0,60)}</a>}
+<div style={{fontWeight:600,fontSize:'0.9375rem'}}>{source.name}</div>
+{source.officialName&&<div style={{fontSize:'0.8125rem',color:'var(--text-muted)',marginTop:2}}>{source.officialName}</div>}
+{source.url&&<a href={source.url} target="_blank" rel="noopener noreferrer" style={{fontSize:'0.75rem',color:'var(--brand-gold)',display:'block',marginTop:4}} dir="ltr">{source.url.substring(0,60)}</a>}
 <div style={{display:'flex',gap:8,marginTop:6,alignItems:'center'}}>
-<span className={s.isActive?'badge badge-success':'badge badge-error'} style={{fontSize:'0.7rem'}}>{s.isActive?'فعال':'غیرفعال'}</span>
-<span style={{fontSize:'0.7rem',color:'var(--text-muted)'}}>{s._count?.rules||0} نسخه</span>
+<span className={source.isActive?'badge badge-success':'badge badge-error'} style={{fontSize:'0.7rem'}}>{source.isActive?'فعال':'غیرفعال'}</span>
+<span style={{fontSize:'0.7rem',color:'var(--text-muted)'}}>{source._count?.rules||0} نسخه</span>
 </div>
 </div>
 <div style={{display:'flex',gap:6,flexShrink:0}}>
-<button onClick={()=>{setEtxSource(s);setNtxSource({name:s.name,url:s.url||'',officialName:s.officialName||'',description:s.description||'',isActive:s.isActive})}} style={EB}>✏️</button>
-<button onClick={()=>dlSource(s.id)} style={{...EB,color:'#ef4444'}}>🗑</button>
+<button onClick={()=>{setEditingSource(source);setNewSource({name:source.name,url:source.url||'',officialName:source.officialName||'',description:source.description||'',isActive:source.isActive})}} style={editButtonStyle}>✏️</button>
+<button onClick={()=>deleteSource(source.id)} style={{...editButtonStyle,color:'#ef4444'}}>🗑</button>
 </div>
 </div>
 </div>)}
@@ -867,268 +927,325 @@ return<div style={{display:'flex',flexDirection:'column',gap:24,maxWidth:920}}>
 </>}
 </div>}
 
-function MB({mbs,emb,semb,nmb,snmb,cats,sh,ldMB,IS,IS2,EB}:any){
-const sv=async()=>{if(!nmb.title.trim()||!nmb.fileUrl.trim()){sh('\u0639\u0646\u0648\u0627\u0646 \u0648 \u0622\u062f\u0631\u0633 \u0641\u0627\u06cc\u0644 \u0631\u0627 \u067e\u0631 \u06a9\u0646\u06cc\u062f');return}try{if(emb){await adminApi.updateMiniBook(emb.id,{title:nmb.title,description:nmb.description,fileUrl:nmb.fileUrl,coverImage:nmb.coverImage,pageCount:nmb.pageCount||undefined,status:nmb.status,categoryId:nmb.categoryId||undefined});sh('\u0648\u06cc\u0631\u0627\u06cc\u0634 \u0634\u062f \u2705')}else{await adminApi.createMiniBook({title:nmb.title,slug:nmb.slug,description:nmb.description,fileUrl:nmb.fileUrl,coverImage:nmb.coverImage,pageCount:nmb.pageCount||undefined,status:nmb.status,categoryId:nmb.categoryId||undefined});sh('\u0627\u0641\u0632\u0648\u062f\u0647 \u0634\u062f \u2705')}semb(null);snmb({title:'',slug:'',description:'',fileUrl:'',coverImage:'',pageCount:0,status:'DRAFT',categoryId:''});ldMB()}catch{sh('\u062e\u0637\u0627 \u274c')}};
-const dl=async(id:string)=>{if(!confirm('\u062d\u0630\u0641 \u0634\u0648\u062f\u061f'))return;try{await adminApi.deleteMiniBook(id);sh('\u062d\u0630\u0641 \u0634\u062f \u2705');ldMB()}catch{sh('\u062e\u0637\u0627 \u274c')}};
-const stl=(s:string)=>{const m:any={DRAFT:'badge-warning',REVIEW:'badge-gold',PUBLISHED:'badge-success',ARCHIVED:'badge-error'};return m[s]||'badge-warning'};
-const stx=(s:string)=>{const m:any={DRAFT:'\u067e\u06cc\u0634\u200c\u0646\u0648\u06cc\u0633',REVIEW:'\u0628\u0631\u0631\u0633\u06cc',PUBLISHED:'\u0645\u0646\u062a\u0634\u0631',ARCHIVED:'\u0622\u0631\u0634\u06cc\u0648'};return m[s]||s};
+function MiniBooksManager({miniBooks,editingMiniBook,setEditingMiniBook,newMiniBook,setNewMiniBook,categories,showToast,reload,inputStyle,textareaStyle,editButtonStyle}:{
+  miniBooks: MiniBook[];
+  editingMiniBook: MiniBook | null;
+  setEditingMiniBook: (b: MiniBook | null) => void;
+  newMiniBook: { title: string; slug: string; description: string; fileUrl: string; coverImage: string; pageCount: number; status: ContentStatus; categoryId: string };
+  setNewMiniBook: (b: { title: string; slug: string; description: string; fileUrl: string; coverImage: string; pageCount: number; status: ContentStatus; categoryId: string }) => void;
+  categories: Category[];
+  showToast: (m: string) => void;
+  reload: () => void;
+  inputStyle: React.CSSProperties;
+  textareaStyle: React.CSSProperties;
+  editButtonStyle: React.CSSProperties;
+}){
+const saveMiniBook=async()=>{if(!newMiniBook.title.trim()||!newMiniBook.fileUrl.trim()){showToast('\u0639\u0646\u0648\u0627\u0646 \u0648 \u0622\u062f\u0631\u0633 \u0641\u0627\u06cc\u0644 \u0631\u0627 \u067e\u0631 \u06a9\u0646\u06cc\u062f');return}try{if(editingMiniBook){await adminApi.updateMiniBook(editingMiniBook.id,{title:newMiniBook.title,description:newMiniBook.description,fileUrl:newMiniBook.fileUrl,coverImage:newMiniBook.coverImage,pageCount:newMiniBook.pageCount||undefined,status:newMiniBook.status,categoryId:newMiniBook.categoryId||undefined});showToast('\u0648\u06cc\u0631\u0627\u06cc\u0634 \u0634\u062f \u2705')}else{await adminApi.createMiniBook({title:newMiniBook.title,slug:newMiniBook.slug,description:newMiniBook.description,fileUrl:newMiniBook.fileUrl,coverImage:newMiniBook.coverImage,pageCount:newMiniBook.pageCount||undefined,status:newMiniBook.status,categoryId:newMiniBook.categoryId||undefined});showToast('\u0627\u0641\u0632\u0648\u062f\u0647 \u0634\u062f \u2705')}setEditingMiniBook(null);setNewMiniBook({title:'',slug:'',description:'',fileUrl:'',coverImage:'',pageCount:0,status:'DRAFT',categoryId:''});reload()}catch{showToast('\u062e\u0637\u0627 \u274c')}};
+const deleteMiniBook=async(id:string)=>{if(!confirm('\u062d\u0630\u0641 \u0634\u0648\u062f\u061f'))return;try{await adminApi.deleteMiniBook(id);showToast('\u062d\u0630\u0641 \u0634\u062f \u2705');reload()}catch{showToast('\u062e\u0637\u0627 \u274c')}};
+const statusBadgeClass=(s:string)=>{const m:Record<string,string>={DRAFT:'badge-warning',REVIEW:'badge-gold',PUBLISHED:'badge-success',ARCHIVED:'badge-error'};return m[s]||'badge-warning'};
+const statusLabel=(s:string)=>{const m:Record<string,string>={DRAFT:'\u067e\u06cc\u0634\u200c\u0646\u0648\u06cc\u0633',REVIEW:'\u0628\u0631\u0631\u0633\u06cc',PUBLISHED:'\u0645\u0646\u062a\u0634\u0631',ARCHIVED:'\u0622\u0631\u0634\u06cc\u0648'};return m[s]||s};
 return<div style={{display:'flex',flexDirection:'column',gap:24,maxWidth:920}}>
-<h3 style={{fontWeight:700,fontSize:'1.125rem'}}>\ud83d\udcd5 \u0645\u062f\u06cc\u0631\u06cc\u062a \u0645\u06cc\u0646\u06cc\u200c\u0628\u0648\u06a9\u200c\u0647\u0627 ({mbs.length})</h3>
+<h3 style={{fontWeight:700,fontSize:'1.125rem'}}>\ud83d\udcd5 \u0645\u062f\u06cc\u0631\u06cc\u062a \u0645\u06cc\u0646\u06cc\u200c\u0628\u0648\u06a9\u200c\u0647\u0627 ({miniBooks.length})</h3>
 <div className="card" style={{padding:20}}>
-<h4 style={{fontWeight:700,marginBottom:14}}>{emb?'\u270f\ufe0f \u0648\u06cc\u0631\u0627\u06cc\u0634 \u0645\u06cc\u0646\u06cc\u200c\u0628\u0648\u06a9':'\u2795 \u0645\u06cc\u0646\u06cc\u200c\u0628\u0648\u06a9 \u062c\u062f\u06cc\u062f'}</h4>
+<h4 style={{fontWeight:700,marginBottom:14}}>{editingMiniBook?'\u270f\ufe0f \u0648\u06cc\u0631\u0627\u06cc\u0634 \u0645\u06cc\u0646\u06cc\u200c\u0628\u0648\u06a9':'\u2795 \u0645\u06cc\u0646\u06cc\u200c\u0628\u0648\u06a9 \u062c\u062f\u06cc\u062f'}</h4>
 <div style={{display:'flex',flexDirection:'column',gap:10}}>
-<input value={nmb.title} onChange={e=>snmb({...nmb,title:e.target.value})} style={IS} placeholder="\u0639\u0646\u0648\u0627\u0646 \u0645\u06cc\u0646\u06cc\u200c\u0628\u0648\u06a9"/>
-<input value={nmb.slug} onChange={e=>snmb({...nmb,slug:e.target.value})} style={IS} placeholder="\u0646\u0634\u0627\u0646 (\u0627\u062e\u062a\u06cc\u0627\u0631\u06cc \u2014 \u062e\u0648\u062f\u06a9\u0627\u0631)"/>
-<textarea value={nmb.description} onChange={e=>snmb({...nmb,description:e.target.value})} style={IS2} placeholder="\u062a\u0648\u0636\u06cc\u062d\u0627\u062a"/>
-<input value={nmb.fileUrl} onChange={e=>snmb({...nmb,fileUrl:e.target.value})} style={IS} placeholder="\u0622\u062f\u0631\u0633 \u0641\u0627\u06cc\u0644 PDF (URL)"/>
-<input value={nmb.coverImage} onChange={e=>snmb({...nmb,coverImage:e.target.value})} style={IS} placeholder="\u0622\u062f\u0631\u0633 \u06a9\u0627\u0648\u0631 (\u0627\u062e\u062a\u06cc\u0627\u0631\u06cc)"/>
+<input value={newMiniBook.title} onChange={e=>setNewMiniBook({...newMiniBook,title:e.target.value})} style={inputStyle} placeholder="\u0639\u0646\u0648\u0627\u0646 \u0645\u06cc\u0646\u06cc\u200c\u0628\u0648\u06a9"/>
+<input value={newMiniBook.slug} onChange={e=>setNewMiniBook({...newMiniBook,slug:e.target.value})} style={inputStyle} placeholder="\u0646\u0634\u0627\u0646 (\u0627\u062e\u062a\u06cc\u0627\u0631\u06cc \u2014 \u062e\u0648\u062f\u06a9\u0627\u0631)"/>
+<textarea value={newMiniBook.description} onChange={e=>setNewMiniBook({...newMiniBook,description:e.target.value})} style={textareaStyle} placeholder="\u062a\u0648\u0636\u06cc\u062d\u0627\u062a"/>
+<input value={newMiniBook.fileUrl} onChange={e=>setNewMiniBook({...newMiniBook,fileUrl:e.target.value})} style={inputStyle} placeholder="\u0622\u062f\u0631\u0633 \u0641\u0627\u06cc\u0644 PDF (URL)"/>
+<input value={newMiniBook.coverImage} onChange={e=>setNewMiniBook({...newMiniBook,coverImage:e.target.value})} style={inputStyle} placeholder="\u0622\u062f\u0631\u0633 \u06a9\u0627\u0648\u0631 (\u0627\u062e\u062a\u06cc\u0627\u0631\u06cc)"/>
 <div style={{display:'flex',gap:10,alignItems:'center'}}>
-<input type="number" value={nmb.pageCount} onChange={e=>snmb({...nmb,pageCount:+e.target.value})} style={{...IS,width:120}} placeholder="\u062a\u0639\u062f\u0627\u062f \u0635\u0641\u062d\u0647"/>
-<select value={nmb.status} onChange={e=>snmb({...nmb,status:e.target.value})} style={{...IS,flex:1}}>
+<input type="number" value={newMiniBook.pageCount} onChange={e=>setNewMiniBook({...newMiniBook,pageCount:+e.target.value})} style={{...inputStyle,width:120}} placeholder="\u062a\u0639\u062f\u0627\u062f \u0635\u0641\u062d\u0647"/>
+<select value={newMiniBook.status} onChange={e=>setNewMiniBook({...newMiniBook,status:e.target.value as ContentStatus})} style={{...inputStyle,flex:1}}>
 <option value="DRAFT">\u067e\u06cc\u0634\u200c\u0646\u0648\u06cc\u0633</option><option value="REVIEW">\u0628\u0631\u0631\u0633\u06cc</option><option value="PUBLISHED">\u0645\u0646\u062a\u0634\u0631</option><option value="ARCHIVED">\u0622\u0631\u0634\u06cc\u0648</option>
 </select>
-<select value={nmb.categoryId} onChange={e=>snmb({...nmb,categoryId:e.target.value})} style={{...IS,flex:1}}>
+<select value={newMiniBook.categoryId} onChange={e=>setNewMiniBook({...newMiniBook,categoryId:e.target.value})} style={{...inputStyle,flex:1}}>
 <option value="">\u062f\u0633\u062a\u0647\u200c\u0628\u0646\u062f\u06cc (\u062e\u0648\u062f\u06a9\u0627\u0631)</option>
-{cats.map((c:any)=><option key={c.id} value={c.id}>{c.name}</option>)}
+{categories.map((cat)=><option key={cat.id} value={cat.id}>{cat.name}</option>)}
 </select>
-<button onClick={sv} className="btn btn-primary" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>{emb?'\ud83d\udcbe \u0630\u062e\u06cc\u0631\u0647':'\u2795 \u0627\u0641\u0632\u0648\u062f\u0646'}</button>
-{emb&&<button onClick={()=>{semb(null);snmb({title:'',slug:'',description:'',fileUrl:'',coverImage:'',pageCount:0,status:'DRAFT',categoryId:''})}} className="btn btn-ghost" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>\u0627\u0646\u0635\u0631\u0627\u0641</button>}
+<button onClick={saveMiniBook} className="btn btn-primary" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>{editingMiniBook?'\ud83d\udcbe \u0630\u062e\u06cc\u0631\u0647':'\u2795 \u0627\u0641\u0632\u0648\u062f\u0646'}</button>
+{editingMiniBook&&<button onClick={()=>{setEditingMiniBook(null);setNewMiniBook({title:'',slug:'',description:'',fileUrl:'',coverImage:'',pageCount:0,status:'DRAFT',categoryId:''})}} className="btn btn-ghost" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>\u0627\u0646\u0635\u0631\u0627\u0641</button>}
 </div>
 </div>
 </div>
 <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))',gap:14}}>
-{mbs.map((b:any)=><div key={b.id} className="glass-card" style={{padding:14,display:'flex',flexDirection:'column',gap:10}}>
-{b.coverImage?<img src={b.coverImage} alt={b.title} style={{width:'100%',height:180,objectFit:'cover',borderRadius:8}}/>:<div style={{width:'100%',height:180,background:'rgba(198,169,98,.06)',borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'2.5rem'}}>\ud83d\udcd5</div>}
-<div style={{fontWeight:600,fontSize:'0.9375rem'}}>{b.title}</div>
-<div style={{fontSize:'0.8125rem',color:'var(--text-muted)',flex:1}}>{b.description?.substring(0,80)||'\u0628\u062f\u0648\u0646 \u062a\u0648\u0636\u06cc\u062d'}</div>
+{miniBooks.map((book)=><div key={book.id} className="glass-card" style={{padding:14,display:'flex',flexDirection:'column',gap:10}}>
+{book.coverImage?<img src={book.coverImage} alt={book.title} style={{width:'100%',height:180,objectFit:'cover',borderRadius:8}}/>:<div style={{width:'100%',height:180,background:'rgba(198,169,98,.06)',borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'2.5rem'}}>\ud83d\udcd5</div>}
+<div style={{fontWeight:600,fontSize:'0.9375rem'}}>{book.title}</div>
+<div style={{fontSize:'0.8125rem',color:'var(--text-muted)',flex:1}}>{book.description?.substring(0,80)||'\u0628\u062f\u0648\u0646 \u062a\u0648\u0636\u06cc\u062d'}</div>
 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
 <div style={{display:'flex',gap:6,alignItems:'center'}}>
-<span className={stl(b.status)} style={{fontSize:'0.7rem'}}>{stx(b.status)}</span>
-{b.pageCount&&<span style={{fontSize:'0.7rem',color:'var(--text-muted)'}}>{b.pageCount} \u0635</span>}
+<span className={statusBadgeClass(book.status)} style={{fontSize:'0.7rem'}}>{statusLabel(book.status)}</span>
+{book.pageCount&&<span style={{fontSize:'0.7rem',color:'var(--text-muted)'}}>{book.pageCount} \u0635</span>}
 </div>
 <div style={{display:'flex',gap:6}}>
-<button onClick={()=>{semb(b);snmb({title:b.title,slug:b.slug,description:b.description||'',fileUrl:b.fileUrl,coverImage:b.coverImage||'',pageCount:b.pageCount||0,status:b.status,categoryId:b.categoryId})}} style={EB}>\u270f\ufe0f</button>
-<button onClick={()=>dl(b.id)} style={{...EB,color:'#ef4444'}}>\ud83d\uddd1</button>
+<button onClick={()=>{setEditingMiniBook(book);setNewMiniBook({title:book.title,slug:book.slug,description:book.description||'',fileUrl:book.fileUrl,coverImage:book.coverImage||'',pageCount:book.pageCount||0,status:book.status,categoryId:book.categoryId||''})}} style={editButtonStyle}>\u270f\ufe0f</button>
+<button onClick={()=>deleteMiniBook(book.id)} style={{...editButtonStyle,color:'#ef4444'}}>\ud83d\uddd1</button>
 </div>
 </div>
 </div>)}
-{mbs.length===0&&<div style={{gridColumn:'1/-1',textAlign:'center',padding:20,color:'var(--text-muted)'}}>\u0645\u06cc\u0646\u06cc\u200c\u0628\u0648\u06a9\u06cc \u0648\u062c\u0648\u062f \u0646\u062f\u0627\u0631\u062f \u2014 \u0627\u0648\u0644\u06cc\u0646 \u0645\u06cc\u0646\u06cc\u200c\u0628\u0648\u06a9 \u0631\u0627 \u0627\u0636\u0627\u0641\u0647 \u06a9\u0646\u06cc\u062f</div>}
+{miniBooks.length===0&&<div style={{gridColumn:'1/-1',textAlign:'center',padding:20,color:'var(--text-muted)'}}>\u0645\u06cc\u0646\u06cc\u200c\u0628\u0648\u06a9\u06cc \u0648\u062c\u0648\u062f \u0646\u062f\u0627\u0631\u062f \u2014 \u0627\u0648\u0644\u06cc\u0646 \u0645\u06cc\u0646\u06cc\u200c\u0628\u0648\u06a9 \u0631\u0627 \u0627\u0636\u0627\u0641\u0647 \u06a9\u0646\u06cc\u062f</div>}
 </div>
 </div>}
 
-function VI({vids,ev,sev,nv,snv,cats,sh,ldV,IS,IS2,EB}:any){
-const sv=async()=>{if(!nv.title.trim()||!nv.url.trim()){sh('\u0639\u0646\u0648\u0627\u0646 \u0648 \u0622\u062f\u0631\u0633 \u0648\u06cc\u062f\u06cc\u0648 \u0631\u0627 \u067e\u0631 \u06a9\u0646\u06cc\u062f');return}try{if(ev){await adminApi.updateVideo(ev.id,{title:nv.title,description:nv.description,url:nv.url,thumbnail:nv.thumbnail,duration:nv.duration||undefined,status:nv.status,categoryId:nv.categoryId||undefined});sh('\u0648\u06cc\u0631\u0627\u06cc\u0634 \u0634\u062f \u2705')}else{await adminApi.createVideo({title:nv.title,slug:nv.slug,description:nv.description,url:nv.url,thumbnail:nv.thumbnail,duration:nv.duration||undefined,status:nv.status,categoryId:nv.categoryId||undefined});sh('\u0627\u0641\u0632\u0648\u062f\u0647 \u0634\u062f \u2705')}sev(null);snv({title:'',slug:'',description:'',url:'',thumbnail:'',duration:0,status:'DRAFT',categoryId:''});ldV()}catch{sh('\u062e\u0637\u0627 \u274c')}};
-const dl=async(id:string)=>{if(!confirm('\u062d\u0630\u0641 \u0634\u0648\u062f\u061f'))return;try{await adminApi.deleteVideo(id);sh('\u062d\u0630\u0641 \u0634\u062f \u2705');ldV()}catch{sh('\u062e\u0637\u0627 \u274c')}};
-const stl=(s:string)=>{const m:any={DRAFT:'badge-warning',REVIEW:'badge-gold',PUBLISHED:'badge-success',ARCHIVED:'badge-error'};return m[s]||'badge-warning'};
-const stx=(s:string)=>{const m:any={DRAFT:'\u067e\u06cc\u0634\u200c\u0646\u0648\u06cc\u0633',REVIEW:'\u0628\u0631\u0631\u0633\u06cc',PUBLISHED:'\u0645\u0646\u062a\u0634\u0631',ARCHIVED:'\u0622\u0631\u0634\u06cc\u0648'};return m[s]||s};
+function VideosManager({videos,editingVideo,setEditingVideo,newVideo,setNewVideo,categories,showToast,reload,inputStyle,textareaStyle,editButtonStyle}:{
+  videos: Video[];
+  editingVideo: Video | null;
+  setEditingVideo: (v: Video | null) => void;
+  newVideo: { title: string; slug: string; description: string; url: string; thumbnail: string; duration: number; status: ContentStatus; categoryId: string };
+  setNewVideo: (v: { title: string; slug: string; description: string; url: string; thumbnail: string; duration: number; status: ContentStatus; categoryId: string }) => void;
+  categories: Category[];
+  showToast: (m: string) => void;
+  reload: () => void;
+  inputStyle: React.CSSProperties;
+  textareaStyle: React.CSSProperties;
+  editButtonStyle: React.CSSProperties;
+}){
+const saveVideo=async()=>{if(!newVideo.title.trim()||!newVideo.url.trim()){showToast('\u0639\u0646\u0648\u0627\u0646 \u0648 \u0622\u062f\u0631\u0633 \u0648\u06cc\u062f\u06cc\u0648 \u0631\u0627 \u067e\u0631 \u06a9\u0646\u06cc\u062f');return}try{if(editingVideo){await adminApi.updateVideo(editingVideo.id,{title:newVideo.title,description:newVideo.description,url:newVideo.url,thumbnail:newVideo.thumbnail,duration:newVideo.duration||undefined,status:newVideo.status,categoryId:newVideo.categoryId||undefined});showToast('\u0648\u06cc\u0631\u0627\u06cc\u0634 \u0634\u062f \u2705')}else{await adminApi.createVideo({title:newVideo.title,slug:newVideo.slug,description:newVideo.description,url:newVideo.url,thumbnail:newVideo.thumbnail,duration:newVideo.duration||undefined,status:newVideo.status,categoryId:newVideo.categoryId||undefined});showToast('\u0627\u0641\u0632\u0648\u062f\u0647 \u0634\u062f \u2705')}setEditingVideo(null);setNewVideo({title:'',slug:'',description:'',url:'',thumbnail:'',duration:0,status:'DRAFT',categoryId:''});reload()}catch{showToast('\u062e\u0637\u0627 \u274c')}};
+const deleteVideo=async(id:string)=>{if(!confirm('\u062d\u0630\u0641 \u0634\u0648\u062f\u061f'))return;try{await adminApi.deleteVideo(id);showToast('\u062d\u0630\u0641 \u0634\u062f \u2705');reload()}catch{showToast('\u062e\u0637\u0627 \u274c')}};
+const statusBadgeClass=(s:string)=>{const m:Record<string,string>={DRAFT:'badge-warning',REVIEW:'badge-gold',PUBLISHED:'badge-success',ARCHIVED:'badge-error'};return m[s]||'badge-warning'};
+const statusLabel=(s:string)=>{const m:Record<string,string>={DRAFT:'\u067e\u06cc\u0634\u200c\u0646\u0648\u06cc\u0633',REVIEW:'\u0628\u0631\u0631\u0633\u06cc',PUBLISHED:'\u0645\u0646\u062a\u0634\u0631',ARCHIVED:'\u0622\u0631\u0634\u06cc\u0648'};return m[s]||s};
 const fmtDur=(d?:number)=>{if(!d)return'-';const m=Math.floor(d/60);const s=d%60;return `${m}:${s.toString().padStart(2,'0')}`};
 return<div style={{display:'flex',flexDirection:'column',gap:24,maxWidth:920}}>
-<h3 style={{fontWeight:700,fontSize:'1.125rem'}}>\ud83c\udfa5 \u0645\u062f\u06cc\u0631\u06cc\u062a \u0648\u06cc\u062f\u06cc\u0648\u0647\u0627 ({vids.length})</h3>
+<h3 style={{fontWeight:700,fontSize:'1.125rem'}}>\ud83c\udfa5 \u0645\u062f\u06cc\u0631\u06cc\u062a \u0648\u06cc\u062f\u06cc\u0648\u0647\u0627 ({videos.length})</h3>
 <div className="card" style={{padding:20}}>
-<h4 style={{fontWeight:700,marginBottom:14}}>{ev?'\u270f\ufe0f \u0648\u06cc\u0631\u0627\u06cc\u0634 \u0648\u06cc\u062f\u06cc\u0648':'\u2795 \u0648\u06cc\u062f\u06cc\u0648 \u062c\u062f\u06cc\u062f'}</h4>
+<h4 style={{fontWeight:700,marginBottom:14}}>{editingVideo?'\u270f\ufe0f \u0648\u06cc\u0631\u0627\u06cc\u0634 \u0648\u06cc\u062f\u06cc\u0648':'\u2795 \u0648\u06cc\u062f\u06cc\u0648 \u062c\u062f\u06cc\u062f'}</h4>
 <div style={{display:'flex',flexDirection:'column',gap:10}}>
-<input value={nv.title} onChange={e=>snv({...nv,title:e.target.value})} style={IS} placeholder="\u0639\u0646\u0648\u0627\u0646 \u0648\u06cc\u062f\u06cc\u0648"/>
-<input value={nv.slug} onChange={e=>snv({...nv,slug:e.target.value})} style={IS} placeholder="\u0646\u0634\u0627\u0646 (\u0627\u062e\u062a\u06cc\u0627\u0631\u06cc \u2014 \u062e\u0648\u062f\u06a9\u0627\u0631)"/>
-<textarea value={nv.description} onChange={e=>snv({...nv,description:e.target.value})} style={IS2} placeholder="\u062a\u0648\u0636\u06cc\u062d\u0627\u062a"/>
-<input value={nv.url} onChange={e=>snv({...nv,url:e.target.value})} style={IS} placeholder="\u0622\u062f\u0631\u0633 \u0648\u06cc\u062f\u06cc\u0648 (URL \u2014 \u0645\u062b\u0627\u0644: https://...mp4)"/>
-<input value={nv.thumbnail} onChange={e=>snv({...nv,thumbnail:e.target.value})} style={IS} placeholder="\u0622\u062f\u0631\u0633 \u062a\u0635\u0648\u06cc\u0631 \u06a9\u0627\u0648\u0631 (URL \u2014 \u0627\u062e\u062a\u06cc\u0627\u0631\u06cc)"/>
+<input value={newVideo.title} onChange={e=>setNewVideo({...newVideo,title:e.target.value})} style={inputStyle} placeholder="\u0639\u0646\u0648\u0627\u0646 \u0648\u06cc\u062f\u06cc\u0648"/>
+<input value={newVideo.slug} onChange={e=>setNewVideo({...newVideo,slug:e.target.value})} style={inputStyle} placeholder="\u0646\u0634\u0627\u0646 (\u0627\u062e\u062a\u06cc\u0627\u0631\u06cc \u2014 \u062e\u0648\u062f\u06a9\u0627\u0631)"/>
+<textarea value={newVideo.description} onChange={e=>setNewVideo({...newVideo,description:e.target.value})} style={textareaStyle} placeholder="\u062a\u0648\u0636\u06cc\u062d\u0627\u062a"/>
+<input value={newVideo.url} onChange={e=>setNewVideo({...newVideo,url:e.target.value})} style={inputStyle} placeholder="\u0622\u062f\u0631\u0633 \u0648\u06cc\u062f\u06cc\u0648 (URL \u2014 \u0645\u062b\u0627\u0644: https://...mp4)"/>
+<input value={newVideo.thumbnail} onChange={e=>setNewVideo({...newVideo,thumbnail:e.target.value})} style={inputStyle} placeholder="\u0622\u062f\u0631\u0633 \u062a\u0635\u0648\u06cc\u0631 \u06a9\u0627\u0648\u0631 (URL \u2014 \u0627\u062e\u062a\u06cc\u0627\u0631\u06cc)"/>
 <div style={{display:'flex',gap:10,alignItems:'center'}}>
-<input type="number" value={nv.duration} onChange={e=>snv({...nv,duration:+e.target.value})} style={{...IS,width:120}} placeholder="\u0632\u0645\u0627\u0646 (\u062b\u0627\u0646\u06cc\u0647)"/>
-<select value={nv.status} onChange={e=>snv({...nv,status:e.target.value})} style={{...IS,flex:1}}>
+<input type="number" value={newVideo.duration} onChange={e=>setNewVideo({...newVideo,duration:+e.target.value})} style={{...inputStyle,width:120}} placeholder="\u0632\u0645\u0627\u0646 (\u062b\u0627\u0646\u06cc\u0647)"/>
+<select value={newVideo.status} onChange={e=>setNewVideo({...newVideo,status:e.target.value as ContentStatus})} style={{...inputStyle,flex:1}}>
 <option value="DRAFT">\u067e\u06cc\u0634\u200c\u0646\u0648\u06cc\u0633</option><option value="REVIEW">\u0628\u0631\u0631\u0633\u06cc</option><option value="PUBLISHED">\u0645\u0646\u062a\u0634\u0631</option><option value="ARCHIVED">\u0622\u0631\u0634\u06cc\u0648</option>
 </select>
-<select value={nv.categoryId} onChange={e=>snv({...nv,categoryId:e.target.value})} style={{...IS,flex:1}}>
+<select value={newVideo.categoryId} onChange={e=>setNewVideo({...newVideo,categoryId:e.target.value})} style={{...inputStyle,flex:1}}>
 <option value="">\u062f\u0633\u062a\u0647\u200c\u0628\u0646\u062f\u06cc (\u062e\u0648\u062f\u06a9\u0627\u0631)</option>
-{cats.map((c:any)=><option key={c.id} value={c.id}>{c.name}</option>)}
+{categories.map((cat)=><option key={cat.id} value={cat.id}>{cat.name}</option>)}
 </select>
-<button onClick={sv} className="btn btn-primary" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>{ev?'\ud83d\udcbe \u0630\u062e\u06cc\u0631\u0647':'\u2795 \u0627\u0641\u0632\u0648\u062f\u0646'}</button>
-{ev&&<button onClick={()=>{sev(null);snv({title:'',slug:'',description:'',url:'',thumbnail:'',duration:0,status:'DRAFT',categoryId:''})}} className="btn btn-ghost" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>\u0627\u0646\u0635\u0631\u0627\u0641</button>}
+<button onClick={saveVideo} className="btn btn-primary" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>{editingVideo?'\ud83d\udcbe \u0630\u062e\u06cc\u0631\u0647':'\u2795 \u0627\u0641\u0632\u0648\u062f\u0646'}</button>
+{editingVideo&&<button onClick={()=>{setEditingVideo(null);setNewVideo({title:'',slug:'',description:'',url:'',thumbnail:'',duration:0,status:'DRAFT',categoryId:''})}} className="btn btn-ghost" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>\u0627\u0646\u0635\u0631\u0627\u0641</button>}
 </div>
 </div>
 </div>
 <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:14}}>
-{vids.map((v:any)=><div key={v.id} className="glass-card" style={{padding:14,display:'flex',flexDirection:'column',gap:10}}>
-{v.thumbnail?<img src={v.thumbnail} alt={v.title} style={{width:'100%',height:140,objectFit:'cover',borderRadius:8}}/>:<div style={{width:'100%',height:140,background:'rgba(198,169,98,.06)',borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'2rem'}}>\ud83c\udfa5</div>}
-<div style={{fontWeight:600,fontSize:'0.9375rem'}}>{v.title}</div>
-<div style={{fontSize:'0.8125rem',color:'var(--text-muted)',flex:1}}>{v.description?.substring(0,80)||'\u0628\u062f\u0648\u0646 \u062a\u0648\u0636\u06cc\u062d'}</div>
+{videos.map((video)=><div key={video.id} className="glass-card" style={{padding:14,display:'flex',flexDirection:'column',gap:10}}>
+{video.thumbnail?<img src={video.thumbnail} alt={video.title} style={{width:'100%',height:140,objectFit:'cover',borderRadius:8}}/>:<div style={{width:'100%',height:140,background:'rgba(198,169,98,.06)',borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'2rem'}}>\ud83c\udfa5</div>}
+<div style={{fontWeight:600,fontSize:'0.9375rem'}}>{video.title}</div>
+<div style={{fontSize:'0.8125rem',color:'var(--text-muted)',flex:1}}>{video.description?.substring(0,80)||'\u0628\u062f\u0648\u0646 \u062a\u0648\u0636\u06cc\u062d'}</div>
 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
 <div style={{display:'flex',gap:6,alignItems:'center'}}>
-<span className={stl(v.status)} style={{fontSize:'0.7rem'}}>{stx(v.status)}</span>
-<span style={{fontSize:'0.7rem',color:'var(--text-muted)'}}>{fmtDur(v.duration)}</span>
+<span className={statusBadgeClass(video.status)} style={{fontSize:'0.7rem'}}>{statusLabel(video.status)}</span>
+<span style={{fontSize:'0.7rem',color:'var(--text-muted)'}}>{fmtDur(video.duration||undefined)}</span>
 </div>
 <div style={{display:'flex',gap:6}}>
-<button onClick={()=>{sev(v);snv({title:v.title,slug:v.slug,description:v.description||'',url:v.url,thumbnail:v.thumbnail||'',duration:v.duration||0,status:v.status,categoryId:v.categoryId})}} style={EB}>\u270f\ufe0f</button>
-<button onClick={()=>dl(v.id)} style={{...EB,color:'#ef4444'}}>\ud83d\uddd1</button>
+<button onClick={()=>{setEditingVideo(video);setNewVideo({title:video.title,slug:video.slug,description:video.description||'',url:video.url,thumbnail:video.thumbnail||'',duration:video.duration||0,status:video.status,categoryId:video.categoryId||''})}} style={editButtonStyle}>\u270f\ufe0f</button>
+<button onClick={()=>deleteVideo(video.id)} style={{...editButtonStyle,color:'#ef4444'}}>\ud83d\uddd1</button>
 </div>
 </div>
 </div>)}
-{vids.length===0&&<div style={{gridColumn:'1/-1',textAlign:'center',padding:20,color:'var(--text-muted)'}}>\u0648\u06cc\u062f\u06cc\u0648\u06cc \u0648\u062c\u0648\u062f \u0646\u062f\u0627\u0631\u062f \u2014 \u0627\u0648\u0644\u06cc\u0646 \u0648\u06cc\u062f\u06cc\u0648 \u0631\u0627 \u0627\u0636\u0627\u0641\u0647 \u06a9\u0646\u06cc\u062f</div>}
+{videos.length===0&&<div style={{gridColumn:'1/-1',textAlign:'center',padding:20,color:'var(--text-muted)'}}>\u0648\u06cc\u062f\u06cc\u0648\u06cc \u0648\u062c\u0648\u062f \u0646\u062f\u0627\u0631\u062f \u2014 \u0627\u0648\u0644\u06cc\u0646 \u0648\u06cc\u062f\u06cc\u0648 \u0631\u0627 \u0627\u0636\u0627\u0641\u0647 \u06a9\u0646\u06cc\u062f</div>}
 </div>
 </div>}
 
-function AR({arts,ea,sea,na,sna,cats,sh,ldA,IS,IS2,EB}:any){
-const sv=async()=>{if(!na.title.trim()||!na.content.trim()){sh('\u0639\u0646\u0648\u0627\u0646 \u0648 \u0645\u062a\u0646 \u0631\u0627 \u067e\u0631 \u06a9\u0646\u06cc\u062f');return}try{if(ea){await adminApi.updateArticle(ea.id,{title:na.title,excerpt:na.excerpt,content:na.content,featuredImage:na.featuredImage,status:na.status,categoryId:na.categoryId||undefined});sh('\u0648\u06cc\u0631\u0627\u06cc\u0634 \u0634\u062f \u2705')}else{await adminApi.createArticle({title:na.title,slug:na.slug,excerpt:na.excerpt,content:na.content,featuredImage:na.featuredImage,status:na.status,categoryId:na.categoryId||undefined});sh('\u0627\u0641\u0632\u0648\u062f\u0647 \u0634\u062f \u2705')}sea(null);sna({title:'',slug:'',excerpt:'',content:'',featuredImage:'',status:'DRAFT',categoryId:''});ldA()}catch{sh('\u062e\u0637\u0627 \u274c')}};
-const dl=async(id:string)=>{if(!confirm('\u062d\u0630\u0641 \u0634\u0648\u062f\u061f'))return;try{await adminApi.deleteArticle(id);sh('\u062d\u0630\u0641 \u0634\u062f \u2705');ldA()}catch{sh('\u062e\u0637\u0627 \u274c')}};
-const stl=(s:string)=>{const m:any={DRAFT:'badge-warning',REVIEW:'badge-gold',PUBLISHED:'badge-success',ARCHIVED:'badge-error'};return m[s]||'badge-warning'};
-const stx=(s:string)=>{const m:any={DRAFT:'\u067e\u06cc\u0634\u200c\u0646\u0648\u06cc\u0633',REVIEW:'\u0628\u0631\u0631\u0633\u06cc',PUBLISHED:'\u0645\u0646\u062a\u0634\u0631',ARCHIVED:'\u0622\u0631\u0634\u06cc\u0648'};return m[s]||s};
+function ArticlesManager({articles,editingArticle,setEditingArticle,newArticle,setNewArticle,categories,showToast,reload,inputStyle,textareaStyle,editButtonStyle}:{
+  articles: Article[];
+  editingArticle: Article | null;
+  setEditingArticle: (a: Article | null) => void;
+  newArticle: { title: string; slug: string; excerpt: string; content: string; featuredImage: string; status: ContentStatus; categoryId: string };
+  setNewArticle: (a: { title: string; slug: string; excerpt: string; content: string; featuredImage: string; status: ContentStatus; categoryId: string }) => void;
+  categories: Category[];
+  showToast: (m: string) => void;
+  reload: () => void;
+  inputStyle: React.CSSProperties;
+  textareaStyle: React.CSSProperties;
+  editButtonStyle: React.CSSProperties;
+}){
+const saveArticle=async()=>{if(!newArticle.title.trim()||!newArticle.content.trim()){showToast('\u0639\u0646\u0648\u0627\u0646 \u0648 \u0645\u062a\u0646 \u0631\u0627 \u067e\u0631 \u06a9\u0646\u06cc\u062f');return}try{if(editingArticle){await adminApi.updateArticle(editingArticle.id,{title:newArticle.title,excerpt:newArticle.excerpt,content:newArticle.content,featuredImage:newArticle.featuredImage,status:newArticle.status,categoryId:newArticle.categoryId||undefined});showToast('\u0648\u06cc\u0631\u0627\u06cc\u0634 \u0634\u062f \u2705')}else{await adminApi.createArticle({title:newArticle.title,slug:newArticle.slug,excerpt:newArticle.excerpt,content:newArticle.content,featuredImage:newArticle.featuredImage,status:newArticle.status,categoryId:newArticle.categoryId||undefined});showToast('\u0627\u0641\u0632\u0648\u062f\u0647 \u0634\u062f \u2705')}setEditingArticle(null);setNewArticle({title:'',slug:'',excerpt:'',content:'',featuredImage:'',status:'DRAFT',categoryId:''});reload()}catch{showToast('\u062e\u0637\u0627 \u274c')}};
+const deleteArticle=async(id:string)=>{if(!confirm('\u062d\u0630\u0641 \u0634\u0648\u062f\u061f'))return;try{await adminApi.deleteArticle(id);showToast('\u062d\u0630\u0641 \u0634\u062f \u2705');reload()}catch{showToast('\u062e\u0637\u0627 \u274c')}};
+const statusBadgeClass=(s:string)=>{const m:Record<string,string>={DRAFT:'badge-warning',REVIEW:'badge-gold',PUBLISHED:'badge-success',ARCHIVED:'badge-error'};return m[s]||'badge-warning'};
+const statusLabel=(s:string)=>{const m:Record<string,string>={DRAFT:'\u067e\u06cc\u0634\u200c\u0646\u0648\u06cc\u0633',REVIEW:'\u0628\u0631\u0631\u0633\u06cc',PUBLISHED:'\u0645\u0646\u062a\u0634\u0631',ARCHIVED:'\u0622\u0631\u0634\u06cc\u0648'};return m[s]||s};
 return<div style={{display:'flex',flexDirection:'column',gap:24,maxWidth:920}}>
-<h3 style={{fontWeight:700,fontSize:'1.125rem'}}>\ud83d\udcdd \u0645\u062f\u06cc\u0631\u06cc\u062a \u0645\u0642\u0627\u0644\u0627\u062a ({arts.length})</h3>
+<h3 style={{fontWeight:700,fontSize:'1.125rem'}}>\ud83d\udcdd \u0645\u062f\u06cc\u0631\u06cc\u062a \u0645\u0642\u0627\u0644\u0627\u062a ({articles.length})</h3>
 <div className="card" style={{padding:20}}>
-<h4 style={{fontWeight:700,marginBottom:14}}>{ea?'\u270f\ufe0f \u0648\u06cc\u0631\u0627\u06cc\u0634 \u0645\u0642\u0627\u0644\u0647':'\u2795 \u0645\u0642\u0627\u0644\u0647 \u062c\u062f\u06cc\u062f'}</h4>
+<h4 style={{fontWeight:700,marginBottom:14}}>{editingArticle?'}\u270f\ufe0f \u0648\u06cc\u0631\u0627\u06cc\u0634 \u0645\u0642\u0627\u0644\u0647':'\u2795 \u0645\u0642\u0627\u0644\u0647 \u062c\u062f\u06cc\u062f'}</h4>
 <div style={{display:'flex',flexDirection:'column',gap:10}}>
-<input value={na.title} onChange={e=>sna({...na,title:e.target.value})} style={IS} placeholder="\u0639\u0646\u0648\u0627\u0646 \u0645\u0642\u0627\u0644\u0647"/>
-<input value={na.slug} onChange={e=>sna({...na,slug:e.target.value})} style={IS} placeholder="\u0646\u0634\u0627\u0646 \u0627\u06cc\u0646\u062a\u0631\u0646\u062a\u06cc (\u0627\u062e\u062a\u06cc\u0627\u0631\u06cc \u2014 \u062e\u0648\u062f\u06a9\u0627\u0631 \u0633\u0627\u062e\u062a\u0647 \u0645\u06cc\u200c\u0634\u0648\u062f)"/>
-<input value={na.excerpt} onChange={e=>sna({...na,excerpt:e.target.value})} style={IS} placeholder="\u062e\u0644\u0627\u0635\u0647 \u06a9\u0648\u062a\u0627\u0647"/>
-<textarea value={na.content} onChange={e=>sna({...na,content:e.target.value})} style={{...IS2,minHeight:200}} placeholder="\u0645\u062a\u0646 \u06a9\u0627\u0645\u0644 \u0645\u0642\u0627\u0644\u0647"/>
-<input value={na.featuredImage} onChange={e=>sna({...na,featuredImage:e.target.value})} style={IS} placeholder="\u0622\u062f\u0631\u0633 \u062a\u0635\u0648\u06cc\u0631 \u0634\u0627\u062e\u0635 (URL)"/>
+<input value={newArticle.title} onChange={e=>setNewArticle({...newArticle,title:e.target.value})} style={inputStyle} placeholder="\u0639\u0646\u0648\u0627\u0646 \u0645\u0642\u0627\u0644\u0647"/>
+<input value={newArticle.slug} onChange={e=>setNewArticle({...newArticle,slug:e.target.value})} style={inputStyle} placeholder="\u0646\u0634\u0627\u0646 \u0627\u06cc\u0646\u062a\u0631\u0646\u062a\u06cc (\u0627\u062e\u062a\u06cc\u0627\u0631\u06cc \u2014 \u062e\u0648\u062f\u06a9\u0627\u0631 \u0633\u0627\u062e\u062a\u0647 \u0645\u06cc\u200c\u0634\u0648\u062f)"/>
+<input value={newArticle.excerpt} onChange={e=>setNewArticle({...newArticle,excerpt:e.target.value})} style={inputStyle} placeholder="\u062e\u0644\u0627\u0635\u0647 \u06a9\u0648\u062a\u0627\u0647"/>
+<textarea value={newArticle.content} onChange={e=>setNewArticle({...newArticle,content:e.target.value})} style={{...textareaStyle,minHeight:200}} placeholder="\u0645\u062a\u0646 \u06a9\u0627\u0645\u0644 \u0645\u0642\u0627\u0644\u0647"/>
+<input value={newArticle.featuredImage} onChange={e=>setNewArticle({...newArticle,featuredImage:e.target.value})} style={inputStyle} placeholder="\u0622\u062f\u0631\u0633 \u062a\u0635\u0648\u06cc\u0631 \u0634\u0627\u062e\u0635 (URL)"/>
 <div style={{display:'flex',gap:10,alignItems:'center'}}>
-<select value={na.status} onChange={e=>sna({...na,status:e.target.value})} style={{...IS,flex:1}}>
+<select value={newArticle.status} onChange={e=>setNewArticle({...newArticle,status:e.target.value as ContentStatus})} style={{...inputStyle,flex:1}}>
 <option value="DRAFT">\u067e\u06cc\u0634\u200c\u0646\u0648\u06cc\u0633</option><option value="REVIEW">\u0628\u0631\u0631\u0633\u06cc</option><option value="PUBLISHED">\u0645\u0646\u062a\u0634\u0631</option><option value="ARCHIVED">\u0622\u0631\u0634\u06cc\u0648</option>
 </select>
-<select value={na.categoryId} onChange={e=>sna({...na,categoryId:e.target.value})} style={{...IS,flex:1}}>
+<select value={newArticle.categoryId} onChange={e=>setNewArticle({...newArticle,categoryId:e.target.value})} style={{...inputStyle,flex:1}}>
 <option value="">\u062f\u0633\u062a\u0647\u200c\u0628\u0646\u062f\u06cc (\u062e\u0648\u062f\u06a9\u0627\u0631)</option>
-{cats.map((c:any)=><option key={c.id} value={c.id}>{c.name}</option>)}
+{categories.map((cat)=><option key={cat.id} value={cat.id}>{cat.name}</option>)}
 </select>
-<button onClick={sv} className="btn btn-primary" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>{ea?'\ud83d\udcbe \u0630\u062e\u06cc\u0631\u0647 \u0648\u06cc\u0631\u0627\u06cc\u0634':'\u2795 \u0627\u0641\u0632\u0648\u062f\u0646'}</button>
-{ea&&<button onClick={()=>{sea(null);sna({title:'',slug:'',excerpt:'',content:'',featuredImage:'',status:'DRAFT',categoryId:''})}} className="btn btn-ghost" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>\u0627\u0646\u0635\u0631\u0627\u0641</button>}
+<button onClick={saveArticle} className="btn btn-primary" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>{editingArticle?'}\ud83d\udcbe \u0630\u062e\u06cc\u0631\u0647 \u0648\u06cc\u0631\u0627\u06cc\u0634':'\u2795 \u0627\u0641\u0632\u0648\u062f\u0646'}</button>
+{editingArticle&&<button onClick={()=>{setEditingArticle(null);setNewArticle({title:'',slug:'',excerpt:'',content:'',featuredImage:'',status:'DRAFT',categoryId:''})}} className="btn btn-ghost" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>\u0627\u0646\u0635\u0631\u0627\u0641</button>}
 </div>
 </div>
 </div>
 <div style={{display:'flex',flexDirection:'column',gap:8}}>
-{arts.map((a:any)=><div key={a.id} className="glass-card" style={{padding:14}}>
+{articles.map((article)=><div key={article.id} className="glass-card" style={{padding:14}}>
 <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
 <div style={{flex:1}}>
-<div style={{fontWeight:600,fontSize:'0.9375rem'}}>{a.title}</div>
-<div style={{fontSize:'0.75rem',color:'var(--text-muted)',marginTop:2}} dir="ltr">/{a.slug}</div>
-{a.excerpt&&<div style={{fontSize:'0.8125rem',color:'var(--text-secondary)',marginTop:4}}>{a.excerpt.substring(0,120)}</div>}
+<div style={{fontWeight:600,fontSize:'0.9375rem'}}>{article.title}</div>
+<div style={{fontSize:'0.75rem',color:'var(--text-muted)',marginTop:2}} dir="ltr">/{article.slug}</div>
+{article.excerpt&&<div style={{fontSize:'0.8125rem',color:'var(--text-secondary)',marginTop:4}}>{article.excerpt.substring(0,120)}</div>}
 <div style={{display:'flex',gap:6,marginTop:6,alignItems:'center',flexWrap:'wrap'}}>
-<span className={stl(a.status)} style={{fontSize:'0.7rem'}}>{stx(a.status)}</span>
-{a.category&&<span style={{fontSize:'0.7rem',color:'var(--text-muted)'}}>{a.category.name}</span>}
-<span style={{fontSize:'0.7rem',color:'var(--text-muted)'}}>{new Date(a.createdAt).toLocaleDateString('fa-IR')}</span>
+<span className={statusBadgeClass(article.status)} style={{fontSize:'0.7rem'}}>{statusLabel(article.status)}</span>
+{article.category&&<span style={{fontSize:'0.7rem',color:'var(--text-muted)'}}>{article.category.name}</span>}
+<span style={{fontSize:'0.7rem',color:'var(--text-muted)'}}>{new Date(article.createdAt).toLocaleDateString('fa-IR')}</span>
 </div>
 </div>
 <div style={{display:'flex',gap:6,flexShrink:0}}>
-<button onClick={()=>{sea(a);sna({title:a.title,slug:a.slug,excerpt:a.excerpt||'',content:a.content,featuredImage:a.featuredImage||'',status:a.status,categoryId:a.categoryId})}} style={EB}>\u270f\ufe0f</button>
-<button onClick={()=>dl(a.id)} style={{...EB,color:'#ef4444'}}>\ud83d\uddd1</button>
+<button onClick={()=>{setEditingArticle(article);setNewArticle({title:article.title,slug:article.slug,excerpt:article.excerpt||'',content:article.content,featuredImage:article.featuredImage||'',status:article.status,categoryId:article.categoryId||''})}} style={editButtonStyle}>\u270f\ufe0f</button>
+<button onClick={()=>deleteArticle(article.id)} style={{...editButtonStyle,color:'#ef4444'}}>\ud83d\uddd1</button>
 </div>
 </div>
 </div>)}
-{arts.length===0&&<div style={{textAlign:'center',padding:20,color:'var(--text-muted)'}}>\u0645\u0642\u0627\u0644\u0647\u200c\u0627\u06cc \u0648\u062c\u0648\u062f \u0646\u062f\u0627\u0631\u062f \u2014 \u0627\u0648\u0644\u06cc\u0646 \u0645\u0642\u0627\u0644\u0647 \u0631\u0627 \u0627\u0636\u0627\u0641\u0647 \u06a9\u0646\u06cc\u062f</div>}
+{articles.length===0&&<div style={{textAlign:'center',padding:20,color:'var(--text-muted)'}}>\u0645\u0642\u0627\u0644\u0647\u200c\u0627\u06cc \u0648\u062c\u0648\u062f \u0646\u062f\u0627\u0631\u062f \u2014 \u0627\u0648\u0644\u06cc\u0646 \u0645\u0642\u0627\u0644\u0647 \u0631\u0627 \u0627\u0636\u0627\u0641\u0647 \u06a9\u0646\u06cc\u062f</div>}
 </div>
 </div>}
 
-function CB({tq,stq,tqr,stqr,eq,seq,nq,snq,eo,seo,no,sno,nr,snr,er,ser,sh,ldQ,IS,EB,LB,IS2}:any){
-const svQ=async()=>{if(!nq.question.trim()){sh('\u0633\u0648\u0627\u0644 \u062e\u0627\u0644\u06cc \u0627\u0633\u062a');return}try{if(eq){await adminApi.updateTaxQuestion(eq.id,{question:nq.question,description:nq.description,sortOrder:nq.sortOrder,isActive:nq.isActive});sh('\u0648\u06cc\u0631\u0627\u06cc\u0634 \u0634\u062f \u2705')}else{await adminApi.createTaxQuestion({question:nq.question,description:nq.description,sortOrder:nq.sortOrder,isActive:nq.isActive});sh('\u0627\u0641\u0632\u0648\u062f\u0647 \u0634\u062f \u2705')}seq(null);snq({question:'',description:'',sortOrder:0,isActive:true});ldQ()}catch{sh('\u062e\u0637\u0627 \u274c')}};
-const dlQ=async(id:string)=>{if(!confirm('\u062d\u0630\u0641 \u0634\u0648\u062f\u061f'))return;try{await adminApi.deleteTaxQuestion(id);sh('\u062d\u0630\u0641 \u0634\u062f \u2705');ldQ()}catch{sh('\u062e\u0637\u0627 \u274c')}};
-const svO=async()=>{if(!no.label.trim()||!no.questionId){sh('\u06af\u0632\u06cc\u0646\u0647 \u0648 \u0633\u0648\u0627\u0644 \u0631\u0627 \u067e\u0631 \u06a9\u0646\u06cc\u062f');return}try{await adminApi.createTaxQuestionOption({questionId:no.questionId,label:no.label,value:no.value||no.label,sortOrder:no.sortOrder});sh('\u06af\u0632\u06cc\u0646\u0647 \u0627\u0641\u0632\u0648\u062f\u0647 \u0634\u062f \u2705');sno({questionId:'',label:'',value:'',sortOrder:0});ldQ()}catch{sh('\u062e\u0637\u0627 \u274c')}};
-const dlO=async(id:string)=>{if(!confirm('\u062d\u0630\u0641 \u0634\u0648\u062f\u061f'))return;try{await adminApi.deleteTaxQuestionOption(id);sh('\u062d\u0630\u0641 \u0634\u062f \u2705');ldQ()}catch{sh('\u062e\u0637\u0627 \u274c')}};
-const svR=async()=>{if(!nr.name.trim()||!nr.title.trim()){sh('\u0646\u0627\u0645 \u0648 \u0639\u0646\u0648\u0627\u0646 \u0631\u0627 \u067e\u0631 \u06a9\u0646\u06cc\u062f');return}try{if(er){await adminApi.updateTaxAssistantResult(er.id,{name:nr.name,title:nr.title,description:nr.description,action:nr.action,severity:nr.severity,isActive:nr.isActive});sh('\u0648\u06cc\u0631\u0627\u06cc\u0634 \u0634\u062f \u2705')}else{await adminApi.createTaxAssistantResult({name:nr.name,title:nr.title,description:nr.description,action:nr.action,severity:nr.severity,isActive:nr.isActive});sh('\u0627\u0641\u0632\u0648\u062f\u0647 \u0634\u062f \u2705')}ser(null);snr({name:'',title:'',description:'',action:'',severity:'INFO',isActive:true});ldQ()}catch{sh('\u062e\u0637\u0627 \u274c')}};
-const dlR=async(id:string)=>{if(!confirm('\u062d\u0630\u0641 \u0634\u0648\u062f\u061f'))return;try{await adminApi.deleteTaxAssistantResult(id);sh('\u062d\u0630\u0641 \u0634\u062f \u2705');ldQ()}catch{sh('\u062e\u0637\u0627 \u274c')}};
-const sevr=(s:string)=>{const m:any={INFO:'badge-success',WARNING:'badge-warning',CRITICAL:'badge-error',NEEDS_REVIEW:'badge-gold'};return m[s]||'badge-success'};
-const sevl=(s:string)=>{const m:any={INFO:'\u0627\u0637\u0644\u0627\u0639',WARNING:'\u0647\u0634\u062f\u0627\u0631',CRITICAL:'\u062d\u06cc\u0627\u062a\u06cc',NEEDS_REVIEW:'\u0646\u06cc\u0627\u0632 \u0628\u0647 \u0628\u0631\u0631\u0633\u06cc'};return m[s]||s};
+function ChatbotManager({questions,results,editingQuestion,setEditingQuestion,newQuestion,setNewQuestion,editingOption,setEditingOption,newOption,setNewOption,newResult,setNewResult,editingResult,setEditingResult,showToast,reload,inputStyle,editButtonStyle,labelStyle,textareaStyle}:{
+  questions: TaxQuestion[];
+  results: TaxAssistantResultAdmin[];
+  editingQuestion: TaxQuestion | null;
+  setEditingQuestion: (q: TaxQuestion | null) => void;
+  newQuestion: { question: string; description: string; sortOrder: number; isActive: boolean };
+  setNewQuestion: (q: { question: string; description: string; sortOrder: number; isActive: boolean }) => void;
+  editingOption: TaxQuestionOption | null;
+  setEditingOption: (o: TaxQuestionOption | null) => void;
+  newOption: { questionId: string; label: string; value: string; sortOrder: number };
+  setNewOption: (o: { questionId: string; label: string; value: string; sortOrder: number }) => void;
+  newResult: { name: string; title: string; description: string; action: string; severity: TaxResultSeverity; isActive: boolean };
+  setNewResult: (r: { name: string; title: string; description: string; action: string; severity: TaxResultSeverity; isActive: boolean }) => void;
+  editingResult: TaxAssistantResultAdmin | null;
+  setEditingResult: (r: TaxAssistantResultAdmin | null) => void;
+  showToast: (m: string) => void;
+  reload: () => void;
+  inputStyle: React.CSSProperties;
+  editButtonStyle: React.CSSProperties;
+  labelStyle: React.CSSProperties;
+  textareaStyle: React.CSSProperties;
+}){
+const saveQuestion=async()=>{if(!newQuestion.question.trim()){showToast('\u0633\u0648\u0627\u0644 \u062e\u0627\u0644\u06cc \u0627\u0633\u062a');return}try{if(editingQuestion){await adminApi.updateTaxQuestion(editingQuestion.id,{question:newQuestion.question,description:newQuestion.description,sortOrder:newQuestion.sortOrder,isActive:newQuestion.isActive});showToast('\u0648\u06cc\u0631\u0627\u06cc\u0634 \u0634\u062f \u2705')}else{await adminApi.createTaxQuestion({question:newQuestion.question,description:newQuestion.description,sortOrder:newQuestion.sortOrder,isActive:newQuestion.isActive});showToast('\u0627\u0641\u0632\u0648\u062f\u0647 \u0634\u062f \u2705')}setEditingQuestion(null);setNewQuestion({question:'',description:'',sortOrder:0,isActive:true});reload()}catch{showToast('\u062e\u0637\u0627 \u274c')}};
+const deleteQuestion=async(id:string)=>{if(!confirm('\u062d\u0630\u0641 \u0634\u0648\u062f\u061f'))return;try{await adminApi.deleteTaxQuestion(id);showToast('\u062d\u0630\u0641 \u0634\u062f \u2705');reload()}catch{showToast('\u062e\u0637\u0627 \u274c')}};
+const saveOption=async()=>{if(!newOption.label.trim()||!newOption.questionId){showToast('\u06af\u0632\u06cc\u0646\u0647 \u0648 \u0633\u0648\u0627\u0644 \u0631\u0627 \u067e\u0631 \u06a9\u0646\u06cc\u062f');return}try{await adminApi.createTaxQuestionOption({questionId:newOption.questionId,label:newOption.label,value:newOption.value||newOption.label,sortOrder:newOption.sortOrder});showToast('\u06af\u0632\u06cc\u0646\u0647 \u0627\u0641\u0632\u0648\u062f\u0647 \u0634\u062f \u2705');setNewOption({questionId:'',label:'',value:'',sortOrder:0});reload()}catch{showToast('\u062e\u0637\u0627 \u274c')}};
+const deleteOption=async(id:string)=>{if(!confirm('\u062d\u0630\u0641 \u0634\u0648\u062f\u061f'))return;try{await adminApi.deleteTaxQuestionOption(id);showToast('\u062d\u0630\u0641 \u0634\u062f \u2705');reload()}catch{showToast('\u062e\u0637\u0627 \u274c')}};
+const saveResult=async()=>{if(!newResult.name.trim()||!newResult.title.trim()){showToast('\u0646\u0627\u0645 \u0648 \u0639\u0646\u0648\u0627\u0646 \u0631\u0627 \u067e\u0631 \u06a9\u0646\u06cc\u062f');return}try{if(editingResult){await adminApi.updateTaxAssistantResult(editingResult.id,{name:newResult.name,title:newResult.title,description:newResult.description,action:newResult.action,severity:newResult.severity,isActive:newResult.isActive});showToast('\u0648\u06cc\u0631\u0627\u06cc\u0634 \u0634\u062f \u2705')}else{await adminApi.createTaxAssistantResult({name:newResult.name,title:newResult.title,description:newResult.description,action:newResult.action,severity:newResult.severity,isActive:newResult.isActive});showToast('\u0627\u0641\u0632\u0648\u062f\u0647 \u0634\u062f \u2705')}setEditingResult(null);setNewResult({name:'',title:'',description:'',action:'',severity:'INFO',isActive:true});reload()}catch{showToast('\u062e\u0637\u0627 \u274c')}};
+const deleteResult=async(id:string)=>{if(!confirm('\u062d\u0630\u0641 \u0634\u0648\u062f\u061f'))return;try{await adminApi.deleteTaxAssistantResult(id);showToast('\u062d\u0630\u0641 \u0634\u062f \u2705');reload()}catch{showToast('\u062e\u0637\u0627 \u274c')}};
+const severityBadgeClass=(s:string)=>{const m:Record<string,string>={INFO:'badge-success',WARNING:'badge-warning',CRITICAL:'badge-error',NEEDS_REVIEW:'badge-gold'};return m[s]||'badge-success'};
+const severityLabel=(s:string)=>{const m:Record<string,string>={INFO:'\u0627\u0637\u0644\u0627\u0639',WARNING:'\u0647\u0634\u062f\u0627\u0631',CRITICAL:'\u062d\u06cc\u0627\u062a\u06cc',NEEDS_REVIEW:'\u0646\u06cc\u0627\u0632 \u0628\u0647 \u0628\u0631\u0631\u0633\u06cc'};return m[s]||s};
 return<div style={{display:'flex',flexDirection:'column',gap:24,maxWidth:920}}>
 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><h3 style={{fontWeight:700,fontSize:'1.125rem'}}>\ud83e\udd16 \u0645\u062f\u06cc\u0631\u06cc\u062a \u0686\u062a\u200c\u0628\u0627\u062a \u2014 \u0633\u0624\u0627\u0644\u0627\u062a \u0648 \u062c\u0648\u0627\u0628\u200c\u0647\u0627</h3></div>
 <div className="card" style={{padding:20}}>
-<h4 style={{fontWeight:700,marginBottom:14}}>\ud83d\udccb \u0633\u0624\u0627\u0644\u0627\u062a ({tq.length})</h4>
+<h4 style={{fontWeight:700,marginBottom:14}}>\ud83d\udccb \u0633\u0624\u0627\u0644\u0627\u062a ({questions.length})</h4>
 <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:16}}>
-<input value={nq.question} onChange={e=>snq({...nq,question:e.target.value})} style={IS} placeholder="\u0645\u062a\u0646 \u0633\u0624\u0627\u0644"/>
-<textarea value={nq.description} onChange={e=>snq({...nq,description:e.target.value})} style={IS2} placeholder="\u062a\u0648\u0636\u06cc\u062d (\u0627\u062e\u062a\u06cc\u0627\u0631\u06cc)"/>
+<input value={newQuestion.question} onChange={e=>setNewQuestion({...newQuestion,question:e.target.value})} style={inputStyle} placeholder="\u0645\u062a\u0646 \u0633\u0624\u0627\u0644"/>
+<textarea value={newQuestion.description} onChange={e=>setNewQuestion({...newQuestion,description:e.target.value})} style={textareaStyle} placeholder="\u062a\u0648\u0636\u06cc\u062d (\u0627\u062e\u062a\u06cc\u0627\u0631\u06cc)"/>
 <div style={{display:'flex',gap:10,alignItems:'center'}}>
-<input type="number" value={nq.sortOrder} onChange={e=>snq({...nq,sortOrder:+e.target.value})} style={{...IS,width:100}} placeholder="\u062a\u0631\u062a\u06cc\u0628"/>
-<label style={{display:'flex',alignItems:'center',gap:6,fontSize:'0.875rem',color:'var(--text-muted)'}}><input type="checkbox" checked={nq.isActive} onChange={e=>snq({...nq,isActive:e.target.checked})}/> \u0641\u0639\u0627\u0644</label>
-<button onClick={svQ} className="btn btn-primary" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>{eq?'\ud83d\udcbe \u0648\u06cc\u0631\u0627\u06cc\u0634':'\u2795 \u0627\u0641\u0632\u0648\u062f\u0646 \u0633\u0624\u0627\u0644'}</button>
-{eq&&<button onClick={()=>{seq(null);snq({question:'',description:'',sortOrder:0,isActive:true})}} className="btn btn-ghost" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>\u0627\u0646\u0635\u0631\u0627\u0641</button>}
+<input type="number" value={newQuestion.sortOrder} onChange={e=>setNewQuestion({...newQuestion,sortOrder:+e.target.value})} style={{...inputStyle,width:100}} placeholder="\u062a\u0631\u062a\u06cc\u0628"/>
+<label style={{display:'flex',alignItems:'center',gap:6,fontSize:'0.875rem',color:'var(--text-muted)'}}><input type="checkbox" checked={newQuestion.isActive} onChange={e=>setNewQuestion({...newQuestion,isActive:e.target.checked})}/> \u0641\u0639\u0627\u0644</label>
+<button onClick={saveQuestion} className="btn btn-primary" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>{editingQuestion?'\ud83d\udcbe \u0648\u06cc\u0631\u0627\u06cc\u0634':'\u2795 \u0627\u0641\u0632\u0648\u062f\u0646 \u0633\u0624\u0627\u0644'}</button>
+{editingQuestion&&<button onClick={()=>{setEditingQuestion(null);setNewQuestion({question:'',description:'',sortOrder:0,isActive:true})}} className="btn btn-ghost" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>\u0627\u0646\u0635\u0631\u0627\u0641</button>}
 </div>
 </div>
 <div style={{display:'flex',flexDirection:'column',gap:8}}>
-{tq.map((qq:any)=><div key={qq.id} className="glass-card" style={{padding:14}}>
+{questions.map((question)=><div key={question.id} className="glass-card" style={{padding:14}}>
 <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
 <div style={{flex:1}}>
-<div style={{fontWeight:600,fontSize:'0.9375rem'}}>{qq.sortOrder+1}. {qq.question}</div>
-{qq.description&&<div style={{fontSize:'0.8125rem',color:'var(--text-muted)',marginTop:4}}>{qq.description}</div>}
+<div style={{fontWeight:600,fontSize:'0.9375rem'}}>{question.sortOrder+1}. {question.question}</div>
+{question.description&&<div style={{fontSize:'0.8125rem',color:'var(--text-muted)',marginTop:4}}>{question.description}</div>}
 <div style={{display:'flex',gap:6,marginTop:6,flexWrap:'wrap'}}>
-{qq.options?.map((o:any)=><span key={o.id} style={{fontSize:'0.75rem',background:'rgba(198,169,98,.1)',border:'1px solid var(--border-subtle)',borderRadius:6,padding:'3px 8px',color:'var(--brand-gold)'}}>{o.label} <button onClick={()=>dlO(o.id)} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:'0.75rem',padding:0,marginRight:4}}>\u2715</button></span>)}
+{question.options?.map((option)=><span key={option.id} style={{fontSize:'0.75rem',background:'rgba(198,169,98,.1)',border:'1px solid var(--border-subtle)',borderRadius:6,padding:'3px 8px',color:'var(--brand-gold)'}}>{option.label} <button onClick={()=>deleteOption(option.id)} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:'0.75rem',padding:0,marginRight:4}}>\u2715</button></span>)}
 </div>
 </div>
 <div style={{display:'flex',gap:6,flexShrink:0}}>
-<span className={qq.isActive?'badge badge-success':'badge badge-error'} style={{fontSize:'0.7rem'}}>{qq.isActive?'\u0641\u0639\u0627\u0644':'\u063a\u06cc\u0631\u0641\u0639\u0627\u0644'}</span>
-<button onClick={()=>{seq(qq);snq({question:qq.question,description:qq.description||'',sortOrder:qq.sortOrder,isActive:qq.isActive})}} style={EB}>\u270f\ufe0f</button>
-<button onClick={()=>dlQ(qq.id)} style={{...EB,color:'#ef4444'}}>\ud83d\uddd1</button>
+<span className={question.isActive?'badge badge-success':'badge badge-error'} style={{fontSize:'0.7rem'}}>{question.isActive?'\u0641\u0639\u0627\u0644':'\u063a\u06cc\u0631\u0641\u0639\u0627\u0644'}</span>
+<button onClick={()=>{setEditingQuestion(question);setNewQuestion({question:question.question,description:question.description||'',sortOrder:question.sortOrder,isActive:question.isActive})}} style={editButtonStyle}>\u270f\ufe0f</button>
+<button onClick={()=>deleteQuestion(question.id)} style={{...editButtonStyle,color:'#ef4444'}}>\ud83d\uddd1</button>
 </div>
 </div>
 <div style={{marginTop:8,paddingTop:8,borderTop:'1px solid var(--border-subtle)'}}>
 <div style={{display:'flex',gap:6,alignItems:'center'}}>
-<select value={no.questionId} onChange={e=>sno({...no,questionId:e.target.value})} style={{...IS,flex:1,fontSize:'0.8125rem',padding:'6px 10px'}}>
+<select value={newOption.questionId} onChange={e=>setNewOption({...newOption,questionId:e.target.value})} style={{...inputStyle,flex:1,fontSize:'0.8125rem',padding:'6px 10px'}}>
 <option value="">\u0627\u0646\u062a\u062e\u0627\u0628 \u0633\u0624\u0627\u0644...</option>
-{tq.map((qq2:any)=><option key={qq2.id} value={qq2.id}>{qq2.question.substring(0,40)}</option>)}
+{questions.map((q)=><option key={q.id} value={q.id}>{q.question.substring(0,40)}</option>)}
 </select>
-<input value={no.label} onChange={e=>sno({...no,label:e.target.value})} style={{...IS,flex:1,fontSize:'0.8125rem',padding:'6px 10px'}} placeholder="\u0645\u062a\u0646 \u06af\u0632\u06cc\u0646\u0647"/>
-<input type="number" value={no.sortOrder} onChange={e=>sno({...no,sortOrder:+e.target.value})} style={{...IS,width:60,fontSize:'0.8125rem',padding:'6px 10px'}} placeholder="\u062a\u0631\u062a\u06cc\u0628"/>
-<button onClick={svO} className="btn btn-primary" style={{fontSize:'0.75rem',padding:'6px 12px'}}>\u2795 \u06af\u0632\u06cc\u0646\u0647</button>
+<input value={newOption.label} onChange={e=>setNewOption({...newOption,label:e.target.value})} style={{...inputStyle,flex:1,fontSize:'0.8125rem',padding:'6px 10px'}} placeholder="\u0645\u062a\u0646 \u06af\u0632\u06cc\u0646\u0647"/>
+<input type="number" value={newOption.sortOrder} onChange={e=>setNewOption({...newOption,sortOrder:+e.target.value})} style={{...inputStyle,width:60,fontSize:'0.8125rem',padding:'6px 10px'}} placeholder="\u062a\u0631\u062a\u06cc\u0628"/>
+<button onClick={saveOption} className="btn btn-primary" style={{fontSize:'0.75rem',padding:'6px 12px'}}>\u2795 \u06af\u0632\u06cc\u0646\u0647</button>
 </div>
 </div>
 </div>)}
-{tq.length===0&&<div style={{textAlign:'center',padding:20,color:'var(--text-muted)'}}>\u0633\u0624\u0627\u0644\u06cc \u0648\u062c\u0648\u062f \u0646\u062f\u0627\u0631\u062f \u2014 \u0627\u0648\u0644\u06cc\u0646 \u0633\u0624\u0627\u0644 \u0631\u0627 \u0627\u0636\u0627\u0641\u0647 \u06a9\u0646\u06cc\u062f</div>}
+{questions.length===0&&<div style={{textAlign:'center',padding:20,color:'var(--text-muted)'}}>\u0633\u0624\u0627\u0644\u06cc \u0648\u062c\u0648\u062f \u0646\u062f\u0627\u0631\u062f \u2014 \u0627\u0648\u0644\u06cc\u0646 \u0633\u0624\u0627\u0644 \u0631\u0627 \u0627\u0636\u0627\u0641\u0647 \u06a9\u0646\u06cc\u062f</div>}
 </div>
 </div>
 <div className="card" style={{padding:20}}>
-<h4 style={{fontWeight:700,marginBottom:14}}>\ud83c\udfc1 \u0646\u062a\u0627\u06cc\u062c \u0645\u0634\u0627\u0648\u0631\u0647 ({tqr.length})</h4>
+<h4 style={{fontWeight:700,marginBottom:14}}>\ud83c\udfc1 \u0646\u062a\u0627\u06cc\u062c \u0645\u0634\u0627\u0648\u0631\u0647 ({results.length})</h4>
 <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:16}}>
-<input value={nr.name} onChange={e=>snr({...nr,name:e.target.value})} style={IS} placeholder="\u0646\u0627\u0645 (\u0627\u0646\u06af\u0644\u06cc\u0633\u06cc\u060c \u06cc\u06a9\u062a\u0627)"/>
-<input value={nr.title} onChange={e=>snr({...nr,title:e.target.value})} style={IS} placeholder="\u0639\u0646\u0648\u0627\u0646 \u0646\u0645\u0627\u06cc\u0634\u06cc"/>
-<textarea value={nr.description} onChange={e=>snr({...nr,description:e.target.value})} style={IS2} placeholder="\u062a\u0648\u0636\u06cc\u062d\u0627\u062a \u0646\u062a\u06cc\u062c\u0647"/>
-<input value={nr.action} onChange={e=>snr({...nr,action:e.target.value})} style={IS} placeholder="\u0627\u0642\u062f\u0627\u0645 \u067e\u06cc\u0634\u0646\u0647\u0627\u062f\u06cc (\u0627\u062e\u062a\u06cc\u0627\u0631\u06cc)"/>
+<input value={newResult.name} onChange={e=>setNewResult({...newResult,name:e.target.value})} style={inputStyle} placeholder="\u0646\u0627\u0645 (\u0627\u0646\u06af\u0644\u06cc\u0633\u06cc\u060c \u06cc\u06a9\u062a\u0627)"/>
+<input value={newResult.title} onChange={e=>setNewResult({...newResult,title:e.target.value})} style={inputStyle} placeholder="\u0639\u0646\u0648\u0627\u0646 \u0646\u0645\u0627\u06cc\u0634\u06cc"/>
+<textarea value={newResult.description} onChange={e=>setNewResult({...newResult,description:e.target.value})} style={textareaStyle} placeholder="\u062a\u0648\u0636\u06cc\u062d\u0627\u062a \u0646\u062a\u06cc\u062c\u0647"/>
+<input value={newResult.action} onChange={e=>setNewResult({...newResult,action:e.target.value})} style={inputStyle} placeholder="\u0627\u0642\u062f\u0627\u0645 \u067e\u06cc\u0634\u0646\u0647\u0627\u062f\u06cc (\u0627\u062e\u062a\u06cc\u0627\u0631\u06cc)"/>
 <div style={{display:'flex',gap:10,alignItems:'center'}}>
-<select value={nr.severity} onChange={e=>snr({...nr,severity:e.target.value})} style={{...IS,flex:1}}>
+<select value={newResult.severity} onChange={e=>setNewResult({...newResult,severity:e.target.value as TaxResultSeverity})} style={{...inputStyle,flex:1}}>
 <option value="INFO">\u0627\u0637\u0644\u0627\u0639</option><option value="WARNING">\u0647\u0634\u062f\u0627\u0631</option><option value="CRITICAL">\u062d\u06cc\u0627\u062a\u06cc</option><option value="NEEDS_REVIEW">\u0646\u06cc\u0627\u0632 \u0628\u0647 \u0628\u0631\u0631\u0633\u06cc</option>
 </select>
-<label style={{display:'flex',alignItems:'center',gap:6,fontSize:'0.875rem',color:'var(--text-muted)'}}><input type="checkbox" checked={nr.isActive} onChange={e=>snr({...nr,isActive:e.target.checked})}/> \u0641\u0639\u0627\u0644</label>
-<button onClick={svR} className="btn btn-primary" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>{er?'\ud83d\udcbe \u0648\u06cc\u0631\u0627\u06cc\u0634':'\u2795 \u0627\u0641\u0632\u0648\u062f\u0646 \u0646\u062a\u06cc\u062c\u0647'}</button>
-{er&&<button onClick={()=>{ser(null);snr({name:'',title:'',description:'',action:'',severity:'INFO',isActive:true})}} className="btn btn-ghost" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>\u0627\u0646\u0635\u0631\u0627\u0641</button>}
+<label style={{display:'flex',alignItems:'center',gap:6,fontSize:'0.875rem',color:'var(--text-muted)'}}><input type="checkbox" checked={newResult.isActive} onChange={e=>setNewResult({...newResult,isActive:e.target.checked})}/> \u0641\u0639\u0627\u0644</label>
+<button onClick={saveResult} className="btn btn-primary" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>{editingResult?'\ud83d\udcbe \u0648\u06cc\u0631\u0627\u06cc\u0634':'\u2795 \u0627\u0641\u0632\u0648\u062f\u0646 \u0646\u062a\u06cc\u062c\u0647'}</button>
+{editingResult&&<button onClick={()=>{setEditingResult(null);setNewResult({name:'',title:'',description:'',action:'',severity:'INFO',isActive:true})}} className="btn btn-ghost" style={{fontSize:'0.8125rem',padding:'8px 16px'}}>\u0627\u0646\u0635\u0631\u0627\u0641</button>}
 </div>
 </div>
 <div style={{display:'flex',flexDirection:'column',gap:8}}>
-{tqr.map((r:any)=><div key={r.id} className="glass-card" style={{padding:14}}>
+{results.map((result)=><div key={result.id} className="glass-card" style={{padding:14}}>
 <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
 <div style={{flex:1}}>
-<div style={{fontWeight:600,fontSize:'0.9375rem'}}>{r.title}</div>
-<div style={{fontSize:'0.75rem',color:'var(--text-muted)',marginTop:2}}>{r.name}</div>
-<div style={{fontSize:'0.8125rem',color:'var(--text-secondary)',marginTop:6,lineHeight:1.6}}>{r.description?.substring(0,150)}{(r.description?.length||0)>150?'...':''}</div>
-{r.action&&<div style={{fontSize:'0.8125rem',color:'var(--brand-gold)',marginTop:6}}>\u2192 {r.action}</div>}
+<div style={{fontWeight:600,fontSize:'0.9375rem'}}>{result.title}</div>
+<div style={{fontSize:'0.75rem',color:'var(--text-muted)',marginTop:2}}>{result.name}</div>
+<div style={{fontSize:'0.8125rem',color:'var(--text-secondary)',marginTop:6,lineHeight:1.6}}>{result.description?.substring(0,150)}{(result.description?.length||0)>150?'...':''}</div>
+{result.action&&<div style={{fontSize:'0.8125rem',color:'var(--brand-gold)',marginTop:6}}>\u2192 {result.action}</div>}
 </div>
 <div style={{display:'flex',gap:8,flexShrink:0,flexDirection:'column',alignItems:'flex-end'}}>
-<span className={sevr(r.severity)} style={{fontSize:'0.7rem'}}>{sevl(r.severity)}</span>
+<span className={severityBadgeClass(result.severity)} style={{fontSize:'0.7rem'}}>{severityLabel(result.severity)}</span>
 <div style={{display:'flex',gap:6}}>
-<button onClick={()=>{ser(r);snr({name:r.name,title:r.title,description:r.description,action:r.action||'',severity:r.severity,isActive:r.isActive})}} style={EB}>\u270f\ufe0f</button>
-<button onClick={()=>dlR(r.id)} style={{...EB,color:'#ef4444'}}>\ud83d\uddd1</button>
+<button onClick={()=>{setEditingResult(result);setNewResult({name:result.name,title:result.title,description:result.description,action:result.action||'',severity:result.severity,isActive:result.isActive})}} style={editButtonStyle}>\u270f\ufe0f</button>
+<button onClick={()=>deleteResult(result.id)} style={{...editButtonStyle,color:'#ef4444'}}>\ud83d\uddd1</button>
 </div>
 </div>
 </div>
 </div>)}
-{tqr.length===0&&<div style={{textAlign:'center',padding:20,color:'var(--text-muted)'}}>\u0646\u062a\u06cc\u062c\u0647\u200c\u0627\u06cc \u0648\u062c\u0648\u062f \u0646\u062f\u0627\u0631\u062f</div>}
+{results.length===0&&<div style={{textAlign:'center',padding:20,color:'var(--text-muted)'}}>\u0646\u062a\u06cc\u062c\u0647\u200c\u0627\u06cc \u0648\u062c\u0648\u062f \u0646\u062f\u0627\u0631\u062f</div>}
 </div>
 </div>
 </div>}
 
 
-const C: React.CSSProperties = { minHeight: '100vh', background: 'var(--brand-black)', display: 'flex', alignItems: 'center', justifyContent: 'center' };
-const C2: React.CSSProperties = { ...C, display: 'block' };
-const SP: React.CSSProperties = { width: 44, height: 44, border: '3px solid var(--border-subtle)', borderTopColor: 'var(--brand-gold)', borderRadius: '50%', animation: 'spin .8s linear infinite' };
-const HD: React.CSSProperties = { borderBottom: '1px solid var(--border-subtle)', background: 'var(--brand-black-soft)', padding: '0 20px', position: 'sticky', top: 0, zIndex: 50, backdropFilter: 'blur(12px)' };
-const HD2: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 60 };
-const HL2: React.CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8125rem' };
-const TBAR: React.CSSProperties = { display: 'flex', gap: 2, marginBottom: 28, borderBottom: '1px solid var(--border-subtle)', overflowX: 'auto' };
-const TBA: React.CSSProperties = { padding: '12px 24px', fontSize: '0.875rem', fontWeight: 600, border: 'none', background: 'none', color: 'var(--brand-gold)', borderBottom: '2px solid var(--brand-gold)', cursor: 'pointer', fontFamily: 'Vazirmatn', whiteSpace: 'nowrap' };
-const TBB: React.CSSProperties = { ...TBA, color: 'var(--text-muted)', borderBottom: '2px solid transparent' };
-const KR: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--border-subtle)' };
-const IS: React.CSSProperties = { width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,.04)', border: '1.5px solid var(--border-subtle)', borderRadius: 8, color: 'var(--text-primary)', fontFamily: 'Vazirmatn', fontSize: '0.9375rem', outline: 'none' };
-const IS2: React.CSSProperties = { ...IS, resize: 'vertical', minHeight: 80 };
-const EB: React.CSSProperties = { background: 'none', border: '1px solid var(--border-subtle)', color: 'var(--brand-gold)', padding: '6px 14px', borderRadius: 6, cursor: 'pointer', fontFamily: 'Vazirmatn', fontSize: '0.8125rem' };
-const PVS: React.CSSProperties = { padding: 14, background: 'rgba(198,169,98,.04)', borderRadius: 8, border: '1px solid var(--border-subtle)' };
-const LB: React.CSSProperties = { fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 };
-const TB: React.CSSProperties = { width: '100%', borderCollapse: 'collapse' };
-const TR = { borderBottom: '1px solid var(--border-subtle)' };
-const TH: React.CSSProperties = { textAlign: 'right', padding: '12px 16px', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 };
-const TD: React.CSSProperties = { padding: '10px 16px', fontSize: '0.875rem' };
-const PG: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', padding: '12px 16px', borderTop: '1px solid var(--border-subtle)', fontSize: '0.8125rem', color: 'var(--text-muted)' };
-const PGB: React.CSSProperties = { display: 'flex', gap: 6 };
+const centerStyle: React.CSSProperties = { minHeight: '100vh', background: 'var(--brand-black)', display: 'flex', alignItems: 'center', justifyContent: 'center' };
+const blockStyle: React.CSSProperties = { ...centerStyle, display: 'block' };
+const spinnerStyle: React.CSSProperties = { width: 44, height: 44, border: '3px solid var(--border-subtle)', borderTopColor: 'var(--brand-gold)', borderRadius: '50%', animation: 'spin .8s linear infinite' };
+const headerStyle: React.CSSProperties = { borderBottom: '1px solid var(--border-subtle)', background: 'var(--brand-black-soft)', padding: '0 20px', position: 'sticky', top: 0, zIndex: 50, backdropFilter: 'blur(12px)' };
+const headerInnerStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 60 };
+const headerLinkStyle: React.CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8125rem' };
+const tabBarStyle: React.CSSProperties = { display: 'flex', gap: 2, marginBottom: 28, borderBottom: '1px solid var(--border-subtle)', overflowX: 'auto' };
+const tabActiveStyle: React.CSSProperties = { padding: '12px 24px', fontSize: '0.875rem', fontWeight: 600, border: 'none', background: 'none', color: 'var(--brand-gold)', borderBottom: '2px solid var(--brand-gold)', cursor: 'pointer', fontFamily: 'Vazirmatn', whiteSpace: 'nowrap' };
+const tabInactiveStyle: React.CSSProperties = { ...tabActiveStyle, color: 'var(--text-muted)', borderBottom: '2px solid transparent' };
+const rowStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--border-subtle)' };
+const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,.04)', border: '1.5px solid var(--border-subtle)', borderRadius: 8, color: 'var(--text-primary)', fontFamily: 'Vazirmatn', fontSize: '0.9375rem', outline: 'none' };
+const textareaStyle: React.CSSProperties = { ...inputStyle, resize: 'vertical', minHeight: 80 };
+const editButtonStyle: React.CSSProperties = { background: 'none', border: '1px solid var(--border-subtle)', color: 'var(--brand-gold)', padding: '6px 14px', borderRadius: 6, cursor: 'pointer', fontFamily: 'Vazirmatn', fontSize: '0.8125rem' };
+const previewStyle: React.CSSProperties = { padding: 14, background: 'rgba(198,169,98,.04)', borderRadius: 8, border: '1px solid var(--border-subtle)' };
+const labelStyle: React.CSSProperties = { fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 };
+const tableStyle: React.CSSProperties = { width: '100%', borderCollapse: 'collapse' };
+const tableRowStyle = { borderBottom: '1px solid var(--border-subtle)' };
+const tableHeadStyle: React.CSSProperties = { textAlign: 'right', padding: '12px 16px', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 };
+const tableDataStyle: React.CSSProperties = { padding: '10px 16px', fontSize: '0.875rem' };
+const paginationStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', padding: '12px 16px', borderTop: '1px solid var(--border-subtle)', fontSize: '0.8125rem', color: 'var(--text-muted)' };
+const paginationButtonsStyle: React.CSSProperties = { display: 'flex', gap: 6 };
