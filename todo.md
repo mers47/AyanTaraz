@@ -5,19 +5,19 @@
 ---
 
 ## فاز ۱ — اصلاحات امنیتی بحرانی (Critical Security Fixes)
-- [ ] 1.1: حذف `.env` از رهگیری گیت (`git rm --cached .env`) — فایل با مقادیر حساس در گیت رهگیری شده است
-- [ ] 1.2: ایجاد `.env.example` با مقادیر نمونه و کامنت‌گذاری کامل
-- [ ] 1.3: محدود کردن `remotePatterns` در `next.config.js` — فقط دامنه‌های مجاز به جای `hostname: '**'`
-- [ ] 1.4: اضافه کردن احراز هویت به `uploadReceipt` در consultation controller (حالا `@Public` است — هرکس می‌تواند فایل آپلود کند)
-- [ ] 1.5: اصلاح fallback UUID در admin controller — به جای `'00000000-...'` باید خطای 401 پرتاب شود اگر `req.user` وجود نداشته باشد
-- [ ] 1.6: کامیت، push، ایجاد PR، مرج به main
+- [x] 1.1: حذف `.env` از رهگیری گیت (`git rm --cached .env`) — فایل با مقادیر حساس در گیت رهگیری شده است
+- [x] 1.2: ایجاد `.env.example` با مقادیر نمونه و کامنت‌گذاری کامل
+- [x] 1.3: محدود کردن `remotePatterns` در `next.config.js` — فقط دامنه‌های مجاز به جای `hostname: '**'`
+- [x] 1.4: اضافه کردن احراز هویت به `uploadReceipt` در consultation controller (حالا `@Public` است — هرکس می‌تواند فایل آپلود کند)
+- [x] 1.5: اصلاح fallback UUID در admin controller — به جای `'00000000-...'` باید خطای 401 پرتاب شود اگر `req.user` وجود نداشته باشد
+- [x] 1.6: کامیت، push، ایجاد PR، مرج به main
 
 ## فاز ۲ — تکمیل کد ناقص و سرویس‌های استاب (Incomplete & Stub Features)
-- [ ] 2.1: تکمیل `MediaService` — اضافه کردن متدهای `upload()`, `delete()`, `getById()` (حالا فقط `list()` وجود دارد)
-- [ ] 2.2: تکمیل `MediaController` — endpoint های آپلود و حذف با guard ادمین
-- [ ] 2.3: اتصال `AuditService.log()` به عملیات ادمین در `admin.service.ts` (AuditService وجود دارد اما هیچ‌جا فراخوانی نمی‌شود — کد مرده/صوری)
-- [ ] 2.4: تکمیل Step 4 فاز ۶ — endpoint آمار داشبورد در `admin.service.ts` + `admin.controller.ts`
-- [ ] 2.5: اصلاح auto-create availability در consultation service — نباید به‌صورت خودکار رکورد بسازد؛ در صورت نبود داده، خطای مناسب برگرداند
+- [x] 2.1: تکمیل `MediaService` — اضافه کردن متدهای `upload()`, `delete()`, `getById()` (حالا فقط `list()` وجود دارد)
+- [x] 2.2: تکمیل `MediaController` — endpoint های آپلود و حذف با guard ادمین
+- [x] 2.3: اتصال `AuditService.log()` به عملیات ادمین در `admin.service.ts` (AuditService وجود دارد اما هیچ‌جا فراخوانی نمی‌شود — کد مرده/صوری)
+- [x] 2.4: تکمیل Step 4 فاز ۶ — endpoint آمار داشبورد در `admin.service.ts` + `admin.controller.ts`
+- [x] 2.5: اصلاح auto-create availability در consultation service — نباید به‌صورت خودکار رکورد بسازد؛ در صورت نبود داده، خطای مناسب برگرداند
 - [ ] 2.6: کامیت، push، PR، مرج
 
 ## فاز ۳ — اصلاح ناسازگاری‌ها و کیفیت کد بک‌اند (Backend Code Quality)

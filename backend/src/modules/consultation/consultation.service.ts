@@ -26,41 +26,30 @@ export class ConsultationService {
 
     const dayOfWeek = slotDate.getDay();
 
-    // Find or create an availability record matching the requested day of week.
-    let availability = await this.prisma.consultationAvailability.findFirst({
+    // Look up the availability record configured by an admin for the requested day of week.
+    // Do NOT auto-create availability or slots — the admin must configure working hours first.
+    const availability = await this.prisma.consultationAvailability.findFirst({
       where: { serviceId: dto.serviceId, dayOfWeek, isActive: true },
     });
     if (!availability) {
-      availability = await this.prisma.consultationAvailability.create({
-        data: {
-          serviceId: dto.serviceId,
-          dayOfWeek,
-          startTime: '09:00',
-          endTime: '18:00',
-          isActive: true,
-        },
-      });
+      throw new NotFoundException(
+        'برای روز انتخاب‌شده زمان‌های کاری تعریف نشده است. لطفاً روز دیگری انتخاب کنید.',
+      );
     }
 
     // Slot start/end as Date objects for the requested date/time.
     const slotStart = new Date(slotDate);
     const slotEnd = new Date(slotDate.getTime() + (service.duration || 45) * 60 * 1000);
 
-    // Find or create a slot for the requested exact date + time.
-    let slot = await this.prisma.consultationSlot.findFirst({
-      where: { availabilityId: availability.id, date: slotDate, startTime: slotStart },
+    // Look up an existing slot for the requested exact date + time.
+    // Do NOT auto-create slots — only pre-configured slots can be booked.
+    const slot = await this.prisma.consultationSlot.findFirst({
+      where: { availabilityId: availability.id, date: slotDate, startTime: slotStart, isActive: true },
     });
     if (!slot) {
-      slot = await this.prisma.consultationSlot.create({
-        data: {
-          availabilityId: availability.id,
-          date: slotDate,
-          startTime: slotStart,
-          endTime: slotEnd,
-          maxBookings: 1,
-          isActive: true,
-        },
-      });
+      throw new NotFoundException(
+        'برای زمان انتخاب‌شده نوبتی وجود ندارد. لطفاً زمان دیگری انتخاب کنید.',
+      );
     }
 
     // Prevent double-booking of the same slot.

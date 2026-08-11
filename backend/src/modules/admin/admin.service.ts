@@ -1,10 +1,14 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 import { UserRole } from '@prisma/client';
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
   async getDashboardStats() {
     const [
@@ -209,7 +213,7 @@ export class AdminService {
     return this.prisma.article.findUnique({ where: { id }, include: { category: true, author: { select: { id: true, firstName: true, lastName: true } } } });
   }
 
-  async createArticle(data: { title: string; slug?: string; excerpt?: string; content: string; featuredImage?: string; status?: string; metaTitle?: string; metaDescription?: string; categoryId?: string; authorId: string }) {
+  async createArticle(data: { title: string; slug?: string; excerpt?: string; content: string; featuredImage?: string; status?: string; metaTitle?: string; metaDescription?: string; categoryId?: string; authorId: string }, auditUserId?: string, auditIp?: string) {
     // Ensure a category exists (create default if needed)
     let categoryId = data.categoryId;
     if (!categoryId) {
@@ -221,7 +225,7 @@ export class AdminService {
     // Ensure slug uniqueness
     const existing = await this.prisma.article.findUnique({ where: { slug } });
     if (existing) { slug = `${slug}-${Date.now()}`; }
-    return this.prisma.article.create({
+    const article = await this.prisma.article.create({
       data: {
         title: data.title, slug, excerpt: data.excerpt || null, content: data.content,
         featuredImage: data.featuredImage || null, status: (data.status as any) || 'DRAFT',
@@ -231,16 +235,21 @@ export class AdminService {
       },
       include: { category: { select: { name: true } } },
     });
+    if (auditUserId) await this.audit.log(auditUserId, 'CREATE', 'Article', article.id, null, { title: data.title, slug }, auditIp);
+    return article;
   }
 
-  async updateArticle(id: string, data: { title?: string; excerpt?: string; content?: string; featuredImage?: string; status?: string; metaTitle?: string; metaDescription?: string; categoryId?: string }) {
+  async updateArticle(id: string, data: { title?: string; excerpt?: string; content?: string; featuredImage?: string; status?: string; metaTitle?: string; metaDescription?: string; categoryId?: string }, auditUserId?: string, auditIp?: string) {
     const updateData: any = { ...data };
     if (data.status) { updateData.status = data.status as any; if (data.status === 'PUBLISHED') { updateData.publishedAt = new Date(); } }
-    return this.prisma.article.update({ where: { id }, data: updateData, include: { category: { select: { name: true } } } });
+    const article = await this.prisma.article.update({ where: { id }, data: updateData, include: { category: { select: { name: true } } } });
+    if (auditUserId) await this.audit.log(auditUserId, 'UPDATE', 'Article', id, null, data, auditIp);
+    return article;
   }
 
-  async deleteArticle(id: string) {
+  async deleteArticle(id: string, auditUserId?: string, auditIp?: string) {
     await this.prisma.article.delete({ where: { id } });
+    if (auditUserId) await this.audit.log(auditUserId, 'DELETE', 'Article', id, null, null, auditIp);
     return { success: true };
   }
 
@@ -261,7 +270,7 @@ export class AdminService {
     return { data, total, page, limit };
   }
 
-  async createVideo(data: { title: string; slug?: string; description?: string; url: string; thumbnail?: string; duration?: number; status?: string; categoryId?: string; authorId: string }) {
+  async createVideo(data: { title: string; slug?: string; description?: string; url: string; thumbnail?: string; duration?: number; status?: string; categoryId?: string; authorId: string }, auditUserId?: string, auditIp?: string) {
     let categoryId = data.categoryId;
     if (!categoryId) {
       let cat = await this.prisma.category.findFirst();
@@ -271,7 +280,7 @@ export class AdminService {
     let slug = data.slug || data.title.trim().replace(/\s+/g, '-').toLowerCase();
     const existing = await this.prisma.video.findUnique({ where: { slug } });
     if (existing) { slug = `${slug}-${Date.now()}`; }
-    return this.prisma.video.create({
+    const video = await this.prisma.video.create({
       data: {
         title: data.title, slug, description: data.description || null, url: data.url,
         thumbnail: data.thumbnail || null, duration: data.duration || null,
@@ -280,16 +289,21 @@ export class AdminService {
       },
       include: { category: { select: { name: true } } },
     });
+    if (auditUserId) await this.audit.log(auditUserId, 'CREATE', 'Video', video.id, null, { title: data.title, slug }, auditIp);
+    return video;
   }
 
-  async updateVideo(id: string, data: { title?: string; description?: string; url?: string; thumbnail?: string; duration?: number; status?: string; categoryId?: string }) {
+  async updateVideo(id: string, data: { title?: string; description?: string; url?: string; thumbnail?: string; duration?: number; status?: string; categoryId?: string }, auditUserId?: string, auditIp?: string) {
     const updateData: any = { ...data };
     if (data.status) { updateData.status = data.status as any; if (data.status === 'PUBLISHED') { updateData.publishedAt = new Date(); } }
-    return this.prisma.video.update({ where: { id }, data: updateData, include: { category: { select: { name: true } } } });
+    const video = await this.prisma.video.update({ where: { id }, data: updateData, include: { category: { select: { name: true } } } });
+    if (auditUserId) await this.audit.log(auditUserId, 'UPDATE', 'Video', id, null, data, auditIp);
+    return video;
   }
 
-  async deleteVideo(id: string) {
+  async deleteVideo(id: string, auditUserId?: string, auditIp?: string) {
     await this.prisma.video.delete({ where: { id } });
+    if (auditUserId) await this.audit.log(auditUserId, 'DELETE', 'Video', id, null, null, auditIp);
     return { success: true };
   }
 
@@ -306,7 +320,7 @@ export class AdminService {
     return { data, total, page, limit };
   }
 
-  async createMiniBook(data: { title: string; slug?: string; description?: string; fileUrl: string; coverImage?: string; pageCount?: number; status?: string; categoryId?: string; authorId: string }) {
+  async createMiniBook(data: { title: string; slug?: string; description?: string; fileUrl: string; coverImage?: string; pageCount?: number; status?: string; categoryId?: string; authorId: string }, auditUserId?: string, auditIp?: string) {
     let categoryId = data.categoryId;
     if (!categoryId) {
       let cat = await this.prisma.category.findFirst();
@@ -316,7 +330,7 @@ export class AdminService {
     let slug = data.slug || data.title.trim().replace(/\s+/g, '-').toLowerCase();
     const existing = await this.prisma.miniBook.findUnique({ where: { slug } });
     if (existing) { slug = `${slug}-${Date.now()}`; }
-    return this.prisma.miniBook.create({
+    const minibook = await this.prisma.miniBook.create({
       data: {
         title: data.title, slug, description: data.description || null, fileUrl: data.fileUrl,
         coverImage: data.coverImage || null, pageCount: data.pageCount || null,
@@ -325,16 +339,21 @@ export class AdminService {
       },
       include: { category: { select: { name: true } } },
     });
+    if (auditUserId) await this.audit.log(auditUserId, 'CREATE', 'MiniBook', minibook.id, null, { title: data.title, slug }, auditIp);
+    return minibook;
   }
 
-  async updateMiniBook(id: string, data: { title?: string; description?: string; fileUrl?: string; coverImage?: string; pageCount?: number; status?: string; categoryId?: string }) {
+  async updateMiniBook(id: string, data: { title?: string; description?: string; fileUrl?: string; coverImage?: string; pageCount?: number; status?: string; categoryId?: string }, auditUserId?: string, auditIp?: string) {
     const updateData: any = { ...data };
     if (data.status) { updateData.status = data.status as any; if (data.status === 'PUBLISHED') { updateData.publishedAt = new Date(); } }
-    return this.prisma.miniBook.update({ where: { id }, data: updateData, include: { category: { select: { name: true } } } });
+    const minibook = await this.prisma.miniBook.update({ where: { id }, data: updateData, include: { category: { select: { name: true } } } });
+    if (auditUserId) await this.audit.log(auditUserId, 'UPDATE', 'MiniBook', id, null, data, auditIp);
+    return minibook;
   }
 
-  async deleteMiniBook(id: string) {
+  async deleteMiniBook(id: string, auditUserId?: string, auditIp?: string) {
     await this.prisma.miniBook.delete({ where: { id } });
+    if (auditUserId) await this.audit.log(auditUserId, 'DELETE', 'MiniBook', id, null, null, auditIp);
     return { success: true };
   }
 
@@ -344,21 +363,26 @@ export class AdminService {
     return this.prisma.consultationService.findMany({ orderBy: { sortOrder: 'asc' } });
   }
 
-  async createConsultationService(data: { name: string; slug?: string; description: string; duration: number; price?: number; isActive?: boolean; sortOrder?: number }) {
+  async createConsultationService(data: { name: string; slug?: string; description: string; duration: number; price?: number; isActive?: boolean; sortOrder?: number }, auditUserId?: string, auditIp?: string) {
     let slug = data.slug || data.name.trim().replace(/\s+/g, '-').toLowerCase();
     const existing = await this.prisma.consultationService.findUnique({ where: { slug } });
     if (existing) { slug = `${slug}-${Date.now()}`; }
-    return this.prisma.consultationService.create({
+    const service = await this.prisma.consultationService.create({
       data: { name: data.name, slug, description: data.description, duration: data.duration, price: data.price ?? null, isActive: data.isActive ?? true, sortOrder: data.sortOrder ?? 0 },
     });
+    if (auditUserId) await this.audit.log(auditUserId, 'CREATE', 'ConsultationService', service.id, null, { name: data.name, slug }, auditIp);
+    return service;
   }
 
-  async updateConsultationService(id: string, data: { name?: string; description?: string; duration?: number; price?: number; isActive?: boolean; sortOrder?: number }) {
-    return this.prisma.consultationService.update({ where: { id }, data });
+  async updateConsultationService(id: string, data: { name?: string; description?: string; duration?: number; price?: number; isActive?: boolean; sortOrder?: number }, auditUserId?: string, auditIp?: string) {
+    const service = await this.prisma.consultationService.update({ where: { id }, data });
+    if (auditUserId) await this.audit.log(auditUserId, 'UPDATE', 'ConsultationService', id, null, data, auditIp);
+    return service;
   }
 
-  async deleteConsultationService(id: string) {
+  async deleteConsultationService(id: string, auditUserId?: string, auditIp?: string) {
     await this.prisma.consultationService.delete({ where: { id } });
+    if (auditUserId) await this.audit.log(auditUserId, 'DELETE', 'ConsultationService', id, null, null, auditIp);
     return { success: true };
   }
 
@@ -368,25 +392,29 @@ export class AdminService {
     return this.prisma.taxTopic.findMany({ orderBy: { sortOrder: 'asc' }, include: { _count: { select: { rules: true } } } });
   }
 
-  async createTaxTopic(data: { name: string; slug?: string; description?: string; sortOrder?: number; isActive?: boolean }) {
+  async createTaxTopic(data: { name: string; slug?: string; description?: string; sortOrder?: number; isActive?: boolean }, auditUserId?: string, auditIp?: string) {
     let slug = data.slug || data.name.trim().replace(/\s+/g, '-').toLowerCase();
     const existing = await this.prisma.taxTopic.findUnique({ where: { slug } });
     if (existing) { slug = `${slug}-${Date.now()}`; }
-    return this.prisma.taxTopic.create({
+    const topic = await this.prisma.taxTopic.create({
       data: { name: data.name, slug, description: data.description ?? null, sortOrder: data.sortOrder ?? 0, isActive: data.isActive ?? true },
     });
+    if (auditUserId) await this.audit.log(auditUserId, 'CREATE', 'TaxTopic', topic.id, null, { name: data.name, slug }, auditIp);
+    return topic;
   }
 
-  async updateTaxTopic(id: string, data: { name?: string; description?: string; sortOrder?: number; isActive?: boolean }) {
+  async updateTaxTopic(id: string, data: { name?: string; description?: string; sortOrder?: number; isActive?: boolean }, auditUserId?: string, auditIp?: string) {
     const updateData: any = {};
     if (data.name !== undefined) updateData.name = data.name;
     if (data.description !== undefined) updateData.description = data.description;
     if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
-    return this.prisma.taxTopic.update({ where: { id }, data: updateData });
+    const topic = await this.prisma.taxTopic.update({ where: { id }, data: updateData });
+    if (auditUserId) await this.audit.log(auditUserId, 'UPDATE', 'TaxTopic', id, null, data, auditIp);
+    return topic;
   }
 
-  async deleteTaxTopic(id: string) {
+  async deleteTaxTopic(id: string, auditUserId?: string, auditIp?: string) {
     // Tax rules under this topic will be deleted via cascade? No — TaxRule.topicId has no onDelete cascade.
     // We must first check if there are rules and prevent deletion, or reassign. We'll block if rules exist.
     const ruleCount = await this.prisma.taxRule.count({ where: { topicId: id } });
@@ -394,6 +422,7 @@ export class AdminService {
       throw new BadRequestException(`Cannot delete topic with ${ruleCount} rule(s). Remove or reassign rules first.`);
     }
     await this.prisma.taxTopic.delete({ where: { id } });
+    if (auditUserId) await this.audit.log(auditUserId, 'DELETE', 'TaxTopic', id, null, null, auditIp);
     return { success: true };
   }
 
@@ -403,28 +432,33 @@ export class AdminService {
     return this.prisma.taxSource.findMany({ orderBy: { name: 'asc' }, include: { _count: { select: { rules: true } } } });
   }
 
-  async createTaxSource(data: { name: string; url?: string; officialName?: string; description?: string; isActive?: boolean }) {
-    return this.prisma.taxSource.create({
+  async createTaxSource(data: { name: string; url?: string; officialName?: string; description?: string; isActive?: boolean }, auditUserId?: string, auditIp?: string) {
+    const source = await this.prisma.taxSource.create({
       data: { name: data.name, url: data.url ?? null, officialName: data.officialName ?? null, description: data.description ?? null, isActive: data.isActive ?? true },
     });
+    if (auditUserId) await this.audit.log(auditUserId, 'CREATE', 'TaxSource', source.id, null, { name: data.name }, auditIp);
+    return source;
   }
 
-  async updateTaxSource(id: string, data: { name?: string; url?: string; officialName?: string; description?: string; isActive?: boolean }) {
+  async updateTaxSource(id: string, data: { name?: string; url?: string; officialName?: string; description?: string; isActive?: boolean }, auditUserId?: string, auditIp?: string) {
     const updateData: any = {};
     if (data.name !== undefined) updateData.name = data.name;
     if (data.url !== undefined) updateData.url = data.url;
     if (data.officialName !== undefined) updateData.officialName = data.officialName;
     if (data.description !== undefined) updateData.description = data.description;
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
-    return this.prisma.taxSource.update({ where: { id }, data: updateData });
+    const source = await this.prisma.taxSource.update({ where: { id }, data: updateData });
+    if (auditUserId) await this.audit.log(auditUserId, 'UPDATE', 'TaxSource', id, null, data, auditIp);
+    return source;
   }
 
-  async deleteTaxSource(id: string) {
+  async deleteTaxSource(id: string, auditUserId?: string, auditIp?: string) {
     const versionCount = await this.prisma.taxRuleVersion.count({ where: { sourceId: id } });
     if (versionCount > 0) {
       throw new BadRequestException(`Cannot delete source referenced by ${versionCount} rule version(s).`);
     }
     await this.prisma.taxSource.delete({ where: { id } });
+    if (auditUserId) await this.audit.log(auditUserId, 'DELETE', 'TaxSource', id, null, null, auditIp);
     return { success: true };
   }
 
@@ -447,7 +481,7 @@ export class AdminService {
     return { data, total, page, limit };
   }
 
-  async createTaxRule(data: { topicId: string; name: string; slug?: string; description?: string; content: string; sourceId: string; effectiveFrom: string; effectiveTo?: string; status?: string }) {
+  async createTaxRule(data: { topicId: string; name: string; slug?: string; description?: string; content: string; sourceId: string; effectiveFrom: string; effectiveTo?: string; status?: string }, auditUserId?: string, auditIp?: string) {
     let slug = data.slug || data.name.trim().replace(/\s+/g, '-').toLowerCase();
     const existing = await this.prisma.taxRule.findUnique({ where: { slug } });
     if (existing) { slug = `${slug}-${Date.now()}`; }
@@ -475,21 +509,25 @@ export class AdminService {
       });
       return rule;
     });
+    if (auditUserId) await this.audit.log(auditUserId, 'CREATE', 'TaxRule', rule.id, null, { name: data.name, slug, topicId: data.topicId }, auditIp);
     return this.prisma.taxRule.findUnique({ where: { id: rule.id }, include: { topic: true, versions: { orderBy: { version: 'desc' } } } });
   }
 
-  async updateTaxRule(id: string, data: { topicId?: string; name?: string; description?: string; status?: string }) {
+  async updateTaxRule(id: string, data: { topicId?: string; name?: string; description?: string; status?: string }, auditUserId?: string, auditIp?: string) {
     const updateData: any = {};
     if (data.topicId !== undefined) updateData.topicId = data.topicId;
     if (data.name !== undefined) updateData.name = data.name;
     if (data.description !== undefined) updateData.description = data.description;
     if (data.status !== undefined) updateData.status = data.status;
-    return this.prisma.taxRule.update({ where: { id }, data: updateData, include: { topic: true, versions: { orderBy: { version: 'desc' } } } });
+    const rule = await this.prisma.taxRule.update({ where: { id }, data: updateData, include: { topic: true, versions: { orderBy: { version: 'desc' } } } });
+    if (auditUserId) await this.audit.log(auditUserId, 'UPDATE', 'TaxRule', id, null, data, auditIp);
+    return rule;
   }
 
-  async deleteTaxRule(id: string) {
+  async deleteTaxRule(id: string, auditUserId?: string, auditIp?: string) {
     // TaxRuleVersion has onDelete: Cascade on ruleId, so versions are auto-deleted
     await this.prisma.taxRule.delete({ where: { id } });
+    if (auditUserId) await this.audit.log(auditUserId, 'DELETE', 'TaxRule', id, null, null, auditIp);
     return { success: true };
   }
 
