@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
+import { Prisma, UserRole, ContentStatus, TaxResultSeverity, TaxRuleStatus, TaxRuleVersionStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
-import { UserRole } from '@prisma/client';
 
 @Injectable()
 export class AdminService {
@@ -70,7 +70,7 @@ export class AdminService {
 
   async getUsers(page = 1, limit = 20, search?: string) {
     const skip = (page - 1) * limit;
-    const where: any = {};
+    const where: Prisma.UserWhereInput = {};
     if (search) { where.OR = [{ phone: { contains: search } }, { firstName: { contains: search } }, { lastName: { contains: search } }]; }
     const [users, total] = await Promise.all([
       this.prisma.user.findMany({ where, skip, take: limit, orderBy: { createdAt: 'desc' }, select: { id: true, phone: true, firstName: true, lastName: true, role: true, isActive: true, phoneVerified: true, createdAt: true } }),
@@ -81,7 +81,7 @@ export class AdminService {
 
   async getAuditLogs(page = 1, limit = 20, action?: string, userId?: string, entityType?: string) {
     const skip = (page - 1) * limit;
-    const where: any = {};
+    const where: Prisma.AdminActionWhereInput = {};
     if (action) where.action = action;
     if (userId) where.userId = userId;
     if (entityType) where.entityType = entityType;
@@ -181,14 +181,25 @@ export class AdminService {
         description: data.description,
         ruleIds: data.ruleIds || [],
         action: data.action || null,
-        severity: (data.severity as any) || 'INFO',
+        severity: (data.severity as TaxResultSeverity) || 'INFO',
         isActive: data.isActive ?? true,
       },
     });
   }
 
   async updateTaxAssistantResult(id: string, data: { name?: string; title?: string; description?: string; ruleIds?: string[]; action?: string; severity?: string; isActive?: boolean }) {
-    return this.prisma.taxAssistantResult.update({ where: { id }, data: { ...data, severity: data.severity as any } });
+    return this.prisma.taxAssistantResult.update({
+      where: { id },
+      data: {
+        ...(data.name !== undefined && { name: data.name }),
+        ...(data.title !== undefined && { title: data.title }),
+        ...(data.description !== undefined && { description: data.description }),
+        ...(data.ruleIds !== undefined && { ruleIds: data.ruleIds }),
+        ...(data.action !== undefined && { action: data.action }),
+        ...(data.severity !== undefined && { severity: data.severity as TaxResultSeverity }),
+        ...(data.isActive !== undefined && { isActive: data.isActive }),
+      },
+    });
   }
 
   async deleteTaxAssistantResult(id: string) {
@@ -200,7 +211,7 @@ export class AdminService {
 
   async getArticles(page = 1, limit = 20, search?: string) {
     const skip = (page - 1) * limit;
-    const where: any = {};
+    const where: Prisma.ArticleWhereInput = {};
     if (search) { where.OR = [{ title: { contains: search } }, { slug: { contains: search } }]; }
     const [data, total] = await Promise.all([
       this.prisma.article.findMany({ where, skip, take: limit, orderBy: { createdAt: 'desc' }, include: { category: { select: { id: true, name: true } }, author: { select: { id: true, firstName: true, lastName: true } } } }),
@@ -228,7 +239,7 @@ export class AdminService {
     const article = await this.prisma.article.create({
       data: {
         title: data.title, slug, excerpt: data.excerpt || null, content: data.content,
-        featuredImage: data.featuredImage || null, status: (data.status as any) || 'DRAFT',
+        featuredImage: data.featuredImage || null, status: (data.status as ContentStatus) || 'DRAFT',
         metaTitle: data.metaTitle || null, metaDescription: data.metaDescription || null,
         categoryId, authorId: data.authorId,
         publishedAt: data.status === 'PUBLISHED' ? new Date() : null,
@@ -240,8 +251,18 @@ export class AdminService {
   }
 
   async updateArticle(id: string, data: { title?: string; excerpt?: string; content?: string; featuredImage?: string; status?: string; metaTitle?: string; metaDescription?: string; categoryId?: string }, auditUserId?: string, auditIp?: string) {
-    const updateData: any = { ...data };
-    if (data.status) { updateData.status = data.status as any; if (data.status === 'PUBLISHED') { updateData.publishedAt = new Date(); } }
+    const updateData: Prisma.ArticleUpdateInput = {};
+    if (data.title !== undefined) updateData.title = data.title;
+    if (data.excerpt !== undefined) updateData.excerpt = data.excerpt;
+    if (data.content !== undefined) updateData.content = data.content;
+    if (data.featuredImage !== undefined) updateData.featuredImage = data.featuredImage;
+    if (data.metaTitle !== undefined) updateData.metaTitle = data.metaTitle;
+    if (data.metaDescription !== undefined) updateData.metaDescription = data.metaDescription;
+    if (data.categoryId !== undefined) updateData.category = { connect: { id: data.categoryId } };
+    if (data.status) {
+      updateData.status = data.status as ContentStatus;
+      if (data.status === 'PUBLISHED') { updateData.publishedAt = new Date(); }
+    }
     const article = await this.prisma.article.update({ where: { id }, data: updateData, include: { category: { select: { name: true } } } });
     if (auditUserId) await this.audit.log(auditUserId, 'UPDATE', 'Article', id, null, data, auditIp);
     return article;
@@ -261,7 +282,7 @@ export class AdminService {
 
   async getVideos(page = 1, limit = 20, search?: string) {
     const skip = (page - 1) * limit;
-    const where: any = {};
+    const where: Prisma.VideoWhereInput = {};
     if (search) { where.OR = [{ title: { contains: search } }, { slug: { contains: search } }]; }
     const [data, total] = await Promise.all([
       this.prisma.video.findMany({ where, skip, take: limit, orderBy: { createdAt: 'desc' }, include: { category: { select: { id: true, name: true } }, author: { select: { id: true, firstName: true, lastName: true } } } }),
@@ -284,7 +305,7 @@ export class AdminService {
       data: {
         title: data.title, slug, description: data.description || null, url: data.url,
         thumbnail: data.thumbnail || null, duration: data.duration || null,
-        status: (data.status as any) || 'DRAFT', categoryId, authorId: data.authorId,
+        status: (data.status as ContentStatus) || 'DRAFT', categoryId, authorId: data.authorId,
         publishedAt: data.status === 'PUBLISHED' ? new Date() : null,
       },
       include: { category: { select: { name: true } } },
@@ -294,8 +315,17 @@ export class AdminService {
   }
 
   async updateVideo(id: string, data: { title?: string; description?: string; url?: string; thumbnail?: string; duration?: number; status?: string; categoryId?: string }, auditUserId?: string, auditIp?: string) {
-    const updateData: any = { ...data };
-    if (data.status) { updateData.status = data.status as any; if (data.status === 'PUBLISHED') { updateData.publishedAt = new Date(); } }
+    const updateData: Prisma.VideoUpdateInput = {};
+    if (data.title !== undefined) updateData.title = data.title;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.url !== undefined) updateData.url = data.url;
+    if (data.thumbnail !== undefined) updateData.thumbnail = data.thumbnail;
+    if (data.duration !== undefined) updateData.duration = data.duration;
+    if (data.categoryId !== undefined) updateData.category = { connect: { id: data.categoryId } };
+    if (data.status) {
+      updateData.status = data.status as ContentStatus;
+      if (data.status === 'PUBLISHED') { updateData.publishedAt = new Date(); }
+    }
     const video = await this.prisma.video.update({ where: { id }, data: updateData, include: { category: { select: { name: true } } } });
     if (auditUserId) await this.audit.log(auditUserId, 'UPDATE', 'Video', id, null, data, auditIp);
     return video;
@@ -311,7 +341,7 @@ export class AdminService {
 
   async getMiniBooks(page = 1, limit = 20, search?: string) {
     const skip = (page - 1) * limit;
-    const where: any = {};
+    const where: Prisma.MiniBookWhereInput = {};
     if (search) { where.OR = [{ title: { contains: search } }, { slug: { contains: search } }]; }
     const [data, total] = await Promise.all([
       this.prisma.miniBook.findMany({ where, skip, take: limit, orderBy: { createdAt: 'desc' }, include: { category: { select: { id: true, name: true } }, author: { select: { id: true, firstName: true, lastName: true } } } }),
@@ -334,7 +364,7 @@ export class AdminService {
       data: {
         title: data.title, slug, description: data.description || null, fileUrl: data.fileUrl,
         coverImage: data.coverImage || null, pageCount: data.pageCount || null,
-        status: (data.status as any) || 'DRAFT', categoryId, authorId: data.authorId,
+        status: (data.status as ContentStatus) || 'DRAFT', categoryId, authorId: data.authorId,
         publishedAt: data.status === 'PUBLISHED' ? new Date() : null,
       },
       include: { category: { select: { name: true } } },
@@ -344,8 +374,17 @@ export class AdminService {
   }
 
   async updateMiniBook(id: string, data: { title?: string; description?: string; fileUrl?: string; coverImage?: string; pageCount?: number; status?: string; categoryId?: string }, auditUserId?: string, auditIp?: string) {
-    const updateData: any = { ...data };
-    if (data.status) { updateData.status = data.status as any; if (data.status === 'PUBLISHED') { updateData.publishedAt = new Date(); } }
+    const updateData: Prisma.MiniBookUpdateInput = {};
+    if (data.title !== undefined) updateData.title = data.title;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.fileUrl !== undefined) updateData.fileUrl = data.fileUrl;
+    if (data.coverImage !== undefined) updateData.coverImage = data.coverImage;
+    if (data.pageCount !== undefined) updateData.pageCount = data.pageCount;
+    if (data.categoryId !== undefined) updateData.category = { connect: { id: data.categoryId } };
+    if (data.status) {
+      updateData.status = data.status as ContentStatus;
+      if (data.status === 'PUBLISHED') { updateData.publishedAt = new Date(); }
+    }
     const minibook = await this.prisma.miniBook.update({ where: { id }, data: updateData, include: { category: { select: { name: true } } } });
     if (auditUserId) await this.audit.log(auditUserId, 'UPDATE', 'MiniBook', id, null, data, auditIp);
     return minibook;
@@ -404,7 +443,7 @@ export class AdminService {
   }
 
   async updateTaxTopic(id: string, data: { name?: string; description?: string; sortOrder?: number; isActive?: boolean }, auditUserId?: string, auditIp?: string) {
-    const updateData: any = {};
+    const updateData: Prisma.TaxTopicUpdateInput = {};
     if (data.name !== undefined) updateData.name = data.name;
     if (data.description !== undefined) updateData.description = data.description;
     if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
@@ -441,7 +480,7 @@ export class AdminService {
   }
 
   async updateTaxSource(id: string, data: { name?: string; url?: string; officialName?: string; description?: string; isActive?: boolean }, auditUserId?: string, auditIp?: string) {
-    const updateData: any = {};
+    const updateData: Prisma.TaxSourceUpdateInput = {};
     if (data.name !== undefined) updateData.name = data.name;
     if (data.url !== undefined) updateData.url = data.url;
     if (data.officialName !== undefined) updateData.officialName = data.officialName;
@@ -466,7 +505,7 @@ export class AdminService {
 
   async getTaxRulesAdmin(topicId?: string, page = 1, limit = 50) {
     const skip = (page - 1) * limit;
-    const where: any = {};
+    const where: Prisma.TaxRuleWhereInput = {};
     if (topicId) where.topicId = topicId;
     const [data, total] = await Promise.all([
       this.prisma.taxRule.findMany({
@@ -493,7 +532,7 @@ export class AdminService {
           name: data.name,
           slug,
           description: data.description ?? null,
-          status: (data.status as any) || 'DRAFT',
+          status: (data.status as TaxRuleStatus) || 'DRAFT',
         },
       });
       await tx.taxRuleVersion.create({
@@ -514,11 +553,11 @@ export class AdminService {
   }
 
   async updateTaxRule(id: string, data: { topicId?: string; name?: string; description?: string; status?: string }, auditUserId?: string, auditIp?: string) {
-    const updateData: any = {};
-    if (data.topicId !== undefined) updateData.topicId = data.topicId;
+    const updateData: Prisma.TaxRuleUpdateInput = {};
+    if (data.topicId !== undefined) updateData.topic = { connect: { id: data.topicId } };
     if (data.name !== undefined) updateData.name = data.name;
     if (data.description !== undefined) updateData.description = data.description;
-    if (data.status !== undefined) updateData.status = data.status;
+    if (data.status !== undefined) updateData.status = data.status as TaxRuleStatus;
     const rule = await this.prisma.taxRule.update({ where: { id }, data: updateData, include: { topic: true, versions: { orderBy: { version: 'desc' } } } });
     if (auditUserId) await this.audit.log(auditUserId, 'UPDATE', 'TaxRule', id, null, data, auditIp);
     return rule;
@@ -545,7 +584,7 @@ export class AdminService {
         sourceId: data.sourceId,
         effectiveFrom: new Date(data.effectiveFrom),
         effectiveTo: data.effectiveTo ? new Date(data.effectiveTo) : null,
-        status: (data.status as any) || 'DRAFT',
+        status: (data.status as TaxRuleVersionStatus) || 'DRAFT',
         reviewNotes: data.reviewNotes ?? null,
       },
     });
@@ -553,9 +592,9 @@ export class AdminService {
   }
 
   async updateTaxRuleVersion(id: string, data: { content?: string; status?: string; effectiveFrom?: string; effectiveTo?: string; reviewNotes?: string; publishedById?: string }) {
-    const updateData: any = {};
+    const updateData: Prisma.TaxRuleVersionUpdateInput = {};
     if (data.content !== undefined) updateData.content = data.content;
-    if (data.status !== undefined) updateData.status = data.status;
+    if (data.status !== undefined) updateData.status = data.status as TaxRuleVersionStatus;
     if (data.effectiveFrom) updateData.effectiveFrom = new Date(data.effectiveFrom);
     if (data.effectiveTo) updateData.effectiveTo = new Date(data.effectiveTo);
     if (data.reviewNotes !== undefined) updateData.reviewNotes = data.reviewNotes;
@@ -563,7 +602,7 @@ export class AdminService {
     if (data.status === 'PUBLISHED') {
       updateData.publishedAt = new Date();
       if (data.publishedById) {
-        updateData.publishedById = data.publishedById;
+        updateData.publishedBy = { connect: { id: data.publishedById } };
       }
     }
     return this.prisma.taxRuleVersion.update({ where: { id }, data: updateData });

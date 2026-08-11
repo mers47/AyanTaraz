@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import axios, { AxiosError } from 'axios';
 
 export const SMS_TEMPLATES: Record<number, { prefix: string; label: string }> = {
   0: { prefix: 'کد: ', label: 'کد' },
@@ -30,17 +31,28 @@ export class SmsService {
     const message = this.buildMessage(code, template);
     if (!this.apiUrl) { this.logDev(normalized, message, template); return false; }
     try {
-      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 8000);
-      const res = await fetch(this.apiUrl, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', ...(this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}) },
-        body: JSON.stringify({ code, mobile: normalized, template, message }), signal: ctrl.signal,
-      });
-      clearTimeout(to);
-      if (!res.ok) { this.logger.warn(`SMS ${res.status}`); return false; }
-      const json = await res.json();
+      const res = await axios.post(
+        this.apiUrl,
+        { code, mobile: normalized, template, message },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            ...(this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}),
+          },
+          timeout: 8000,
+        },
+      );
+      const json = res.data;
       if (json.success === true || json.data === true) { this.logger.log(`SMS sent to ${normalized}`); return true; }
       return false;
-    } catch (e: any) { this.logger.error(`SMS error: ${e.message}`); return false; }
+    } catch (e: unknown) {
+      if (e instanceof AxiosError) {
+        this.logger.error(`SMS error: ${e.message} (status ${e.response?.status ?? 'N/A'})`);
+      } else {
+        this.logger.error(`SMS error: ${String(e)}`);
+      }
+      return false;
+    }
   }
 
   async sendWithFallback(phone: string, code: string, template = 1): Promise<void> {

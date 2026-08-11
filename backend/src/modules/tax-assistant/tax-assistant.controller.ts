@@ -2,6 +2,12 @@ import { Controller, Post, Get, Delete, Param, Body, Request } from '@nestjs/com
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Public } from '../../common/decorators/public.decorator';
 import { TaxAssistantService } from './tax-assistant.service';
+import { AuthenticatedRequest } from '../../common/interfaces/authenticated-request.interface';
+
+interface StartSessionDto {
+  questionId?: string;
+  answers?: Record<string, string>;
+}
 
 @ApiTags('دستیار مالیاتی')
 @Controller('tax-assistant')
@@ -12,7 +18,7 @@ export class TaxAssistantController {
   @Post('start')
   @ApiOperation({ summary: 'شروع یک نشست جدید دستیار مالیاتی' })
   @ApiResponse({ status: 201, description: 'نشست با موفقیت ایجاد شد' })
-  async startSession(@Body() body: { questionId?: string; answers?: Record<string, string> }, @Request() req: any) {
+  async startSession(@Body() body: StartSessionDto, @Request() req: AuthenticatedRequest) {
     return this.taxAssistantService.startSession(body.questionId, body.answers, req.user?.id);
   }
 
