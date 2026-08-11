@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Request, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Request, UseGuards, UnauthorizedException } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { AdminService } from './admin.service';
@@ -43,7 +43,7 @@ export class AdminController {
 
   @Get('articles') async ga(@Query('page') p?: number, @Query('limit') l?: number, @Query('search') s?: string) { return this.svc.getArticles(p ? +p : 1, l ? +l : 20, s); }
   @Get('articles/:id') async gai(@Param('id') id: string) { return this.svc.getArticleById(id); }
-  @Post('articles') async caA(@Body() b: { title: string; slug?: string; excerpt?: string; content: string; featuredImage?: string; status?: string; metaTitle?: string; metaDescription?: string; categoryId?: string }, @Request() req: any) { return this.svc.createArticle({ ...b, authorId: req.user?.id || '00000000-0000-0000-0000-000000000000' }); }
+  @Post('articles') async caA(@Body() b: { title: string; slug?: string; excerpt?: string; content: string; featuredImage?: string; status?: string; metaTitle?: string; metaDescription?: string; categoryId?: string }, @Request() req: any) { if (!req.user?.id) throw new UnauthorizedException('کاربر احراز هویت نشده'); return this.svc.createArticle({ ...b, authorId: req.user.id }); }
   @Patch('articles/:id') async uaA(@Param('id') id: string, @Body() b: { title?: string; excerpt?: string; content?: string; featuredImage?: string; status?: string; metaTitle?: string; metaDescription?: string; categoryId?: string }) { return this.svc.updateArticle(id, b); }
   @Delete('articles/:id') async da(@Param('id') id: string) { return this.svc.deleteArticle(id); }
   @Get('categories') async gc() { return this.svc.getCategories(); }
@@ -51,14 +51,14 @@ export class AdminController {
   // ==================== Videos Management ====================
 
   @Get('videos') async gv(@Query('page') p?: number, @Query('limit') l?: number, @Query('search') s?: string) { return this.svc.getVideos(p ? +p : 1, l ? +l : 20, s); }
-  @Post('videos') async cvA(@Body() b: { title: string; slug?: string; description?: string; url: string; thumbnail?: string; duration?: number; status?: string; categoryId?: string }, @Request() req: any) { return this.svc.createVideo({ ...b, authorId: req.user?.id || '00000000-0000-0000-0000-000000000000' }); }
+  @Post('videos') async cvA(@Body() b: { title: string; slug?: string; description?: string; url: string; thumbnail?: string; duration?: number; status?: string; categoryId?: string }, @Request() req: any) { if (!req.user?.id) throw new UnauthorizedException('کاربر احراز هویت نشده'); return this.svc.createVideo({ ...b, authorId: req.user.id }); }
   @Patch('videos/:id') async uvA(@Param('id') id: string, @Body() b: { title?: string; description?: string; url?: string; thumbnail?: string; duration?: number; status?: string; categoryId?: string }) { return this.svc.updateVideo(id, b); }
   @Delete('videos/:id') async dv(@Param('id') id: string) { return this.svc.deleteVideo(id); }
 
   // ==================== MiniBooks Management ====================
 
   @Get('minibooks') async gmb(@Query('page') p?: number, @Query('limit') l?: number, @Query('search') s?: string) { return this.svc.getMiniBooks(p ? +p : 1, l ? +l : 20, s); }
-  @Post('minibooks') async cmb(@Body() b: { title: string; slug?: string; description?: string; fileUrl: string; coverImage?: string; pageCount?: number; status?: string; categoryId?: string }, @Request() req: any) { return this.svc.createMiniBook({ ...b, authorId: req.user?.id || '00000000-0000-0000-0000-000000000000' }); }
+  @Post('minibooks') async cmb(@Body() b: { title: string; slug?: string; description?: string; fileUrl: string; coverImage?: string; pageCount?: number; status?: string; categoryId?: string }, @Request() req: any) { if (!req.user?.id) throw new UnauthorizedException('کاربر احراز هویت نشده'); return this.svc.createMiniBook({ ...b, authorId: req.user.id }); }
   @Patch('minibooks/:id') async umb(@Param('id') id: string, @Body() b: { title?: string; description?: string; fileUrl?: string; coverImage?: string; pageCount?: number; status?: string; categoryId?: string }) { return this.svc.updateMiniBook(id, b); }
   @Delete('minibooks/:id') async dmb(@Param('id') id: string) { return this.svc.deleteMiniBook(id); }
 

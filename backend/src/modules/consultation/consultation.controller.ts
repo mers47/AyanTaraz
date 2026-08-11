@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Query, UseGuards, ForbiddenException, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, UseGuards, ForbiddenException, BadRequestException, NotFoundException, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -56,26 +56,37 @@ export class ConsultationController {
   }
 
   @Post('upload-receipt')
-  @Public()
-  @ApiOperation({ summary: 'آپلود رسید پرداخت (عمومی — قبل از ورود)' })
-  async uploadReceipt(@Body() d: { bookingId: string; fileBase64: string; fileName: string }) {
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'آپلود رسید پرداخت (نیازمند احراز هویت)' })
+  async uploadReceipt(@Body() d: { bookingId: string; fileBase64: string; fileName: string }, @Request() req: any) {
     if (!d.bookingId || !d.fileBase64 || !d.fileName) {
-      return { error: 'bookingId, fileBase64, and fileName are required' };
+      throw new BadRequestException('bookingId, fileBase64, and fileName are required');
     }
+
+    // Verify the booking exists and belongs to the authenticated user (or admin)
+    const booking = await this.svc.getBooking(d.bookingId);
+    if (!booking) {
+      throw new NotFoundException('رزرو یافت نشد');
+    }
+    const isAdmin = req.user?.role === 'ADMIN' || req.user?.role === 'SUPER_ADMIN';
+    if (!isAdmin && booking.phone && req.user?.phone !== booking.phone) {
+      throw new ForbiddenException('آپلود رسید برای این رزرو مجاز نیست');
+    }
+
     // Extract the actual base64 data (strip data URI prefix if present)
     const base64Data = d.fileBase64.replace(/^data:[^;]+;base64,/, '');
     const buffer = Buffer.from(base64Data, 'base64');
 
     // Validate file size (~5MB max)
     if (buffer.length > 5 * 1024 * 1024) {
-      return { error: 'File too large (max 5MB)' };
+      throw new BadRequestException('حجم فایل بیش از حد مجاز است (حداکثر ۵ مگابایت)');
     }
 
-    // Validate file extension — only images allowed
+    // Validate file extension — only images and PDF allowed
     const ext = path.extname(d.fileName).toLowerCase();
     const allowedExts = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.pdf'];
     if (!allowedExts.includes(ext)) {
-      return { error: 'فقط فایل‌های تصویری و PDF مجاز هستند' };
+      throw new BadRequestException('فقط فایل‌های تصویری و PDF مجاز هستند');
     }
 
     // Generate unique filename
@@ -83,7 +94,9 @@ export class ConsultationController {
     const uploadsDir = path.join(process.cwd(), 'uploads');
     if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
     const filePath = path.join(uploadsDir, safeName);
-    fs.writeFileSync(filePath, buffer);
+
+    // Use async write instead of blocking synchronous writeFileSync
+    await fs.promises.writeFile(filePath, buffer);
 
     const receiptUrl = `/uploads/${safeName}`;
     return this.svc.uploadReceipt(d.bookingId, receiptUrl, d.fileName);
