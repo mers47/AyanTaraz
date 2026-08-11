@@ -284,8 +284,9 @@ deploy() {
   sleep 15
 
   # Seed database with 1405 tax law data
+  # Uses the compiled seed (dist/prisma/seed.js) — no ts-node needed in production.
   info "Seeding database with 1405 tax law data..."
-  docker exec ayan-backend npm run db:seed 2>/dev/null || warn "Seed: may need manual run — docker exec ayan-backend npm run db:seed"
+  docker exec ayan-backend npm run db:seed:prod 2>/dev/null || warn "Seed: may need manual run — docker exec ayan-backend npm run db:seed:prod"
 
   # Health checks
   health_check

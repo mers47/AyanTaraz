@@ -1,0 +1,19 @@
+# Don't copy these into the Docker build context — speeds up builds
+# and prevents stale local node_modules / .env from leaking into the image.
+node_modules
+npm-debug.log
+.env
+.env.local
+.env.*.local
+dist
+.git
+.gitignore
+.gitattributes
+coverage
+.nyc_output
+test
+spec
+*.md
+Dockerfile
+.dockerignore
+docker-compose*.yml

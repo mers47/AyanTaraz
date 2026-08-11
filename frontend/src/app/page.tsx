@@ -10,7 +10,7 @@ import SiteHeader from '@/components/SiteHeader';
 const SLIDES = [
   {
     t: 'راهکارهای هوشمند مالیاتی',
-    s: 'با آین تراز، پیچیدگی‌های مالیاتی را به فرصت تبدیل کنید؛ تحلیل دقیق، کاهش قانونی بهره و آرامش خاطر.',
+    s: 'با آیان تراز، پیچیدگی‌های مالیاتی را به فرصت تبدیل کنید؛ تحلیل دقیق، کاهش قانونی بهره و آرامش خاطر.',
     tag: 'مشاوره تخصصی',
     img: 'https://images.unsplash.com/photo-1554224155-6726b9ff8cb2?auto=format&fit=crop&w=1920&q=80',
   },
@@ -327,7 +327,7 @@ function WhyUs() {
     <section className="section" style={{ background: 'var(--brand-black-soft)' }}>
       <div className="container">
         <div className="section-header">
-          <span className="section-tag">چرا آین تراز</span>
+          <span className="section-tag">چرا آیان تراز</span>
           <h2 className="section-title">
             اعتمادی <span className="gradient-text">پایدار و حرفه‌ای</span>
           </h2>
@@ -426,7 +426,7 @@ function Foo() {
           <div>
             <Link href="/" className="brand-logo" style={{ marginBottom: 14 }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/images/logo-dark.webp" alt="لوگوی آین تراز" style={{ height: 44 }} />
+              <img src="/images/logo-dark.webp" alt="لوگوی آیان تراز" style={{ height: 44 }} />
             </Link>
             <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: 1.9, marginTop: 12 }}>
               خدمات تخصصی حسابداری و مشاوره مالیاتی از سال ۱۳۹۰
@@ -482,7 +482,7 @@ function Foo() {
         </div>
         <div className="divider-gold" style={{ marginBottom: 22 }} />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', color: 'var(--text-muted)', flexWrap: 'wrap', gap: 12 }}>
-          <span>© ۱۴۰۴ آین تراز — تمامی حقوق محفوظ است</span>
+          <span>© ۱۴۰۴ آیان تراز — تمامی حقوق محفوظ است</span>
           <Link href="/admin" style={{ color: 'var(--text-muted)' }}>
             پنل مدیریت
           </Link>

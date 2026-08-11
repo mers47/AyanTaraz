@@ -13,7 +13,7 @@ export default function AboutPage() {
       <div className="container section">
         <div className="section-header">
           <span className="section-tag">درباره ما</span>
-          <h1 className="section-title gradient-text">آین تراز</h1>
+          <h1 className="section-title gradient-text">آیان تراز</h1>
           <p className="section-subtitle">تخصص، دقت، اعتماد — همراه شما در مسیر مالیاتی</p>
         </div>
 
@@ -21,7 +21,7 @@ export default function AboutPage() {
           <div className="glass-card reveal" style={{ transitionDelay: '0ms' }}>
             <h2 style={{ fontWeight: 800, fontSize: '1.25rem', marginBottom: 16, color: 'var(--brand-gold)' }}>🤝 مأموریت ما</h2>
             <p style={{ color: 'var(--text-secondary)', lineHeight: 2, fontSize: '0.9375rem' }}>
-              آین تراز با هدف ارائه خدمات تخصصی حسابداری و مشاوره مالیاتی به اشخاص حقیقی و حقوقی تأسیس شده است.
+              آیان تراز با هدف ارائه خدمات تخصصی حسابداری و مشاوره مالیاتی به اشخاص حقیقی و حقوقی تأسیس شده است.
             </p>
           </div>
 

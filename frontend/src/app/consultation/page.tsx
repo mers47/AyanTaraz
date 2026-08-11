@@ -34,7 +34,7 @@ export default function ConsultationPage() {
     bankName: 'بانک ملت',
     cardNumber: '۶۱۰۴۳۴۷۰۱۲۳۴۵۶۷۸',
     shaba: 'IR۶۲ ۰۱۲۰۲۸۰۰ ۰۰۰۰ ۰۰۰۰ ۰۰۰۰ ۰۰۰۱',
-    holder: 'شرکت آین تراز',
+    holder: 'شرکت آیان تراز',
   };
   const [bankInfo, setBankInfo] = useState(defaultBankInfo);
 

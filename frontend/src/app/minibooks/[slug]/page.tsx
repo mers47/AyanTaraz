@@ -51,7 +51,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       title: book.metaTitle || book.title,
       description: book.metaDescription || book.description || '',
       url: `${BASE}/minibooks/${book.slug}`,
-      siteName: 'آین تراز',
+      siteName: 'آیان تراز',
       images: book.coverImage ? [{ url: book.coverImage, width: 1200, height: 630, alt: book.title }] : undefined,
     },
     twitter: {
@@ -77,7 +77,7 @@ export default async function MiniBookDetailPage({ params }: { params: Promise<{
     bookFormat: 'https://schema.org/EBook',
     numberOfPages: book.pageCount || undefined,
     image: book.coverImage || undefined,
-    publisher: { '@type': 'Organization', name: 'آین تراز' },
+    publisher: { '@type': 'Organization', name: 'آیان تراز' },
     url: `${BASE}/minibooks/${book.slug}`,
   };
 

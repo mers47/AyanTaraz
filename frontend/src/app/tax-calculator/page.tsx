@@ -372,7 +372,7 @@ export default function TaxCalculatorPage() {
         {/* Disclaimer */}
         <div className="container" style={{ marginTop: 32, maxWidth: 900 }}>
           <div style={{ background: 'rgba(198,169,98,.05)', border: '1px solid rgba(198,169,98,.2)', borderRadius: 'var(--radius-md)', padding: 18, fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.8, textAlign: 'center' }}>
-            ⚠️ این محاسبات بر اساس قوانین مالیاتی ۱۴۰۵ و به صورت تقریبی ارائه می‌شود. برای محاسبه دقیق و موارد خاص (معافیت‌های شغلی، کسورات اضافی، مالیات تکلیفی)، با کارشناسان مالیاتی آین تراز مشاوره نمایید.
+            ⚠️ این محاسبات بر اساس قوانین مالیاتی ۱۴۰۵ و به صورت تقریبی ارائه می‌شود. برای محاسبه دقیق و موارد خاص (معافیت‌های شغلی، کسورات اضافی، مالیات تکلیفی)، با کارشناسان مالیاتی آیان تراز مشاوره نمایید.
           </div>
         </div>
       </div>
