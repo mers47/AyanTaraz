@@ -18,16 +18,16 @@
 - [x] 2.3: اتصال `AuditService.log()` به عملیات ادمین در `admin.service.ts` (AuditService وجود دارد اما هیچ‌جا فراخوانی نمی‌شود — کد مرده/صوری)
 - [x] 2.4: تکمیل Step 4 فاز ۶ — endpoint آمار داشبورد در `admin.service.ts` + `admin.controller.ts`
 - [x] 2.5: اصلاح auto-create availability در consultation service — نباید به‌صورت خودکار رکورد بسازد؛ در صورت نبود داده، خطای مناسب برگرداند
-- [ ] 2.6: کامیت، push، PR، مرج
+- [x] 2.6: کامیت، push، PR، مرج
 
 ## فاز ۳ — اصلاح ناسازگاری‌ها و کیفیت کد بک‌اند (Backend Code Quality)
-- [ ] 3.1: راه‌اندازی Swagger در `main.ts` — import‌ها در کنترلرها وجود دارد اما `SwaggerModule.setup` فراخوانی نمی‌شود (فقط در dev)
-- [ ] 3.2: اصلاح مدیریت خطا در `uploadReceipt` — به جای `{ error: ... }` باید `HttpException` پرتاب شود
-- [ ] 3.3: جایگزینی `fs.writeFileSync` (همگام/مسدودکننده) با `fs.promises.writeFile` (ناهمگام)
-- [ ] 3.4: جایگزینی native `fetch` در `sms.service.ts` با `axios`
-- [ ] 3.5: حذف/کاهش `any` در بک‌اند (~۵۷ مورد) — تعریف DTO و تایپ مناسب
-- [ ] 3.6: اصلاح naming مخفف در بک‌اند (`getQ`, `nid`, `d`, `vals.includes('sal')` در tax-assistant)
-- [ ] 3.7: کامیت، push، PR، مرج
+- [x] 3.1: راه‌اندازی Swagger در `main.ts` — import‌ها در کنترلرها وجود دارد اما `SwaggerModule.setup` فراخوانی نمی‌شود (فقط در dev)
+- [x] 3.2: اصلاح مدیریت خطا در `uploadReceipt` — به جای `{ error: ... }` باید `HttpException` پرتاب شود
+- [x] 3.3: جایگزینی `fs.writeFileSync` (همگام/مسدودکننده) با `fs.promises.writeFile` (ناهمگام)
+- [x] 3.4: جایگزینی native `fetch` در `sms.service.ts` با `axios`
+- [x] 3.5: حذف/کاهش `any` در بک‌اند (~۵۷ مورد) — تعریف DTO و تایپ مناسب
+- [x] 3.6: اصلاح naming مخفف در بک‌اند (`getQ`, `nid`, `d`, `vals.includes('sal')` در tax-assistant)
+- [x] 3.7: کامیت، push، PR، مرج
 
 ## فاز ۴ — اصلاح کیفیت کد و UI فرانت‌اند (Frontend Code Quality)
 - [ ] 4.1: حذف/کاهش `any` در فرانت‌اند (~۶۶ مورد) — تایپ‌گذاری کامل `adminApi` و `RecentActivity`
