@@ -15,8 +15,15 @@ const nextConfig = {
   productionBrowserSourceMaps: false,
 
   images: {
+    // Security: only allow specific external image hosts instead of wildcard '**'.
+    // Add new hosts here as needed — never use a blanket wildcard.
     remotePatterns: [
-      { protocol: 'https', hostname: '**' },
+      { protocol: 'https', hostname: 'images.unsplash.com' },
+      { protocol: 'https', hostname: 'ayantaraz.ir' },
+      { protocol: 'https', hostname: 'www.ayantaraz.ir' },
+      // Uploaded media served by the backend via Nginx proxy
+      { protocol: 'http', hostname: 'localhost' },
+      { protocol: 'https', hostname: 'localhost' },
     ],
   },
 
