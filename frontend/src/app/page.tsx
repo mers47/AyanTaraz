@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import SiteHeader from '@/components/SiteHeader';
+import { contentApi } from '@/lib/api';
+import type { SiteStat } from '@/types';
 
 /* ---- Hero image slider data ----
    Real images, auto-advance with manual controls. */
@@ -55,11 +57,11 @@ const SV = [
   },
 ];
 
-const ST = [
-  { n: '۱۲', l: 'سال تجربه' },
-  { n: '۱۰۰۰', l: 'پرونده موفق' },
-  { n: '۹۸٪', l: 'رضایت مشتریان' },
-  { n: '۷/۲۴', l: 'پشتیبانی' },
+const DEFAULT_STATS: SiteStat[] = [
+  { value: '۱۲', label: 'سال تجربه' },
+  { value: '۱۰۰۰', label: 'پرونده موفق' },
+  { value: '۹۸٪', label: 'رضایت مشتریان' },
+  { value: '۷/۲۴', label: 'پشتیبانی' },
 ];
 
 const FQ = [
@@ -152,7 +154,7 @@ function HomeContent() {
         </div>
       )}
       <Hero as={as} sa={sa} slides={SLIDES} paused={paused} setPaused={setPaused} />
-      <Stats st={ST} />
+      <Stats />
       <Svc sv={SV} />
       <WhyUs />
       <CTA />
@@ -248,11 +250,31 @@ function Hero({
   );
 }
 
-function Stats({ st }: { st: typeof ST }) {
+function Stats() {
+  const [stats, setStats] = useState<SiteStat[]>(DEFAULT_STATS);
+
+  useEffect(() => {
+    let cancelled = false;
+    contentApi
+      .getSiteStats()
+      .then((r) => {
+        if (cancelled) return;
+        if (Array.isArray(r.data) && r.data.length > 0) {
+          setStats(r.data);
+        }
+      })
+      .catch(() => {
+        // Keep the default stats on error — the homepage still renders.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <section style={{ borderTop: '1px solid var(--border-subtle)', borderBottom: '1px solid var(--border-subtle)', padding: '48px 0', background: 'var(--brand-black-soft)' }}>
       <div className="container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 28, textAlign: 'center' }}>
-        {st.map((s, i) => {
+        {stats.map((s, i) => {
           const { ref, inView } = useInView(0.1);
           return (
             <div
@@ -261,9 +283,9 @@ function Stats({ st }: { st: typeof ST }) {
               style={{ opacity: inView ? 1 : 0, transform: inView ? 'translateY(0)' : 'translateY(16px)', transition: `all .4s var(--ease-expo) ${i * 120}ms` }}
             >
               <div className="gradient-text" style={{ fontSize: 'clamp(1.5rem,4vw,2.25rem)', fontWeight: 900, marginBottom: 2 }}>
-                {s.n}
+                {s.value}
               </div>
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{s.l}</div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{s.label}</div>
             </div>
           );
         })}

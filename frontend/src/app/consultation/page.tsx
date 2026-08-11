@@ -100,8 +100,8 @@ export default function ConsultationPage() {
       });
       setBooking(r.data);
       setStep(4);
-    } catch (e: any) {
-      setError(e?.response?.data?.message || 'خطا در ثبت رزرو. لطفاً دوباره تلاش کنید.');
+    } catch (e: unknown) {
+      setError((e as { response?: { data?: { message?: string } } })?.response?.data?.message || 'خطا در ثبت رزرو. لطفاً دوباره تلاش کنید.');
     } finally {
       setSubmitting(false);
     }
@@ -134,8 +134,8 @@ export default function ConsultationPage() {
           setBooking(r.data);
           setUploadDone(true);
           setStep(5);
-        } catch (e: any) {
-          setError(e?.response?.data?.message || 'خطا در بارگذاری رسید');
+        } catch (e: unknown) {
+          setError((e as { response?: { data?: { message?: string } } })?.response?.data?.message || 'خطا در بارگذاری رسید');
         } finally {
           setUploading(false);
         }
@@ -145,7 +145,7 @@ export default function ConsultationPage() {
         setUploading(false);
       };
       reader.readAsDataURL(receiptFile);
-    } catch (e: any) {
+    } catch (e: unknown) {
       setError('خطا در بارگذاری رسید');
       setUploading(false);
     }
