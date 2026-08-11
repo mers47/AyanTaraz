@@ -38,11 +38,11 @@
 - [x] 4.6: کامیت، push، PR #24، مرج به main (rebase) ✅
 
 ## فاز ۵ — بهبود زیرساخت و دیپلوی (Infrastructure & Deployment)
-- [ ] 5.1: اضافه کردن پیکربندی HTTPS/TLS در nginx (حالا فقط HTTP روی پورت ۸۰)
-- [ ] 5.2: بهبود Dockerfileها — health check دقیق‌تر، .dockerignore بهینه
-- [ ] 5.3: بررسی و تکمیل GitHub Actions CI — اضافه کردن lint/type-check
-- [ ] 5.4: بهبود docker-compose — environment validation، restart policy
-- [ ] 5.5: کامیت، push، PR، مرج
+- [x] 5.1: اضافه کردن پیکربندی HTTPS/TLS در nginx (حالا فقط HTTP روی پورت ۸۰)
+- [x] 5.2: بهبود Dockerfileها — health check دقیق‌تر، .dockerignore بهینه
+- [x] 5.3: بررسی و تکمیل GitHub Actions CI — اضافه کردن lint/type-check
+- [x] 5.4: بهبود docker-compose — environment validation، restart policy
+- [x] 5.5: کامیت، push، PR، مرج
 
 ## فاز ۶ — بهبود منطق تجاری و تست (Business Logic & Testing)
 - [ ] 6.1: بهبود `determine()` در tax-assistant — به جای هاردکد value matching از مپینگ دیتابیس استفاده کند
