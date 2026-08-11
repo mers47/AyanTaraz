@@ -13,7 +13,7 @@ COPY package*.json ./
 COPY prisma ./prisma
 RUN npm ci --allow-scripts
 
-# ── 2. Generate Prisma Client BEFORE the TypeScript build ─────────────────
+# ── 2. Generate Prisma Client BEFORE the TypeScript build ────────────────
 # This is critical: nest build (tsc) imports types from @prisma/client. If the
 # client hasn't been generated yet, the compiled output may be missing the
 # generated runtime code, causing runtime errors (chatbot / admin / tax
@@ -39,23 +39,40 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-# ── Application artefacts ─────────────────────────────────────────────────
+# ── Application artefacts ────────────────────────────────────────────────
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/tsconfig*.json ./
 
-# ── Prisma CLI for migrations ─────────────────────────────────────────────
+# ── Prisma CLI for migrations ────────────────────────────────────────────
 # prisma is a devDependency, but we need `prisma migrate deploy` at runtime
 # (called by deploy.sh). Install just the prisma CLI so the runner can run
 # migrations without the full dev toolchain.
 RUN npm install --no-save prisma@^5.8.0
 
-# ── Healthcheck dependencies ──────────────────────────────────────────────
+# ── Healthcheck dependencies ─────────────────────────────────────────────
 RUN apk add --no-cache wget
 
+# ── Non-root user for security ───────────────────────────────────────────
+# Run the Node process as an unprivileged user so a compromised app cannot
+# modify system files or escalate privileges within the container.
+RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 --ingroup nodejs nestjs
+
+# Ensure the uploads directory is writable by the non-root user
+RUN mkdir -p /app/uploads && chown -R nestjs:nodejs /app/uploads
+
+USER nestjs
+
 EXPOSE 4000
+
+# ── Healthcheck (Docker-native) ──────────────────────────────────────────
+# Checks the /api/health endpoint every 30s.  This is also declared in
+# docker-compose.yml but having it in the Dockerfile ensures the image is
+# self-documenting and works even without compose.
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=30s \
+  CMD wget --spider -q http://localhost:4000/api/health || exit 1
 
 # The deploy script runs `npx prisma migrate deploy` against this image before
 # starting the app, then seeds the database with `node dist/prisma/seed.js`.

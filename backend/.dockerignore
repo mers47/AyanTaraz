@@ -2,18 +2,23 @@
 # and prevents stale local node_modules / .env from leaking into the image.
 node_modules
 npm-debug.log
+*.log
 .env
 .env.local
 .env.*.local
+.env.example
 dist
 .git
 .gitignore
 .gitattributes
+.vscode
+.idea
 coverage
 .nyc_output
 test
 spec
 *.md
 Dockerfile
+Dockerfile*
 .dockerignore
 docker-compose*.yml

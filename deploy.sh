@@ -443,148 +443,19 @@ update_nginx_ssl() {
   # Backup original
   cp "$nginx_conf" "$SCRIPT_DIR/nginx/nginx.conf.nossl.bak"
 
-  cat > "$nginx_conf" << 'NGINX_EOF'
-worker_processes auto;
-worker_rlimit_nofile 65535;
+  # Copy the SSL-enabled template (versioned in the repo as nginx/nginx-ssl.conf)
+  # over the HTTP-only nginx.conf.  The template already contains:
+  #   - HTTP→HTTPS redirect (port 80)
+  #   - HTTPS server block (port 443) with TLS 1.2/1.3, OCSP stapling
+  #   - HSTS header (Strict-Transport-Security)
+  #   - All security headers + rate limiting + proxy rules
+  if [ ! -f "$SCRIPT_DIR/nginx/nginx-ssl.conf" ]; then
+    error "nginx/nginx-ssl.conf template not found. Cannot enable HTTPS."
+    exit 1
+  fi
 
-events {
-  worker_connections 4096;
-  multi_accept on;
-}
-
-http {
-  include /etc/nginx/mime.types;
-  default_type application/octet-stream;
-
-  access_log /var/log/nginx/access.log combined buffer=32k flush=5s;
-  error_log /var/log/nginx/error.log warn;
-
-  sendfile on;
-  tcp_nopush on;
-  tcp_nodelay on;
-  keepalive_timeout 65;
-  keepalive_requests 100;
-  server_tokens off;
-  client_max_body_size 25m;
-
-  gzip on;
-  gzip_vary on;
-  gzip_proxied any;
-  gzip_comp_level 6;
-  gzip_min_length 1024;
-  gzip_buffers 16 8k;
-  gzip_types
-    text/plain text/css text/xml text/javascript
-    application/javascript application/x-javascript
-    application/json application/xml application/xml+rss
-    application/atom+xml image/svg+xml font/woff2 application/manifest+json;
-
-  upstream backend { server backend:4000; least_conn; }
-  upstream frontend { server frontend:3000; least_conn; }
-
-  limit_req_zone $binary_remote_addr zone=api:10m rate=30r/s;
-  limit_req_zone $binary_remote_addr zone=login:10m rate=5r/s;
-
-  # ── HTTP → HTTPS redirect ──
-  server {
-    listen 80;
-    server_name _;
-    return 301 https://$host$request_uri;
-  }
-
-  # ── HTTPS (SSL) ──
-  server {
-    listen 443 ssl;
-    http2 on;
-    server_name _;
-
-    ssl_certificate /etc/nginx/ssl/fullchain.pem;
-    ssl_certificate_key /etc/nginx/ssl/privkey.pem;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
-    ssl_prefer_server_ciphers off;
-    ssl_session_cache shared:SSL:10m;
-    ssl_session_timeout 1d;
-
-    add_header X-Frame-Options DENY always;
-    add_header X-Content-Type-Options nosniff always;
-    add_header Referrer-Policy strict-origin-when-cross-origin always;
-    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
-    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
-
-    location /api/ {
-      limit_req zone=api burst=60 nodelay;
-      proxy_pass http://backend;
-      proxy_set_header Host $host;
-      proxy_set_header X-Real-IP $remote_addr;
-      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-      proxy_set_header X-Forwarded-Proto $scheme;
-      proxy_read_timeout 60s;
-    }
-
-    location ~ ^/api/(auth|admin)/ {
-      limit_req zone=login burst=10 nodelay;
-      proxy_pass http://backend;
-      proxy_set_header Host $host;
-      proxy_set_header X-Real-IP $remote_addr;
-      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-      proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    location /uploads/ {
-      proxy_pass http://backend;
-      proxy_set_header Host $host;
-      expires 7d;
-      add_header Cache-Control "public" always;
-    }
-
-    location /_next/static/ {
-      proxy_pass http://frontend;
-      proxy_set_header Host $host;
-      expires 1y;
-      add_header Cache-Control "public, immutable" always;
-    }
-
-    location /_next/ {
-      proxy_pass http://frontend;
-      proxy_set_header Host $host;
-      expires 30d;
-      add_header Cache-Control "public" always;
-    }
-
-    location /images/ {
-      proxy_pass http://frontend;
-      proxy_set_header Host $host;
-      expires 7d;
-      add_header Cache-Control "public" always;
-    }
-
-    location ~* \.(ico|png|jpg|jpeg|webp|svg|css|js|woff2|manifest)$ {
-      proxy_pass http://frontend;
-      proxy_set_header Host $host;
-      expires 7d;
-      add_header Cache-Control "public" always;
-    }
-
-    location / {
-      proxy_pass http://frontend;
-      proxy_set_header Host $host;
-      proxy_set_header X-Real-IP $remote_addr;
-      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-      proxy_set_header X-Forwarded-Proto $scheme;
-      proxy_http_version 1.1;
-      proxy_set_header Upgrade $http_upgrade;
-      proxy_set_header Connection "upgrade";
-      proxy_read_timeout 60s;
-      proxy_buffering on;
-      proxy_buffer_size 16k;
-      proxy_buffers 8 32k;
-    }
-  }
-}
-NGINX_EOF
-
-  log "nginx.conf updated for HTTPS"
+  cp "$SCRIPT_DIR/nginx/nginx-ssl.conf" "$nginx_conf"
+  log "nginx.conf updated for HTTPS (from nginx-ssl.conf template)"
 }
 
 # Update docker-compose.yml to add port 443 and SSL volume

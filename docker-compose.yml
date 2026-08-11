@@ -1,4 +1,3 @@
-version: "3.8"
 services:
   postgres:
     image: postgres:16-alpine
@@ -16,6 +15,7 @@ services:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ayan_user}"]
       interval: 10s
       retries: 5
+
   redis:
     image: redis:7-alpine
     container_name: ayan-redis
@@ -29,6 +29,7 @@ services:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       retries: 5
+
   backend:
     build:
       context: ./backend
@@ -51,6 +52,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+
   frontend:
     build:
       context: ./frontend
@@ -71,7 +73,8 @@ services:
       # Frontend container can reach backend via docker network hostname.
       INTERNAL_API_URL: http://backend:4000
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
       - "127.0.0.1:3000:3000"
     healthcheck:
@@ -80,17 +83,31 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+
   nginx:
     image: nginx:alpine
     container_name: ayan-nginx
     restart: unless-stopped
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      # SSL certs are mounted at deploy time by deploy.sh (update_compose_ssl).
+      # Leave this commented out for HTTP-only deployments.
     ports:
       - "80:80"
+      # Port 443 is exposed at deploy time when SSL is enabled by deploy.sh.
+      # Leave this commented out for HTTP-only deployments.
     depends_on:
-      - backend
-      - frontend
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:80/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
 volumes:
   pgdata:
   redisdata:
