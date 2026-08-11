@@ -29,8 +29,8 @@ export default function PageHeader({
     }}>
       <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 64 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-          <Link href="/" className="brand-logo" aria-label="آین تراز — خانه" style={{ gap: 8 }}>
-            <img src="/images/logo-dark.webp" alt="لوگوی آین تراز" style={{ height: 36, width: 'auto' }} />
+          <Link href="/" className="brand-logo" aria-label="آیان تراز — خانه" style={{ gap: 8 }}>
+            <img src="/images/logo-dark.webp" alt="لوگوی آیان تراز" style={{ height: 36, width: 'auto' }} />
           </Link>
           {title && (
             <>

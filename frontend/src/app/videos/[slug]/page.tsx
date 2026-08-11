@@ -52,7 +52,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       title: video.metaTitle || video.title,
       description: video.metaDescription || video.description || '',
       url: `${BASE}/videos/${video.slug}`,
-      siteName: 'آین تراز',
+      siteName: 'آیان تراز',
       images: video.thumbnail ? [{ url: video.thumbnail, width: 1200, height: 630, alt: video.title }] : undefined,
       videos: video.url ? [{ url: video.url }] : undefined,
     },
@@ -80,7 +80,7 @@ export default async function VideoDetailPage({ params }: { params: Promise<{ sl
     uploadDate: video.publishedAt,
     contentUrl: video.url || `${BASE}/videos/${video.slug}`,
     embedUrl: `${BASE}/videos/${video.slug}`,
-    publisher: { '@type': 'Organization', name: 'آین تراز' },
+    publisher: { '@type': 'Organization', name: 'آیان تراز' },
   };
 
   return (

@@ -138,9 +138,9 @@ export default function ChatbotPage() {
         </Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/logo-dark.webp" alt="آین تراز" style={{ height: 34, width: 'auto' }} />
+          <img src="/images/logo-dark.webp" alt="آیان تراز" style={{ height: 34, width: 'auto' }} />
           <div>
-            <div className="chat-header-title" style={{ fontWeight: 700, fontSize: '0.9rem' }}>دستیار آین تراز</div>
+            <div className="chat-header-title" style={{ fontWeight: 700, fontSize: '0.9rem' }}>دستیار آیان تراز</div>
             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>پاسخگویی سوالات مالیاتی</div>
           </div>
         </div>

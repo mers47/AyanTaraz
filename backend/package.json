@@ -12,7 +12,9 @@
     "test:cov": "jest --coverage",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "db:seed": "ts-node prisma/seed.ts"
+    "prisma:deploy": "prisma migrate deploy",
+    "db:seed": "ts-node prisma/seed.ts",
+    "db:seed:prod": "node dist/prisma/seed.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.28",

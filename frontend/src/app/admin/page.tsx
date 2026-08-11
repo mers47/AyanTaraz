@@ -270,7 +270,7 @@ export default function AdminPage() {
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
         <div className="glass-card" style={{ maxWidth: 440, width: '92%', padding: 40, textAlign: 'center' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/logo-dark.webp" alt="آین تراز" style={{ width: 110, margin: '0 auto 20px', display: 'block' }} />
+          <img src="/images/logo-dark.webp" alt="آیان تراز" style={{ width: 110, margin: '0 auto 20px', display: 'block' }} />
           <h2 style={{ fontSize: '1.3rem', fontWeight: 800, marginBottom: 8 }}>دسترسی محدود</h2>
           <p style={{ color: 'var(--text-muted)', marginBottom: 24, lineHeight: 1.7, fontSize: '0.9rem' }}>
             برای ورود به پنل مدیریت ابتدا باید با حساب کاربری مدیر وارد شوید.
@@ -297,7 +297,7 @@ export default function AdminPage() {
         <div className="container" style={HD2}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/logo-dark.webp" alt="آین تراز" style={{ height: 34, width: 'auto', filter: 'drop-shadow(0 2px 8px rgba(198,169,98,.25))' }} />
+            <img src="/images/logo-dark.webp" alt="آیان تراز" style={{ height: 34, width: 'auto', filter: 'drop-shadow(0 2px 8px rgba(198,169,98,.25))' }} />
             <span style={{ color: 'var(--border-default)' }}>|</span>
             <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: 600 }}>پنل مدیریت</span>
           </div>
