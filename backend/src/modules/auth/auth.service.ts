@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { PrismaService } from '../../prisma/prisma.service';
 import { OTPService } from './otp.service';
 import { SmsService } from './sms.service';
-import { OTPType } from '@prisma/client';
+import { OTPType, User } from '@prisma/client';
 
 export interface JwtPayload { sub: string; phone: string; role: string; iat?: number; exp?: number; }
 export interface SafeUser { id: string; phone: string; phoneVerified: boolean; firstName: string | null; lastName: string | null; avatar: string | null; role: string; isActive: boolean; createdAt: Date; updatedAt: Date; }
@@ -80,7 +80,7 @@ export class AuthService {
     return { message: 'خروج موفق' };
   }
 
-  private async createSession(user: any, res: Response, ip?: string, ua?: string) {
+  private async createSession(user: User, res: Response, ip?: string, ua?: string) {
     const fp = this.fingerprintParts(ip, ua);
     const accExp = this.configService.get<number>('JWT_EXPIRES_IN', 86400);
     const refExp = 2592000;
@@ -120,7 +120,7 @@ export class AuthService {
     return this.safe(session.user);
   }
 
-  safe(u: any): SafeUser {
+  safe(u: User): SafeUser {
     return { id: u.id, phone: u.phone, phoneVerified: u.phoneVerified, firstName: u.firstName, lastName: u.lastName, avatar: u.avatar, role: u.role, isActive: u.isActive, createdAt: u.createdAt, updatedAt: u.updatedAt };
   }
 }

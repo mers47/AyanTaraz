@@ -1,6 +1,8 @@
 import { Body, Controller, Headers, HttpCode, HttpStatus, Ip, Post, Request, Response, UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
+import { Response as ExpressResponse, Request as ExpressRequest } from 'express';
+import { OTPType } from '@prisma/client';
 import { Public } from '../../common/decorators/public.decorator';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { AuthService } from './auth.service';
@@ -17,7 +19,7 @@ export class AuthController {
   @Post('send-otp')
   @HttpCode(HttpStatus.OK)
   async sendOTP(@Body() body: SendOTPDto, @Ip() ip: string, @Headers('user-agent') ua: string) {
-    return this.auth.sendOTP(body.phone, body.type as any, ip, ua);
+    return this.auth.sendOTP(body.phone, body.type ? (body.type as OTPType) : undefined, ip, ua);
   }
 
   @Public()
@@ -26,7 +28,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async login(
     @Body() body: LoginDto,
-    @Response({ passthrough: true }) res: any,
+    @Response({ passthrough: true }) res: ExpressResponse,
     @Ip() ip: string,
     @Headers('user-agent') ua: string,
   ) {
@@ -36,19 +38,19 @@ export class AuthController {
   @Public()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  async refresh(@Request() req: any, @Response({ passthrough: true }) res: any) {
+  async refresh(@Request() req: ExpressRequest, @Response({ passthrough: true }) res: ExpressResponse) {
     return this.auth.refresh(req, res);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  async logout(@Request() req: any, @Response({ passthrough: true }) res: any) {
+  async logout(@Request() req: ExpressRequest, @Response({ passthrough: true }) res: ExpressResponse) {
     return this.auth.logout(req, res);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('me')
   @HttpCode(HttpStatus.OK)
-  async me(@Request() req: any) { return { user: req.user }; }
+  async me(@Request() req: ExpressRequest) { return { user: req.user }; }
 }

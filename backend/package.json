@@ -78,5 +78,8 @@
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "testEnvironment": "node"
+  },
+  "overrides": {
+    "js-yaml": "5.2.3"
   }
 }
