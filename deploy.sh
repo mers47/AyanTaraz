@@ -16,8 +16,16 @@
 # اسکریپت به‌صورت خودکار:
 #   - Docker و Docker Compose را نصب می‌کند
 #   - فایل .env را با پسوردها و کلیدهای تصادفی امن تولید می‌کند
-#   - فقط شماره موبایل ادمین و کلید SMS API را از شما می‌پرسد
+#   - شماره ادمین پیش‌فرض: 989133374162,989134292329 (قابل تغییر با Enter)
+#   - کلید SMS API اختیاری است — بعداً با nano .env اضافه کنید
 #   - دیتابیس را migrate و seed می‌کند
+#
+# حالت غیرتعاملی (برای CI/CD یا اتوماسیون):
+#   NON_INTERACTIVE=true ./deploy.sh
+#   (همه پیش‌فرض‌ها استفاده می‌شود، هیچ سؤالی پرسیده نمی‌شود)
+#
+# تغییر IP سرور (اگر لازم شد):
+#   SERVER_IP=1.2.3.4 ./deploy.sh
 # ═══════════════════════════════════════════════════════════════
 
 set -euo pipefail
@@ -45,7 +53,19 @@ banner() {
 }
 
 # ── Config ──
-SERVER_IP="${SERVER_IP:-$(curl -s --max-time 5 ifconfig.me 2>/dev/null || echo 'localhost')}"
+# Default server IP — override with: SERVER_IP=1.2.3.4 ./deploy.sh
+# This is the public IP users will browse to during the IP-first phase (no domain yet).
+SERVER_IP="${SERVER_IP:-202.133.91.13}"
+
+# Default super-admin phone numbers — override with: ADMIN_PHONES=989121234567 ./deploy.sh
+# Format: 98XXXXXXXXXX (with country code 98, no +, no leading 0), comma-separated.
+# User's admin numbers: 09133374162 → 989133374162, 09134292329 → 989134292329
+ADMIN_PHONES_DEFAULT="989133374162,989134292329"
+ADMIN_PHONES="${ADMIN_PHONES:-$ADMIN_PHONES_DEFAULT}"
+
+# If true, the script runs without prompting (uses defaults or env vars).
+NON_INTERACTIVE="${NON_INTERACTIVE:-false}"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 COMPOSE_FILE="$SCRIPT_DIR/docker-compose.yml"
 ENV_FILE="$SCRIPT_DIR/.env"
@@ -128,47 +148,58 @@ generate_env() {
   info "All internal secrets generated automatically."
   echo ""
 
-  # ── Ask user for super-admin phone number ──
-  echo -e "${CYAN}━━━ اطلاعات ادمین ━━━${NC}"
-  echo ""
-  echo -e "  شماره موبایل ادمین ارشد (برای ورود به پنل ادمین):"
-  echo -e "  ${YELLOW}فرمت: 989121234567 (با کد کشور، بدون + و بدون ۰ اول)${NC}"
-  echo -e "  اگر چند شماره است، با کاما جدا کنید."
-  echo ""
-  local admin_phones=""
-  while true; do
-    read -rp "$(echo -e ${BOLD}'  شماره موبایل ادمین: '${NC})" admin_phones
-    if [ -n "$admin_phones" ]; then
-      # Basic validation
-      if echo "$admin_phones" | grep -qP '^98\d{10}(,98\d{10})*$'; then
-        log "شماره ادمین تأیید شد: $admin_phones"
-        break
-      else
-        warn "فرمت صحیح: 989121234567 — لطفاً دوباره وارد کنید (بدون +، با کد کشور 98)"
-      fi
-    else
-      warn "لطفاً حداقل یک شماره وارد کنید (یا 'skip' برای رد کردن)"
-      read -rp "$(echo -e ${BOLD}'  شماره موبایل ادمین: '${NC})" admin_phones
-      if [ "$admin_phones" = "skip" ] || [ -n "$admin_phones" ]; then
-        break
-      fi
+  # ── Super-admin phone numbers ──
+  # Default comes from ADMIN_PHONES (pre-set to user's numbers: 989133374162,989134292329).
+  # In NON_INTERACTIVE mode we skip the prompt entirely.
+  local admin_phones="$ADMIN_PHONES"
+
+  if [ "$NON_INTERACTIVE" != "true" ]; then
+    echo -e "${CYAN}━━━ اطلاعات ادمین ━━━${NC}"
+    echo ""
+    echo -e "  شماره موبایل ادمین ارشد (برای ورود به پنل ادمین):"
+    echo -e "  ${YELLOW}فرمت: 989121234567 (با کد کشور، بدون + و بدون ۰ اول)${NC}"
+    echo -e "  اگر چند شماره است، با کاما جدا کنید."
+    echo ""
+    echo -e "  ${BOLD}پیش‌فرض:${NC} $ADMIN_PHONES  (فقط Enter بزنید برای تأیید)"
+    echo ""
+    local input_phones=""
+    read -rp "$(echo -e ${BOLD}'  شماره موبایل ادمین [Enter = پیش‌فرض]: '${NC})" input_phones
+    if [ -n "$input_phones" ]; then
+      admin_phones="$input_phones"
     fi
-  done
+    # Validate format
+    if ! echo "$admin_phones" | grep -qP '^98\d{10}(,98\d{10})*$'; then
+      warn "فرمت شماره نامعتبر است: $admin_phones"
+      warn "استفاده از پیش‌فرض: $ADMIN_PHONES"
+      admin_phones="$ADMIN_PHONES"
+    else
+      log "شماره ادمین تأیید شد: $admin_phones"
+    fi
+    echo ""
+  else
+    log "NON_INTERACTIVE: شماره ادمین = $admin_phones"
+  fi
 
-  echo ""
-  echo -e "${CYAN}━━━ کلیدهای API (اختیاری — بعداً هم می‌توانید اضافه کنید) ━━━${NC}"
-  echo ""
-  echo -e "  ${YELLOW}اگر الان کلید SMS API ندارید، Enter بزنید تا خالی بماند.${NC}"
-  echo -e "  بدون SMS API، کد OTP فقط در لاگ کنسول نمایش داده می‌شود."
-  echo -e "  می‌توانید بعداً این مقادیر را در فایل .env ویرایش کنید."
-  echo ""
+  # ── SMS API keys (optional, can be added later via nano .env) ──
+  # In NON_INTERACTIVE mode, these stay empty — user adds them later.
+  local sms_url="" sms_key="" sms_sender=""
 
-  local sms_url sms_key sms_sender
-  read -rp "$(echo -e '  SMS API URL (اینتر=خالی): ')" sms_url
-  read -rp "$(echo -e '  SMS API Key  (اینتر=خالی): ')" sms_key
-  read -rp "$(echo -e '  SMS Sender   (اینتر=خالی): ')" sms_sender
-
-  echo ""
+  if [ "$NON_INTERACTIVE" != "true" ]; then
+    echo -e "${CYAN}━━━ کلیدهای API (اختیاری — بعداً هم می‌توانید اضافه کنید) ━━━${NC}"
+    echo ""
+    echo -e "  ${YELLOW}اگر الان کلید SMS API ندارید، Enter بزنید تا خالی بماند.${NC}"
+    echo -e "  بدون SMS API، کد OTP فقط در لاگ کنسول نمایش داده می‌شود."
+    echo -e "  می‌توانید بعداً این مقادیر را در فایل .env ویرایش کنید:"
+    echo -e "    nano .env  →  بخش SMS_API_URL / SMS_API_KEY / SMS_SENDER"
+    echo -e "    ./deploy.sh restart"
+    echo ""
+    read -rp "$(echo -e '  SMS API URL (اینتر=خالی): ')" sms_url
+    read -rp "$(echo -e '  SMS API Key  (اینتر=خالی): ')" sms_key
+    read -rp "$(echo -e '  SMS Sender   (اینتر=خالی): ')" sms_sender
+    echo ""
+  else
+    warn "NON_INTERACTIVE: SMS API خالی — بعداً با nano .env اضافه کنید"
+  fi
 
   # ── Write the complete .env file ──
   info "Writing .env file..."
@@ -271,9 +302,19 @@ deploy() {
   docker compose -f "$COMPOSE_FILE" up -d postgres redis
   sleep 5
 
-  # Run migrations
+  # Run migrations (with retry — postgres may need a few extra seconds)
   info "Running database migrations..."
-  docker compose -f "$COMPOSE_FILE" run --rm backend npx prisma migrate deploy 2>/dev/null || warn "Migration step: check logs if issues"
+  local mig_ok=false
+  for attempt in 1 2 3; do
+    if docker compose -f "$COMPOSE_FILE" run --rm backend npx prisma migrate deploy 2>/dev/null; then
+      log "Migrations applied successfully"
+      mig_ok=true
+      break
+    fi
+    warn "Migration attempt $attempt failed — waiting 5s before retry..."
+    sleep 5
+  done
+  [ "$mig_ok" = false ] && warn "Migration step failed after 3 attempts — check: docker compose logs postgres"
 
   # Start all services
   info "Starting all services..."
@@ -285,8 +326,19 @@ deploy() {
 
   # Seed database with 1405 tax law data
   # Uses the compiled seed (dist/prisma/seed.js) — no ts-node needed in production.
+  # Retry up to 3 times in case backend is still initializing.
   info "Seeding database with 1405 tax law data..."
-  docker exec ayan-backend npm run db:seed:prod 2>/dev/null || warn "Seed: may need manual run — docker exec ayan-backend npm run db:seed:prod"
+  local seed_ok=false
+  for attempt in 1 2 3; do
+    if docker exec ayan-backend npm run db:seed:prod 2>/dev/null; then
+      log "Database seeded successfully"
+      seed_ok=true
+      break
+    fi
+    warn "Seed attempt $attempt failed — waiting 5s before retry..."
+    sleep 5
+  done
+  [ "$seed_ok" = false ] && warn "Seed failed after 3 attempts — manual run: docker exec ayan-backend npm run db:seed:prod"
 
   # Health checks
   health_check
@@ -450,7 +502,7 @@ update_nginx_ssl() {
   #   - HSTS header (Strict-Transport-Security)
   #   - All security headers + rate limiting + proxy rules
   if [ ! -f "$SCRIPT_DIR/nginx/nginx-ssl.conf" ]; then
-    error "nginx/nginx-ssl.conf template not found. Cannot enable HTTPS."
+    err "nginx/nginx-ssl.conf template not found. Cannot enable HTTPS."
     exit 1
   fi
 
@@ -628,9 +680,13 @@ down() {
 }
 
 restart() {
-  info "Restarting services..."
-  docker compose -f "$COMPOSE_FILE" restart
-  log "Services restarted"
+  info "Restarting services (picks up .env changes)..."
+  # Use up -d (not just restart) so env_file changes are re-read.
+  # If only env vars changed (e.g. SMS keys), containers are recreated.
+  # If frontend build args changed (NEXT_PUBLIC_BASE_URL), use "deploy" instead.
+  docker compose -f "$COMPOSE_FILE" up -d --force-recreate backend
+  docker compose -f "$COMPOSE_FILE" up -d
+  log "Services restarted with latest .env"
   sleep 5
   health_check
 }
@@ -671,11 +727,16 @@ show_help() {
   echo -e "  ${GREEN}./deploy.sh restart${NC}      راه‌اندازی مجدد"
   echo -e "  ${GREEN}./deploy.sh reset${NC}        ${RED}حذف کامل دیتابیس + کانتینرها${NC}"
   echo ""
+  echo -e "${BOLD}حالت غیرتعاملی:${NC}"
+  echo -e "  ${CYAN}NON_INTERACTIVE=true ./deploy.sh${NC}  (بدون سؤال، همه پیش‌فرض‌ها)"
+  echo ""
   echo -e "${BOLD}ویژگی‌های خودکار:${NC}"
   echo -e "  ✓ نصب خودکار Docker"
   echo -e "  ✓ تولید خودکار پسوردها و کلیدهای امن"
-  echo -e "  ✓ فقط شماره موبایل ادمین و کلید SMS از شما پرسیده می‌شود"
-  echo -e "  ✓ Migrate و Seed خودکار دیتابیس"
+  echo -e "  ✓ شماره ادمین پیش‌فرض: 989133374162,989134292329"
+  echo -e "  ✓ کلید SMS اختیاری — بعداً با nano .env اضافه کنید"
+  echo -e "  ✓ IP-First: ابتدا روی http://202.133.91.13 بالا می‌آید"
+  echo -e "  ✓ Migrate و Seed خودکار دیتابیس (با retry)"
   echo -e "  ✓ SSL خودکار با Certbot برای دامنه"
   echo -e "  ✓ تمدید خودکار SSL (هر ۱۲ روز)"
   echo ""
