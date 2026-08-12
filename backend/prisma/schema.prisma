@@ -1,5 +1,18 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  // ── binaryTargets ──────────────────────────────────────────────
+  // The production Docker image is `node:20-alpine` (musl libc), while
+  // local dev/CI runs on Debian/glibc. Without an explicit target list,
+  // `prisma generate` only fetches the engine for the *current* host.
+  // When the image is built on Alpine the glibc engine is fetched (or
+  // vice-versa), so at runtime `prisma migrate deploy` and the
+  // PrismaClient fail with "Query engine library … is missing".
+  //
+  // "native"  = the host running `prisma generate` (dev/CI = glibc, Docker = musl)
+  // "linux-musl-openssl-3.0.x" = the Alpine runtime engine, always included so
+  //   the production image has the correct binary regardless of where it was built.
+  // "linux-debian-openssl-3.0.x" = the glibc engine for non-Alpine runtimes.
+  binaryTargets   = ["native", "linux-musl-openssl-3.0.x", "debian-openssl-3.0.x"]
 }
 
 datasource db {

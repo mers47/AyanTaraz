@@ -48,9 +48,15 @@ COPY --from=builder /app/tsconfig*.json ./
 
 # ── Prisma CLI for migrations ────────────────────────────────────────────
 # prisma is a devDependency, but we need `prisma migrate deploy` at runtime
-# (called by deploy.sh). Install just the prisma CLI so the runner can run
-# migrations without the full dev toolchain.
-RUN npm install --no-save prisma@^5.8.0
+# Install the prisma CLI *and* its engines so the migration engine binary is
+# present on Alpine (musl). `npm install --no-save prisma` alone does NOT
+# always pull the schema-engine binary for the musl target, which causes
+# `prisma migrate deploy` to fail at deploy time with "schema engine not
+# found". Use --allow-scripts and force the engine download via
+# `prisma generate` against the committed schema so the musl engines are
+# guaranteed present in the production image.
+RUN npm install --no-save --allow-scripts prisma@^5.8.0
+RUN npx prisma generate || true
 
 # ── Healthcheck dependencies ─────────────────────────────────────────────
 RUN apk add --no-cache wget
