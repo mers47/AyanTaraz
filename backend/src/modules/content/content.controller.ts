@@ -40,6 +40,6 @@ export class ContentController {
   // ─── Existing key-value content (tax laws) ───
   @Get() @Public() async all() { return this.svc.getAll(); }
   @Get(':key') @Public() async one(@Param('key') k: string) { return this.svc.get(k) || { error: 'not found' }; }
-  @Put(':key') @UseGuards(JwtAuthGuard, RolesGuard) @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN) async save(@Param('key') k: string, @Body() d: any) { return this.svc.save(k, d); }
+  @Put(':key') @UseGuards(JwtAuthGuard, RolesGuard) @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN) async save(@Param('key') k: string, @Body() d: unknown) { return this.svc.save(k, d); }
   @Post('autofill') @UseGuards(JwtAuthGuard, RolesGuard) @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN) async fill() { return this.svc.autoFill(); }
 }

@@ -6,6 +6,7 @@ import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { SeoService } from './seo.service';
+import { SeoUpsertDto } from './dto/seo-upsert.dto';
 
 @ApiTags('سئو')
 @Controller('seo')
@@ -26,5 +27,5 @@ export class SeoController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'به‌روزرسانی متادیتای سئو (فقط ادمین)' })
-  async upsert(@Param('path') p: string, @Body() d: any) { return this.svc.upsert(p, d); }
+  async upsert(@Param('path') p: string, @Body() d: SeoUpsertDto) { return this.svc.upsert(p, d); }
 }

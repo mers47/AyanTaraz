@@ -1,13 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
+
+type ContentStore = Record<string, unknown>;
 
 @Injectable()
 export class ContentService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getAll() {
+  async getAll(): Promise<ContentStore> {
     const rows = await this.prisma.adminSetting.findMany({ where: { key: { startsWith: 'content_' } } });
-    const r: any = {};
+    const r: ContentStore = {};
     for (const row of rows) { try { r[row.key] = JSON.parse(row.value); } catch { r[row.key] = row.value; } }
     return r;
   }
@@ -17,7 +20,7 @@ export class ContentService {
     return row ? (()=>{try{return JSON.parse(row.value)}catch{return row.value}})() : null;
   }
 
-  async save(key: string, data: any) {
+  async save(key: string, data: unknown) {
     const val = typeof data === 'string' ? data : JSON.stringify(data);
     await this.prisma.adminSetting.upsert({ where: { key: `content_${key}` }, create: { key: `content_${key}`, value: val }, update: { value: val } });
     return { ok: true };
@@ -73,7 +76,7 @@ export class ContentService {
 
   // ─── Public content: Articles ───
   async getPublishedArticles(page = 1, limit = 20, search?: string) {
-    const where: any = { status: 'PUBLISHED' };
+    const where: Prisma.ArticleWhereInput = { status: 'PUBLISHED' };
     if (search) where.OR = [{ title: { contains: search, mode: 'insensitive' } }, { excerpt: { contains: search, mode: 'insensitive' } }];
     const [items, total] = await Promise.all([
       this.prisma.article.findMany({ where, orderBy: { publishedAt: 'desc' }, skip: (page - 1) * limit, take: limit, include: { category: { select: { name: true, slug: true } } } }),
@@ -88,7 +91,7 @@ export class ContentService {
 
   // ─── Public content: Videos ───
   async getPublishedVideos(page = 1, limit = 20, search?: string) {
-    const where: any = { status: 'PUBLISHED' };
+    const where: Prisma.VideoWhereInput = { status: 'PUBLISHED' };
     if (search) where.OR = [{ title: { contains: search, mode: 'insensitive' } }, { description: { contains: search, mode: 'insensitive' } }];
     const [items, total] = await Promise.all([
       this.prisma.video.findMany({ where, orderBy: { publishedAt: 'desc' }, skip: (page - 1) * limit, take: limit, include: { category: { select: { name: true, slug: true } } } }),
@@ -103,7 +106,7 @@ export class ContentService {
 
   // ─── Public content: MiniBooks ───
   async getPublishedMiniBooks(page = 1, limit = 20, search?: string) {
-    const where: any = { status: 'PUBLISHED' };
+    const where: Prisma.MiniBookWhereInput = { status: 'PUBLISHED' };
     if (search) where.OR = [{ title: { contains: search, mode: 'insensitive' } }, { description: { contains: search, mode: 'insensitive' } }];
     const [items, total] = await Promise.all([
       this.prisma.miniBook.findMany({ where, orderBy: { publishedAt: 'desc' }, skip: (page - 1) * limit, take: limit, include: { category: { select: { name: true, slug: true } } } }),

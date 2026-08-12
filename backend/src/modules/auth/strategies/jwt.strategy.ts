@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
-import { ExtractJwt, Strategy } from 'passport-jwt';
+import { ExtractJwt, Strategy, StrategyOptionsWithRequest } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
 import { AuthService } from '../auth.service';
@@ -18,7 +18,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       passReqToCallback: true,
       ignoreExpiration: false,
       secretOrKey: resolveJwtSecret(configService),
-    } as any);
+    } satisfies StrategyOptionsWithRequest);
   }
 
   async validate(req: Request, payload: JwtPayload) {

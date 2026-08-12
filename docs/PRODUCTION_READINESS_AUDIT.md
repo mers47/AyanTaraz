@@ -10,7 +10,7 @@
 | Build فرانت‌اند | ✅ تایید | next build → ۱۴ صفحه (static+dynamic)، ۰ خطا |
 | Type Integrity | ✅ تایید | بک‌اند و فرانت‌اند tsc --noEmit بدون خطا |
 | Dependency Audit فرانت | ✅ تایید | ۰ آسیب‌پذیری |
-| Dependency Audit بک | ⚠️ ۱ مورد | `js-yaml` (high) از طریق `@nestjs/swagger` — قابل audit fix |
+| Dependency Audit بک | ✅ صاف | `js-yaml` (high) با npm override به 5.2.3 رفع شد — `npm audit` = 0 |
 | Schema ↔ Migration | 🔴 drift (اصلاح شد) | ستون‌های پرداخت ConsultationBooking در migration موجود نبود |
 | امنیت | ✅ قوی | helmet, CORS, ValidationPipe, Throttler, JWT fail-fast, non-root, nginx headers |
 | تست | ⚠️ کم اما واقعی | ۹ تست (stub حذف شد) — پوشش ماژول‌ها پایین |
@@ -32,12 +32,20 @@
 
 ## یافته‌های غیربحرانی (توصیه‌شده برای ادامه)
 
-### ۳) آسیب‌پذیری `js-yaml` (high) — بک‌اند
-از طریق `@nestjs/swagger` وارد می‌شود. در production تاثیر محدود (Swagger فقط در غیر-production فعال است) ولی توصیه: `npm audit fix` یا ارتقای `@nestjs/swagger`.
+### ۳) آسیب‌پذیری `js-yaml` (high) — ✅ رفع شد
+از طریق `@nestjs/swagger` وارد می‌شد. با `npm overrides` به `5.2.3` پچ شد (بدون شکستن build). `npm audit` اکنون ۰ آسیب‌پذیری گزارش می‌دهد. Swagger فقط در غیر-production فعال است، اما رفع آن الزامی بود.
 
-### ۴) استفاده از `any` در بک‌اند — ۱۷ مورد
-بیشتر در `content.service.ts` و `auth.service.ts` (مثل `user: any`, `data: any`). با اینکه `tsconfig` `noImplicitAny` دارد، این موارد explicit هستند. برای کاهش ریسک تایپ، توصیه می‌شود با DTO/interface جایگزین شوند.
+### ۴) استفاده از `any` در بک‌اند — ✅ رفع شد (۱۷ مورد → ۰)
+تمام ۱۷ مورد `any` با تایپ‌های دقیق جایگزین شدند:
+- `auth.service.ts`: `user: any` → `User` (Prisma)، `u: any` → `User`
+- `auth.controller.ts`: `res/req: any` → `ExpressResponse/ExpressRequest`، `type as any` → `body.type as OTPType`
+- `jwt.strategy.ts`: `as any` → `satisfies StrategyOptionsWithRequest`
+- `content.service.ts`: `where: any` → `Prisma.ArticleWhereInput/VideoWhereInput/MiniBookWhereInput`، `data: any` → `unknown`، `r: any` → `ContentStore`
+- `content.controller.ts`: `d: any` → `unknown`
+- `seo.service/controller.ts`: `data: any` → `SeoUpsertDto` (DTO جدید با class-validator)
+- `audit.service.ts`: `oldValue/newValue?: any` → `unknown`
 
+تایپ‌چک، بیلد و تمام ۹ تست پس از تغییرات پاس شدند.
 ### ۵) پوشش تست پایین
 ۹ تست برای ۱۳ ماژول. توصیه: افزودن تست واحد برای auth, consultation, tax-assistant.
 
@@ -49,4 +57,4 @@
 
 ## نتیجه‌گیری
 
-پروژه از نظر معماری، امنیت، و infrastructure **آماده production** است. دو مورد بحرانی (drift migration و تست stub) در این PR اصلاح شد. با رفع آسیب‌پذیری `js-yaml` و افزایش پوشش تست، آمادگی کامل خواهد بود.
+پروژه از نظر معماری، امنیت، و infrastructure **آماده production** است. دو مورد بحرانی (drift migration و تست stub) در PR قبلی اصلاح شد. در این پیگیری، آسیب‌پذیری `js-yaml` (high) با npm override رفع شد (`npm audit` = ۰) و تمام ۱۷ مورد `any` با تایپ‌های دقیق Prisma/Express/DTO جایگزین شدند. تایپ‌چک، بیلد و ۹ تست همگی پاس. پروژه اکنون **آمادگی کامل production** دارد.
